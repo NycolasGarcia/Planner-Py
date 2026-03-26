@@ -1,0 +1,89 @@
+<div class="modal fade" id="new_note" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <!-- HEADER -->
+      <div class="modal-header">
+        <h5 class="modal-title">Nova Nota</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <!-- BODY -->
+      <div class="modal-body d-flex flex-column gap-3">
+
+        <!-- TÍTULO + ÍCONE -->
+        <div class="d-flex gap-2">
+          <input type="text" class="form-control" placeholder="Título da nota">
+
+          <button class="btn btn-outline-secondary">
+            <i class="bi bi-emoji-smile"></i>
+          </button>
+        </div>
+
+        <!-- COR -->
+        <div>
+          <label class="form-label mb-2">Cor</label>
+
+          <!-- Presets -->
+          <div class="d-flex gap-2 mb-2">
+
+            <!-- radio + botão -->
+            <input type="radio" class="btn-check" name="color" id="c1" value="primary" checked>
+            <label class="btn btn-primary" for="c1"></label>
+
+            <input type="radio" class="btn-check" name="color" id="c2" value="success">
+            <label class="btn btn-success" for="c2"></label>
+
+            <input type="radio" class="btn-check" name="color" id="c3" value="danger">
+            <label class="btn btn-danger" for="c3"></label>
+
+            <input type="radio" class="btn-check" name="color" id="c4" value="warning">
+            <label class="btn btn-warning" for="c4"></label>
+
+            <input type="radio" class="btn-check" name="color" id="c5" value="info">
+            <label class="btn btn-info" for="c5"></label>
+  
+          </div>
+        </div>
+
+        <!-- ATRIBUIÇÕES -->
+        <div>
+          <label class="form-label">Atribuir a</label>
+
+          <select class="form-select" multiple>
+            <option>Projeto X</option>
+            <option>Task Y</option>
+            <option>Evento Z</option>
+          </select>
+
+          <small class="text-secondary">
+            Segure Ctrl para múltiplos
+          </small>
+        </div>
+
+      </div>
+
+      <!-- FOOTER -->
+      <div class="modal-footer d-flex justify-content-between">
+
+        <!-- Ações secundárias -->
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-trash"></i>
+          </button>
+
+          <button class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-pin"></i>
+          </button>
+        </div>
+
+        <!-- Ação principal -->
+        <button class="btn btn-primary btn-sm">
+          <i class="bi bi-floppy"></i> Salvar
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+</div>

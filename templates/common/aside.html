@@ -1,0 +1,76 @@
+<aside class="d-flex flex-column p-2 border-end">
+            <ul class="nav nav-pills flex-column text-center">
+                <!-- Home/Index -->
+                <li class="nav-item my-2">
+                    <a href="/" class="nav-link nav-icon {% if active_page == 'index' %}active{% endif %}">
+                        <i class="bi bi-house"></i>
+                    </a>
+                </li>
+
+                <!-- Events -->
+                <li class="nav-item my-2">
+                    <a href="/events" class="nav-link nav-icon {% if active_page == 'events' %}active{% endif %}">
+                        <i class="bi bi-calendar-event"></i>
+                    </a>
+                </li>
+                
+                <!-- Projects -->
+                <li class="nav-item my-2">
+                    <a href="/projects" class="nav-link nav-icon {% if active_page == 'projects' %}active{% endif %}">
+                        <i class="bi bi-kanban"></i>
+                    </a>
+                </li>
+
+                <!-- Tasks -->
+                <li class="nav-item my-2">
+                    <a href="/tasks" class="nav-link nav-icon {% if active_page == 'tasks' %}active{% endif %}">
+                        <i class="bi bi-check2-square"></i>
+                    </a>
+                </li>
+
+                <hr class="bg-secondary opacity-25 my-2">
+
+                <!-- Notes -->
+                <li class="nav-item my-2">
+                    <a href="/notes" class="nav-link nav-icon {% if active_page == 'notes' %}active{% endif %}">
+                        <i class="bi bi-journal-text"></i>
+                    </a>
+                </li>
+
+                <!-- Focus -->
+                <li class="nav-item my-2">
+                    <a href="/focus" class="nav-link nav-icon {% if active_page == 'focus' %}active{% endif %}">
+                        <i class="bi bi-clock-history"></i>
+                    </a>
+                </li>
+
+                <!-- Ranks -->
+                <li class="nav-item my-2">
+                    <a href="/ranks" class="nav-link nav-icon {% if active_page == 'ranks' %}active{% endif %}">
+                        <i class="bi bi-grid"></i>
+                    </a>
+                </li>
+
+                <hr class="bg-secondary opacity-25 my-2">
+
+                <!-- Settings -->
+                <li class="nav-item my-2">
+                    <a href="/settings" class="nav-link nav-icon {% if active_page == 'settings' %}active{% endif %}">
+                        <i class="bi bi-gear"></i>
+                    </a>
+                </li>
+                <!-- Cloud -->
+                <li class="nav-item my-2">
+                    <a href="/cloud" class="nav-link nav-icon {% if active_page == 'cloud' %}active{% endif %}">
+                        <i class="bi bi-cloud"></i>
+                    </a>
+                </li>
+                <!-- Profile -->
+                <li class="nav-item my-2">
+                    <a href="/profile" class="nav-link nav-icon {% if active_page == 'profile' %}active{% endif %}">
+                        <i class="bi bi-person-circle"></i>
+                    </a>
+                </li>
+            </ul>
+
+        </aside>

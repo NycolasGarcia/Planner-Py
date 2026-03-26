@@ -1,0 +1,89 @@
+{% extends "common/base.html" %}
+
+{% block title %}Página Inicial - Planner App{% endblock %}
+
+{% block content %}
+<div class="container-fluid h-100 m-2">
+    <div class="row g-4 h-100">
+        <!-- FAZER Quadrant -->
+        <div class="col-md-6 d-flex">
+            <div class="card border border-danger shadow-sm bg-danger-subtle w-100" style="border-radius: 20px;">
+                <div class="card-body p-4 d-flex flex-column h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-check-circle-fill text-danger fs-5"></i>
+                            <h5 class="card-title text-danger mb-0 fw-semibold">FAZER</h5>
+                        </div>
+                        <span class="badge rounded-pill bg-danger px-3 py-2">0</span>
+                    </div>
+                    <div class="quadrant-content flex-grow-1">
+                        <!-- Tasks will appear here -->
+                        <p class="text-muted small">Tarefas urgentes e importantes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AGENDAR Quadrant -->
+        <div class="col-md-6 d-flex">
+            <div class="card border border-primary shadow-sm bg-primary-subtle w-100" style="border-radius: 20px;">
+                <div class="card-body p-4 d-flex flex-column h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-calendar-check-fill text-primary fs-5"></i>
+                            <h5 class="card-title text-primary mb-0 fw-semibold">AGENDAR</h5>
+                        </div>
+                        <span class="badge rounded-pill bg-primary px-3 py-2">0</span>
+                    </div>
+                    <div class="quadrant-content flex-grow-1">
+                        <!-- Tasks will appear here -->
+                        <p class="text-muted small">Tarefas importantes mas não urgentes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DELEGAR Quadrant -->
+        <div class="col-md-6 d-flex">
+            <div class="card border border-warning shadow-sm bg-warning-subtle w-100" style="border-radius: 20px;">
+                <div class="card-body p-4 d-flex flex-column h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-person-plus-fill text-warning fs-5"></i>
+                            <h5 class="card-title text-warning mb-0 fw-semibold">DELEGAR</h5>
+                        </div>
+                        <span class="badge rounded-pill bg-warning px-3 py-2">0</span>
+                    </div>
+                    <div class="quadrant-content flex-grow-1">
+                        <!-- Tasks will appear here -->
+                        <p class="text-muted small">Tarefas urgentes mas não importantes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DELETAR Quadrant -->
+        <div class="col-md-6 d-flex">
+            <div class="card border border-secondary shadow-sm bg-secondary-subtle w-100" style="border-radius: 20px;">
+                <div class="card-body p-4 d-flex flex-column h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-trash-fill text-secondary fs-5"></i>
+                            <h5 class="card-title text-secondary mb-0 fw-semibold">DELETAR</h5>
+                        </div>
+                        <span class="badge rounded-pill bg-secondary px-3 py-2">0</span>
+                    </div>
+                    <div class="quadrant-content flex-grow-1">
+                        <!-- Tasks will appear here -->
+                        <p class="text-muted small">Tarefas nem urgentes nem importantes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Scripts aqui -->
+{% endblock %}

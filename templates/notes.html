@@ -1,0 +1,79 @@
+{% extends "common/base.html" %}
+
+{% block title %}Notas - Planner App{% endblock %}
+
+{% block content %}
+
+<div class="d-flex h-100 gap-3">
+
+    <!-- SIDEBAR DAS NOTAS -->
+    <section class="d-flex flex-column p-3 border-end bg-body-secondary" style="width: 300px;">
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Notas</h5>
+            <button class="btn btn-sm bg-primary-subtle" data-bs-toggle="modal" data-bs-target="#new_note">Novo</button>
+        </div>
+
+        <hr>
+
+        <!-- Busca -->
+        <input type="text" 
+               class="form-control form-control-sm mb-3 shadow-sm" 
+               placeholder="Buscar notas...">
+
+        <!-- Seções -->
+        <div class="flex-grow-1 overflow-auto">
+
+            <span class="text-secondary small">
+                <i class="bi bi-pin"></i> Fixadas
+            </span>
+
+            <div class="mt-2 mb-3">
+                <!-- lista de notas fixadas -->
+            </div>
+
+            <span class="text-secondary small">
+                <i class="bi bi-archive"></i> Outros
+            </span>
+
+            <div class="mt-2">
+                <!-- lista de notas -->
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ÁREA DA NOTA -->
+    <section class="d-flex flex-column flex-grow-1 p-3">
+
+        <!-- Header da nota -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+
+            <input type="text" 
+                   class="form-control form-control-lg border-0 fw-bold" 
+                   placeholder="Título da nota">
+
+            <div class="d-flex gap-3 ms-3">
+                <button class="btn btn-sm text-secondary icon-link icon-link-hover" style="--bs-icon-link-transform: translate3d(0, -.125rem, 0);" href="#">
+                    <i class="bi bi-pin"></i>
+                </button>
+            
+                <button class="btn btn-sm text-secondary icon-link icon-link-hover" style="--bs-icon-link-transform: translate3d(0, -.125rem, 0);" href="#">
+                    <i class="bi bi-floppy"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Conteúdo -->
+        <textarea class="form-control flex-grow-1 border-0"
+                  placeholder="Escreva sua nota..."></textarea>
+
+    </section>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Scripts aqui -->
+{% endblock %}
