@@ -1,13 +1,301 @@
 {% extends "common/base.html" %}
 
-{% block title %}Página Inicial - Planner App{% endblock %}
+{% block title %}Configurações{% endblock %}
 
 {% block content %}
 
-    <span class="display-3 fw-bold text-primary"> WIP - Settings</span>
+<div class="container-fluid py-3">
 
-{% endblock %}
+    <h1 class="display-6 fw-semibold mb-4">Configurações</h1>
 
-{% block scripts %}
-<!-- Scripts aqui -->
+    <!-- NAV -->
+    <div class="d-flex flex-wrap gap-2 mb-5">
+        {% set sections = [
+            ("customizacao", "Customização"),
+            ("eventos", "Eventos"),
+            ("projetos", "Projetos"),
+            ("tarefas", "Tarefas"),
+            ("notas", "Notas"),
+            ("foco", "Foco"),
+            ("rank", "Ranking")
+        ] %}
+
+        {% for id, label in sections %}
+            <a href="#{{ id }}" class="btn btn-outline-primary btn-sm rounded-pill">
+                {{ label }}
+            </a>
+        {% endfor %}
+    </div>
+
+    <!-- CUSTOMIZAÇÃO -->
+    <section id="customizacao" class="mb-5">
+        <h2 class="display-6 fw-semibold">Customização</h2>
+        <hr>
+
+        <div class="row g-4">
+
+            <div class="col-md-6">
+                <label class="form-label">Tela Inicial</label>
+                <select class="form-select">
+                    <option>Dashboard</option>
+                    <option>Eventos</option>
+                    <option>Tarefas</option>
+                    <option>Projetos</option>
+                    <option>Notas</option>
+                    <option>Foco</option>
+                    <option>Rank</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Tamanho Padrão</label>
+                <div class="d-flex gap-2">
+                    <input type="number" class="form-control" placeholder="Largura">
+                    <input type="number" class="form-control" placeholder="Altura">
+                </div>
+            </div>
+
+            <!-- SWITCHES CLEAN -->
+            <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-semibold">Redimensionável</div>
+                        <small class="text-muted">Permite alterar o tamanho da janela</small>
+                    </div>
+                    <input type="checkbox" class="form-check-input">
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-semibold">Abrir ao iniciar</div>
+                        <small class="text-muted">Inicia automaticamente com o sistema</small>
+                    </div>
+                    <input type="checkbox" class="form-check-input">
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-semibold">Tema</div>
+                        <small class="text-muted">Alternar entre modo claro e escuro</small>
+                    </div>
+                    <input type="checkbox" class="form-check-input">
+                </div>
+            </div>
+
+            <!-- NOVO SWITCH -->
+            <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-semibold">Exibir animações</div>
+                        <small class="text-muted">Ativa transições e efeitos visuais</small>
+                    </div>
+                    <input type="checkbox" class="form-check-input" checked>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Cor Principal</label>
+                <div class="d-flex gap-2">
+                    <input type="radio" class="btn-check" name="color" id="c1">
+                    <label class="btn btn-primary" for="c1"></label>
+
+                    <input type="radio" class="btn-check" name="color" id="c2">
+                    <label class="btn btn-success" for="c2"></label>
+
+                    <input type="radio" class="btn-check" name="color" id="c3">
+                    <label class="btn btn-danger" for="c3"></label>
+
+                    <input type="radio" class="btn-check" name="color" id="c4">
+                    <label class="btn btn-warning" for="c4"></label>
+
+                    <input type="radio" class="btn-check" name="color" id="c5">
+                    <label class="btn btn-info" for="c5"></label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Fonte</label>
+                <select class="form-select">
+                    <option>Fonte A</option>
+                    <option>Fonte B</option>
+                    <option>Fonte C</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Tamanho da Fonte</label>
+                <input type="number" class="form-control">
+            </div>
+
+        </div>
+    </section>
+
+    <!-- EVENTOS -->
+    <section id="eventos" class="mb-5">
+        <h2 class="display-6 fw-semibold">Eventos</h2>
+        <hr>
+
+        <div class="row g-4">
+
+            <div class="col-md-6">
+                <label class="form-label">Formato de Data</label>
+                <select class="form-select">
+                    <option>dd/mm/yy</option>
+                    <option>mm/dd/yy</option>
+                    <option>yy/mm/dd</option>
+                </select>
+            </div>
+
+            <div class="col-md-6 d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Formato 24h</span>
+                <input type="checkbox" class="form-check-input">
+            </div>
+
+            <div class="col-md-6 d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Ano completo</span>
+                <input type="checkbox" class="form-check-input">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Primeiro dia da semana</label>
+                <select class="form-select">
+                    <option>Segunda-feira</option>
+                    <option>Domingo</option>
+                </select>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Ressaltar dias</label>
+                <div class="d-flex flex-wrap gap-3">
+                    {% for d in ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"] %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox">
+                            <label class="form-check-label">{{ d }}</label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- PROJETOS -->
+    <section id="projetos" class="mb-5">
+        <h2 class="display-6 fw-semibold">Projetos</h2>
+        <hr>
+
+        <div class="row g-4">
+
+            <div class="col-md-6 d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Exibir Progresso</span>
+                <input type="checkbox" class="form-check-input">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Máx. colunas</label>
+                <input type="number" class="form-control">
+            </div>
+
+        </div>
+    </section>
+
+    <!-- TAREFAS -->
+    <section id="tarefas" class="mb-5">
+        <h2 class="display-6 fw-semibold">Tarefas</h2>
+        <hr>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Exibir concluídas</span>
+            <input type="checkbox" class="form-check-input">
+        </div>
+    </section>
+
+    <!-- NOTAS -->
+    <section id="notas" class="mb-5">
+        <h2 class="display-6 fw-semibold">Notas</h2>
+        <hr>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Salvar automaticamente</span>
+            <input type="checkbox" class="form-check-input">
+        </div>
+    </section>
+
+    <!-- FOCO -->
+    <section id="foco" class="mb-5">
+        <h2 class="display-6 fw-semibold">Foco</h2>
+        <hr>
+
+        <div class="row g-4">
+
+            <div class="col-md-6">
+                <label class="form-label">Tempo de trabalho</label>
+                <input type="time" class="form-control">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Descanso curto</label>
+                <input type="time" class="form-control">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Descanso longo</label>
+                <input type="time" class="form-control">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Repetições</label>
+                <input type="number" class="form-control">
+            </div>
+
+            {% for label in [
+                "Exibir widget de tempo restante",
+                "Permitir alarmes",
+                "Permitir notificações"
+            ] %}
+            <div class="col-md-6 d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">{{ label }}</span>
+                <input type="checkbox" class="form-check-input">
+            </div>
+            {% endfor %}
+
+            <div class="col-md-6">
+                <label class="form-label">Volume</label>
+                <input type="range" class="form-range">
+            </div>
+
+        </div>
+    </section>
+
+    <!-- RANK -->
+    <section id="rank" class="mb-5">
+        <h2 class="display-6 fw-semibold">Ranking</h2>
+        <hr>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Ocultar descartadas</span>
+            <input type="checkbox" class="form-check-input">
+        </div>
+    </section>
+
+    <!-- ACTIONS -->
+    <div class="d-flex justify-content-between mt-5">
+        <div class="d-flex gap-2">
+            <button class="btn btn-success">Exportar</button>
+            <button class="btn btn-info">Importar</button>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-danger">Resetar</button>
+            <button class="btn btn-outline-warning">Descartar</button>
+            <button class="btn btn-primary">Salvar</button>
+        </div>
+    </div>
+
+</div>
+
 {% endblock %}

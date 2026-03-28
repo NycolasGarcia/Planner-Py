@@ -12,7 +12,6 @@ class Event(Base):
     id = Column(Integer, primary_key=True, index=True)
     
     name = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
 
 # Customização
     color = Column(String, nullable=False)
@@ -20,6 +19,7 @@ class Event(Base):
     
 # Data + Horário
     date_start = Column(Date, nullable=False, index=True)
+    
     time_start = Column(Time, nullable=True)
     time_end = Column(Time, nullable=True)
 
@@ -27,13 +27,7 @@ class Event(Base):
     recurrence_enabled = Column(Boolean, default=False, nullable=False)       #True ou False
 
     recurrence_type = Column(String, nullable=True)                     # "daily", "weekly", "monthly" ou "yearly"
-    recurrence_end_date = Column(Date, nullable=True)
-
-    recurrence_weekday = Column(Integer, nullable=True)                 #Lógica para recorrência semanal (0=Segunda, 6=Domingo)
-    recurrence_day = Column(Integer, nullable=True)                     #Lógica para recorrência mensal (1-31) ou anual (1-31)
-    recurrence_month = Column(Integer, nullable=True)                   #Lógica para recorrência anual (1-12)
-
-    recurrence_interval = Column(Integer, default=1, nullable=False)   #Intervalo de recorrência
+    recurrence_end = Column(Date, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

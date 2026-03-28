@@ -1,0 +1,167 @@
+<div class="modal fade" id="new_event" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <!-- HEADER -->
+      <div class="modal-header">
+        <h5 class="modal-title">Novo Evento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <!-- BODY -->
+      <div class="modal-body d-flex flex-column gap-3">
+
+        <!-- NOME + ÍCONE -->
+        <div class="d-flex gap-2">
+          <input type="text" class="form-control" placeholder="Nome do evento">
+          <button class="btn btn-outline-secondary">
+            <i class="bi bi-calendar-event"></i>
+          </button>
+        </div>
+
+        <!-- COR -->
+        <div>
+          <label class="form-label mb-2">Cor</label>
+          <div class="d-flex gap-2 flex-wrap">
+
+            <input type="radio" class="btn-check" name="event_color" id="ec1" value="primary" checked>
+            <label class="btn btn-primary" for="ec1"></label>
+
+            <input type="radio" class="btn-check" name="event_color" id="ec2" value="success">
+            <label class="btn btn-success" for="ec2"></label>
+
+            <input type="radio" class="btn-check" name="event_color" id="ec3" value="danger">
+            <label class="btn btn-danger" for="ec3"></label>
+
+            <input type="radio" class="btn-check" name="event_color" id="ec4" value="warning">
+            <label class="btn btn-warning" for="ec4"></label>
+
+            <input type="radio" class="btn-check" name="event_color" id="ec5" value="info">
+            <label class="btn btn-info" for="ec5"></label>
+
+          </div>
+        </div>
+
+        <!-- DATA -->
+        <input type="date" class="form-control">
+
+        <!-- HORÁRIO -->
+        <div class="d-flex gap-2">
+          <input type="time" class="form-control">
+          <input type="time" class="form-control">
+        </div>
+
+        <!-- ACCORDIONS -->
+        <div class="accordion" id="eventAccordion">
+
+          <!-- RECORRÊNCIA -->
+          <div class="accordion-item border rounded-3">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed py-2" type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#recurrenceCollapse">
+                Recorrência
+              </button>
+            </h2>
+
+            <div id="recurrenceCollapse"
+                 class="accordion-collapse collapse"
+                 data-bs-parent="#eventAccordion">
+
+              <div class="accordion-body d-flex flex-column gap-2 bg-body-secondary">
+
+                <select class="form-select">
+                  <option value="">Repetir...</option>
+                  <option value="daily">Diariamente</option>
+                  <option value="weekly">Semanalmente</option>
+                  <option value="monthly">Mensalmente</option>
+                  <option value="yearly">Anualmente</option>
+                </select>
+
+                <input type="date" class="form-control" placeholder="Até">
+
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ASSOCIAR NOTA -->
+          <div class="accordion-item border rounded-3">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed py-2" type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#noteCollapse">
+                Associar à Nota
+              </button>
+            </h2>
+
+            <div id="noteCollapse"
+                 class="accordion-collapse collapse"
+                 data-bs-parent="#eventAccordion">
+
+              <div class="accordion-body bg-body-secondary">
+
+                <select class="form-select">
+                  <option value="">Selecionar nota...</option>
+
+                  <!-- EXEMPLOS -->
+                  <option value="1">Note 01</option>
+
+                </select>
+
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ASSOCIAR TAREFA -->
+          <div class="accordion-item border rounded-3">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed py-2" type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#taskCollapse">
+                Associar à Tarefa
+              </button>
+            </h2>
+
+            <div id="taskCollapse"
+                 class="accordion-collapse collapse"
+                 data-bs-parent="#eventAccordion">
+
+              <div class="accordion-body bg-body-secondary">
+
+                <select class="form-select">
+                  <option value="">Selecionar tarefa...</option>
+
+                  <!-- EXEMPLOS -->
+                  <option value="1">Task 01</option>
+
+                </select>
+
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- FOOTER -->
+      <div class="modal-footer d-flex justify-content-between">
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+
+        <button class="btn btn-primary btn-sm">
+          <i class="bi bi-floppy"></i> Salvar
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+</div>

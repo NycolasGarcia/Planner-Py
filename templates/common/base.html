@@ -10,26 +10,28 @@
     </head>
     <body class="d-flex flex-column vh-100">
 
-    {% include 'common/header.html' %}
-    
+        {% include 'common/header.html' %}
 
-    <!-- LAYOUT PRINCIPAL -->
-    <div class="d-flex flex-grow-1">
+        <!-- CONTAINER PRINCIPAL -->
+        <div class="d-flex flex-grow-1 overflow-hidden">
 
-        <!-- SIDEBAR -->
-        {% include 'common/aside.html' %}
-        
-        <!-- MAIN -->
-        <main class="flex-grow-1 p-3">
-            {% block content %}{% endblock %}
-        </main>
+            <!-- SIDEBAR (fixa) -->
+            <aside class="d-flex flex-column flex-shrink-0 border-end">
+                {% include 'common/aside.html' %}
+            </aside>
 
-    </div>
-    {% include 'common/modals/search_bar.html' %}
-    {% include 'common/modals/new_note.html' %}
-    {% include 'common/modals/new_project.html' %}
-    {% include 'common/modals/new_column.html' %}
-    {% include 'common/modals/new_task.html' %}
+            <!-- MAIN (único com scroll) -->
+            <main class="flex-grow-1 overflow-auto p-3">
+                {% block content %}{% endblock %}
+            </main>
+
+        </div>
+
+    {% include 'common/footer.html' %}
+
+        {% include 'common/modals/search_bar.html' %}
+        {% include 'common/modals/new_note.html' %}
+        {% include 'common/modals/new_event.html' %}
     </body>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 </html>
