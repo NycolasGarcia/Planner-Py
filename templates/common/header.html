@@ -34,3 +34,16 @@
     </header>
 
 <script src="static/js/theme_toggle.js"></script>
+<script>
+(function () {
+    let _maximized = false;
+    window.windowControls = function (action) {
+        let req = action;
+        if (action === 'maximize') {
+            req = _maximized ? 'restore' : 'maximize';
+            _maximized = !_maximized;
+        }
+        fetch('/api/window/' + req, { method: 'POST' });
+    };
+})();
+</script>

@@ -2,115 +2,195 @@
 
 {% block title %}Notas - Planner App{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='highlight/styles/github-dark.min.css') }}">
+<script src="{{ url_for('static', filename='js/marked.min.js') }}"></script>
+<script src="{{ url_for('static', filename='mermaid/mermaid.min.js') }}"></script>
+<script src="{{ url_for('static', filename='highlight/highlight.min.js') }}"></script>
+{% endblock %}
+
 {% block content %}
+
+<!-- Toast container (canto superior esquerdo) -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    <div id="noteToast" class="toast align-items-center text-bg-success border-0"
+         role="alert" data-bs-delay="2000" data-bs-autohide="true">
+        <div class="d-flex">
+            <div class="toast-body" id="noteToastBody"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                    data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmação de exclusão -->
+<div class="modal fade" id="deleteNoteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <p class="mb-3" id="deleteModalMessage">Excluir esta nota?</p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button class="btn btn-sm btn-outline-secondary"
+                            data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-sm btn-danger" id="confirmDeleteBtn">Excluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="d-flex h-100 gap-3">
 
     <!-- SIDEBAR DAS NOTAS -->
-    <section class="d-flex flex-column p-3 border-end bg-body-secondary" style="width: 300px;">
+    <section class="d-flex flex-column p-3 border-end bg-body-secondary" style="width: 300px; min-height: 0; flex-shrink: 0;">
 
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1 class="display-6 fw-semibold mb-4">Notas</h1>
-            <button class="btn btn-sm bg-primary-subtle" data-bs-toggle="modal" data-bs-target="#new_note">Novo</button>
+            <div class="d-flex gap-1">
+                <button class="btn btn-sm bg-primary-subtle" id="newNoteBtn">Novo</button>
+                <button class="btn btn-sm btn-outline-secondary" id="noteSelectBtn" title="Selecionar notas">
+                    <i class="bi bi-check2-square"></i>
+                </button>
+            </div>
         </div>
 
         <hr>
 
+        <!-- Ações em massa (oculto por padrão) -->
+        <div id="bulkActions" class="d-none d-flex gap-1 mb-2">
+            <button class="btn btn-sm btn-outline-danger flex-grow-1" id="bulkDeleteBtn">
+                <i class="bi bi-trash"></i> Excluir
+            </button>
+            <button class="btn btn-sm btn-outline-info flex-grow-1" id="bulkDownloadBtn">
+                <i class="bi bi-download"></i> Baixar
+            </button>
+        </div>
+
         <!-- Busca -->
-        <input type="text" 
-               class="form-control form-control-sm mb-3 shadow-sm" 
-               placeholder="Buscar notas...">
+        <input type="text"
+               class="form-control form-control-sm mb-3 shadow-sm"
+               placeholder="Buscar notas..." id="noteSearch">
 
         <!-- Seções -->
         <div class="flex-grow-1 overflow-auto">
 
-            <span class="text-secondary small">
-                <i class="bi bi-pin"></i> Fixadas
-            </span>
-
-            <div class="mt-2 mb-3">
-                <!-- lista de notas fixadas -->
+            <div id="pinnedSection" class="d-none">
+                <span class="text-secondary small">
+                    <i class="bi bi-pin"></i> Fixadas
+                </span>
+                <div class="mt-2 mb-3" id="pinnedList"></div>
             </div>
 
-            <span class="text-secondary small">
-                <i class="bi bi-archive"></i> Outros
-            </span>
-
-            <div class="mt-2">
-                <!-- lista de notas -->
+            <div id="othersSection" class="d-none">
+                <span class="text-secondary small">
+                    <i class="bi bi-archive"></i> Outros
+                </span>
+                <div class="mt-2" id="notesList"></div>
             </div>
 
         </div>
     </section>
 
     <!-- ÁREA DA NOTA -->
-    <section class="d-flex flex-column flex-grow-1 p-3">
+    <section class="d-flex flex-column flex-grow-1 p-3" style="min-height: 0; overflow: hidden; scrollbar-gutter: stable;">
 
-        <!-- Header da nota -->
-        <div class="d-flex align-items-center gap-2 mb-3">
-
-            <!-- Seletor de cor -->
-            <div class="dropdown flex-shrink-0">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-1"
-                        type="button" id="noteColorBtn"
-                        data-bs-toggle="dropdown" aria-expanded="false">
-                    <span class="rounded-circle d-inline-block bg-primary" id="noteColorDot" style="width:14px;height:14px;"></span>
-                </button>
-                <ul class="dropdown-menu p-2" style="min-width: unset;">
-                    <div class="d-flex flex-wrap gap-1" style="width: 104px;">
-                        <a href="#" data-color="primary"         title="Primary"          class="color-swatch rounded-circle d-inline-block bg-primary"          style="width:20px;height:20px;"></a>
-                        <a href="#" data-color="secondary"       title="Secondary"        class="color-swatch rounded-circle d-inline-block bg-secondary"        style="width:20px;height:20px;"></a>
-                        <a href="#" data-color="success"         title="Success"          class="color-swatch rounded-circle d-inline-block bg-success"          style="width:20px;height:20px;"></a>
-                        <a href="#" data-color="warning"         title="Warning"          class="color-swatch rounded-circle d-inline-block bg-warning"          style="width:20px;height:20px;"></a>
-                        <a href="#" data-color="danger"          title="Danger"           class="color-swatch rounded-circle d-inline-block bg-danger"           style="width:20px;height:20px;"></a>
-                        <a href="#" data-color="info"            title="Info"             class="color-swatch rounded-circle d-inline-block bg-info"             style="width:20px;height:20px;"></a>
-                        <a href="#" data-color="primary-subtle"   title="Primary subtle"   class="color-swatch rounded-circle d-inline-block bg-primary-subtle border"   style="width:20px;height:20px;"></a>
-                        <a href="#" data-color="secondary-subtle" title="Secondary subtle" class="color-swatch rounded-circle d-inline-block bg-secondary-subtle border" style="width:20px;height:20px;"></a>
-                        <a href="#" data-color="success-subtle"   title="Success subtle"   class="color-swatch rounded-circle d-inline-block bg-success-subtle border"   style="width:20px;height:20px;"></a>
-                        <a href="#" data-color="warning-subtle"   title="Warning subtle"   class="color-swatch rounded-circle d-inline-block bg-warning-subtle border"   style="width:20px;height:20px;"></a>
-                        <a href="#" data-color="danger-subtle"    title="Danger subtle"    class="color-swatch rounded-circle d-inline-block bg-danger-subtle border"    style="width:20px;height:20px;"></a>
-                        <a href="#" data-color="info-subtle"      title="Info subtle"      class="color-swatch rounded-circle d-inline-block bg-info-subtle border"      style="width:20px;height:20px;"></a>
-                    </div>
-                </ul>
-            </div>
-
-            <!-- Botão de ícone -->
-            <button class="btn btn-sm btn-outline-secondary flex-shrink-0"
-                    type="button"
-                    data-bs-toggle="modal"
-                    data-bs-target="#iconPickerModal"
-                    data-target-input="#noteIconValue"
-                    title="Escolher ícone">
-                <i class="bi bi-tag" id="noteIconPreview"></i>
-            </button>
-            <input type="hidden" id="noteIconValue">
-
-            <!-- Título -->
-            <input type="text"
-                   class="form-control border-0 fw-bold flex-grow-1"
-                   placeholder="Título da nota" id="noteTitleInput">
-
-            <!-- Ações -->
-            <div class="d-flex gap-1 flex-shrink-0">
-                <button class="btn btn-sm btn-outline-secondary" type="button"
-                        id="noteMarkdownToggle" title="Alternar visualização Markdown">
-                    <i class="bi bi-pencil"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" type="button"
-                        id="notePinBtn" title="Fixar nota">
-                    <i class="bi bi-pin"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" type="button"
-                        id="noteSaveBtn" title="Salvar nota">
-                    <i class="bi bi-floppy"></i>
-                </button>
-            </div>
+        <!-- Empty state -->
+        <div id="noteEmptyState" class="d-flex flex-column align-items-center justify-content-center flex-grow-1 text-muted">
+            <i class="bi bi-file-text" style="font-size: 5rem;"></i>
+            <p class="mt-3 mb-0">Selecione uma nota ou crie para visualizar</p>
         </div>
 
-        <!-- Conteúdo -->
-        <textarea class="form-control flex-grow-1 border-0"
-                  placeholder="Escreva sua nota..."></textarea>
+        <!-- Note editor -->
+        <div id="noteEditor" class="d-none d-flex flex-column flex-grow-1" style="min-height: 0;">
+
+            <!-- Header da nota -->
+            <div class="d-flex align-items-center gap-2 mb-3 flex-shrink-0">
+
+                <!-- Vínculos -->
+                <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button"
+                        id="noteLinkBtn" title="Vincular a outro objeto" disabled>
+                    <i class="bi bi-bezier2"></i>
+                </button>
+
+                <!-- Seletor de cor -->
+                <div class="dropdown flex-shrink-0">
+                    <button class="btn btn-sm btn-outline-secondary"
+                            type="button" id="noteColorBtn"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="rounded-circle d-inline-block bg-primary" id="noteColorDot"
+                              style="width:14px;height:14px;"></span>
+                    </button>
+                    <ul class="dropdown-menu p-2" style="min-width: unset;">
+                        <div class="d-flex flex-wrap gap-1" style="width: 104px;">
+                            <a href="#" data-color="primary"          title="Primary"          class="color-swatch rounded-circle d-inline-block bg-primary"                 style="width:20px;height:20px;"></a>
+                            <a href="#" data-color="secondary"        title="Secondary"        class="color-swatch rounded-circle d-inline-block bg-secondary"               style="width:20px;height:20px;"></a>
+                            <a href="#" data-color="success"          title="Success"          class="color-swatch rounded-circle d-inline-block bg-success"                 style="width:20px;height:20px;"></a>
+                            <a href="#" data-color="warning"          title="Warning"          class="color-swatch rounded-circle d-inline-block bg-warning"                 style="width:20px;height:20px;"></a>
+                            <a href="#" data-color="danger"           title="Danger"           class="color-swatch rounded-circle d-inline-block bg-danger"                  style="width:20px;height:20px;"></a>
+                            <a href="#" data-color="info"             title="Info"             class="color-swatch rounded-circle d-inline-block bg-info"                    style="width:20px;height:20px;"></a>
+                            <a href="#" data-color="primary-subtle"   title="Primary subtle"   class="color-swatch rounded-circle d-inline-block bg-primary-subtle border"   style="width:20px;height:20px;"></a>
+                            <a href="#" data-color="secondary-subtle" title="Secondary subtle" class="color-swatch rounded-circle d-inline-block bg-secondary-subtle border" style="width:20px;height:20px;"></a>
+                            <a href="#" data-color="success-subtle"   title="Success subtle"   class="color-swatch rounded-circle d-inline-block bg-success-subtle border"   style="width:20px;height:20px;"></a>
+                            <a href="#" data-color="warning-subtle"   title="Warning subtle"   class="color-swatch rounded-circle d-inline-block bg-warning-subtle border"   style="width:20px;height:20px;"></a>
+                            <a href="#" data-color="danger-subtle"    title="Danger subtle"    class="color-swatch rounded-circle d-inline-block bg-danger-subtle border"    style="width:20px;height:20px;"></a>
+                            <a href="#" data-color="info-subtle"      title="Info subtle"      class="color-swatch rounded-circle d-inline-block bg-info-subtle border"      style="width:20px;height:20px;"></a>
+                        </div>
+                    </ul>
+                </div>
+
+                <!-- Botão de ícone -->
+                <button class="btn btn-sm btn-outline-secondary flex-shrink-0"
+                        type="button"
+                        data-bs-toggle="modal"
+                        data-bs-target="#iconPickerModal"
+                        data-target-input="#noteIconValue"
+                        title="Escolher ícone">
+                    <i class="bi bi-tag" id="noteIconPreview"></i>
+                </button>
+                <input type="hidden" id="noteIconValue">
+
+                <!-- Título -->
+                <input type="text"
+                       class="form-control border-0 fw-bold flex-grow-1"
+                       placeholder="Título da nota" id="noteTitleInput">
+
+                <!-- Ações -->
+                <div class="d-flex gap-1 flex-shrink-0">
+                    <button class="btn btn-sm btn-outline-warning" type="button"
+                            id="noteMarkdownToggle" title="Alternar visualização Markdown">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" type="button"
+                            id="notePinBtn" title="Fixar nota">
+                        <i class="bi bi-pin"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" type="button"
+                            id="noteSaveBtn" title="Salvar nota">
+                        <i class="bi bi-floppy"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-info" type="button"
+                            id="noteDownloadBtn" title="Baixar nota como .txt">
+                        <i class="bi bi-download"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" type="button"
+                            id="noteDeleteBtn" title="Excluir nota">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Conteúdo -->
+            <textarea class="form-control flex-grow-1 border-0"
+                      placeholder="Escreva sua nota..."
+                      id="noteContent"
+                      style="resize: none; overflow-y: auto; min-height: 0;"></textarea>
+
+            <!-- Render Markdown -->
+            <div id="noteRender" class="flex-grow-1 overflow-y-auto d-none px-1"
+                 style="overflow-y: auto; min-height: 0;"></div>
+
+        </div>
 
     </section>
 </div>
@@ -119,20 +199,361 @@
 
 {% block scripts %}
 <script>
-    // Atualiza o dot de cor ao selecionar
-    document.querySelectorAll('[data-color]').forEach(item => {
-        item.addEventListener('click', function (e) {
+(function () {
+    let currentNoteId = null;
+    let currentColor  = 'primary';
+    let isPinned      = false;
+    let editMode      = true;
+    let selectMode    = false;
+    let selectedIds   = new Set();
+    let pendingDelete = null;
+    let allNotes      = [];
+
+    // ── Markdown / Mermaid ───────────────────────────────────────────────
+    marked.use({ breaks: true, gfm: true });
+    mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+
+    function renderMarkdown() {
+        const textarea = document.getElementById('noteContent');
+        const render   = document.getElementById('noteRender');
+        render.innerHTML = marked.parse(textarea.value || '');
+
+        // Mermaid: substitui antes do highlight
+        render.querySelectorAll('code.language-mermaid').forEach(code => {
+            const div = document.createElement('div');
+            div.className = 'mermaid';
+            div.textContent = code.textContent;
+            code.parentElement.replaceWith(div);
+        });
+        mermaid.run({ nodes: render.querySelectorAll('.mermaid') });
+
+        // Syntax highlighting + botão de cópia
+        render.querySelectorAll('pre code').forEach(code => {
+            hljs.highlightElement(code);
+
+            const pre = code.parentElement;
+            pre.style.position = 'relative';
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-1';
+            btn.title = 'Copiar';
+            btn.innerHTML = '<i class="bi bi-clipboard"></i>';
+            btn.addEventListener('click', () => {
+                navigator.clipboard.writeText(code.textContent).then(() => {
+                    btn.innerHTML = '<i class="bi bi-check"></i>';
+                    setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 1500);
+                });
+            });
+            pre.appendChild(btn);
+        });
+
+        // Tabelas com estilo Bootstrap
+        render.querySelectorAll('table').forEach(t => {
+            t.classList.add('table', 'table-bordered', 'table-sm', 'my-2');
+        });
+    }
+
+    function setEditMode(isEdit) {
+        editMode = isEdit;
+        const textarea   = document.getElementById('noteContent');
+        const render     = document.getElementById('noteRender');
+        const toggleIcon = document.getElementById('noteMarkdownToggle').querySelector('i');
+        if (isEdit) {
+            textarea.classList.remove('d-none');
+            render.classList.add('d-none');
+            toggleIcon.className = 'bi bi-eye';
+        } else {
+            renderMarkdown();
+            textarea.classList.add('d-none');
+            render.classList.remove('d-none');
+            toggleIcon.className = 'bi bi-pencil';
+        }
+    }
+
+    // ── Toast ────────────────────────────────────────────────────────────
+    function showToast(msg) {
+        document.getElementById('noteToastBody').textContent = msg;
+        bootstrap.Toast.getOrCreateInstance(
+            document.getElementById('noteToast')
+        ).show();
+    }
+
+    // ── Utilitários ──────────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function applyColorDot(color) {
+        const dot = document.getElementById('noteColorDot');
+        dot.className = 'rounded-circle d-inline-block bg-' + color
+                      + (color.includes('subtle') ? ' border' : '');
+    }
+
+    function applyPinIcon() {
+        document.getElementById('notePinBtn').querySelector('i').className =
+            isPinned ? 'bi bi-pin-fill' : 'bi bi-pin';
+    }
+
+    // ── Seleção múltipla ─────────────────────────────────────────────────
+    function enterSelectMode() {
+        selectMode = true;
+        selectedIds.clear();
+        document.getElementById('noteSelectBtn').querySelector('i').className = 'bi bi-x-lg';
+        document.getElementById('bulkActions').classList.remove('d-none');
+        loadNotes();
+    }
+
+    function exitSelectMode() {
+        selectMode = false;
+        selectedIds.clear();
+        document.getElementById('noteSelectBtn').querySelector('i').className = 'bi bi-check2-square';
+        document.getElementById('bulkActions').classList.add('d-none');
+        loadNotes();
+    }
+
+    // ── Sidebar ──────────────────────────────────────────────────────────
+    function noteCardHtml(note) {
+        const baseColor  = note.color ? note.color.replace('-subtle', '') : 'secondary';
+        const icon       = note.icon || 'bi-file-text';
+        const isSelected = selectedIds.has(note.id);
+        const activeClass = isSelected ? ' active' : '';
+        const leftIcon   = selectMode
+            ? (isSelected ? 'bi-check-circle-fill' : 'bi-circle')
+            : escHtml(icon);
+        return `<button class="note-card btn btn-outline-${baseColor} w-100 text-start mb-1 py-1 px-2 d-flex align-items-center gap-2 overflow-hidden${activeClass}"
+                        data-id="${note.id}">
+                    <i class="${leftIcon} flex-shrink-0"></i>
+                    <span class="text-truncate small fw-semibold">${escHtml(note.title)}</span>
+                </button>`;
+    }
+
+    function renderSidebar(notes) {
+        const pinned = notes.filter(n => n.is_pinned);
+        const others = notes.filter(n => !n.is_pinned);
+
+        document.getElementById('pinnedList').innerHTML = pinned.map(noteCardHtml).join('');
+        document.getElementById('notesList').innerHTML  = others.map(noteCardHtml).join('');
+
+        document.getElementById('pinnedSection').classList.toggle('d-none', pinned.length === 0);
+        document.getElementById('othersSection').classList.toggle('d-none', others.length === 0);
+
+        document.querySelectorAll('.note-card').forEach(el => {
+            el.addEventListener('click', async () => {
+                const id = parseInt(el.dataset.id);
+                if (selectMode) {
+                    if (selectedIds.has(id)) {
+                        selectedIds.delete(id);
+                        el.classList.remove('active');
+                        el.querySelector('i').className = 'bi-circle flex-shrink-0';
+                    } else {
+                        selectedIds.add(id);
+                        el.classList.add('active');
+                        el.querySelector('i').className = 'bi-check-circle-fill flex-shrink-0';
+                    }
+                } else {
+                    const res  = await fetch('/api/notes/' + id);
+                    const note = await res.json();
+                    openNote(note);
+                }
+            });
+        });
+    }
+
+    function applyFilter() {
+        const q = document.getElementById('noteSearch').value.trim().toLowerCase();
+        const filtered = q ? allNotes.filter(n => n.title.toLowerCase().includes(q)) : allNotes;
+        renderSidebar(filtered);
+    }
+
+    async function loadNotes() {
+        const res = await fetch('/api/notes');
+        allNotes  = await res.json();
+        applyFilter();
+    }
+
+    // ── Editor ───────────────────────────────────────────────────────────
+    function openNote(note) {
+        currentNoteId = note.id;
+        currentColor  = note.color || 'primary';
+        isPinned      = !!note.is_pinned;
+
+        document.getElementById('noteTitleInput').value       = note.title || '';
+        document.getElementById('noteContent').value          = note.text  || '';
+        document.getElementById('noteIconValue').value        = note.icon  || '';
+        document.getElementById('noteIconPreview').className  = note.icon  || 'bi bi-tag';
+
+        applyColorDot(currentColor);
+        applyPinIcon();
+        setEditMode(false);  // abre em modo visualização
+
+        document.getElementById('noteEmptyState').classList.add('d-none');
+        document.getElementById('noteEditor').classList.remove('d-none');
+    }
+
+    async function saveNote() {
+        const title = document.getElementById('noteTitleInput').value.trim();
+        if (!title) { document.getElementById('noteTitleInput').focus(); return; }
+
+        const isNew = !currentNoteId;
+        if (currentNoteId) {
+            await fetch('/api/notes/' + currentNoteId, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title,
+                    text: document.getElementById('noteContent').value,
+                }),
+            });
+        } else {
+            const res  = await fetch('/api/notes', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title,
+                    text:      document.getElementById('noteContent').value,
+                    color:     currentColor,
+                    icon:      document.getElementById('noteIconValue').value || null,
+                    is_pinned: isPinned,
+                }),
+            });
+            const note = await res.json();
+            currentNoteId = note.id;
+        }
+
+        showToast(isNew ? 'Nota criada!' : 'Nota salva!');
+        await loadNotes();
+    }
+
+    const _deleteModal = new bootstrap.Modal(document.getElementById('deleteNoteModal'));
+
+    function openDeleteModal(msg, action) {
+        document.getElementById('deleteModalMessage').textContent = msg;
+        pendingDelete = action;
+        _deleteModal.show();
+    }
+
+    async function deleteNote() {
+        if (currentNoteId) {
+            await fetch('/api/notes/' + currentNoteId, { method: 'DELETE' });
+        }
+        currentNoteId = null;
+        document.getElementById('noteEditor').classList.add('d-none');
+        document.getElementById('noteEmptyState').classList.remove('d-none');
+        showToast('Nota excluída!');
+        await loadNotes();
+    }
+
+    async function doBulkDelete(ids) {
+        await Promise.all(ids.map(id => fetch('/api/notes/' + id, { method: 'DELETE' })));
+        if (ids.includes(currentNoteId)) {
+            currentNoteId = null;
+            document.getElementById('noteEditor').classList.add('d-none');
+            document.getElementById('noteEmptyState').classList.remove('d-none');
+        }
+        showToast(ids.length + ' nota(s) excluída(s)!');
+        exitSelectMode();
+    }
+
+    // ── Eventos ──────────────────────────────────────────────────────────
+    document.getElementById('newNoteBtn').addEventListener('click', () => {
+        currentNoteId = null;
+        currentColor  = 'primary';
+        isPinned      = false;
+
+        document.getElementById('noteTitleInput').value      = '';
+        document.getElementById('noteContent').value         = '';
+        document.getElementById('noteIconValue').value       = '';
+        document.getElementById('noteIconPreview').className = 'bi bi-tag';
+        applyColorDot(currentColor);
+        applyPinIcon();
+        setEditMode(true);  // nova nota abre em edição
+
+        document.getElementById('noteEmptyState').classList.add('d-none');
+        document.getElementById('noteEditor').classList.remove('d-none');
+        document.getElementById('noteTitleInput').focus();
+    });
+
+    document.getElementById('noteSaveBtn').addEventListener('click', saveNote);
+    document.getElementById('noteMarkdownToggle').addEventListener('click', () => setEditMode(!editMode));
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+        _deleteModal.hide();
+        if (pendingDelete) { pendingDelete(); pendingDelete = null; }
+    });
+
+    document.getElementById('noteDeleteBtn').addEventListener('click', () => {
+        openDeleteModal('Excluir esta nota?', deleteNote);
+    });
+
+    document.getElementById('noteDownloadBtn').addEventListener('click', async () => {
+        if (!currentNoteId) return;
+        await fetch('/api/notes/' + currentNoteId + '/export', { method: 'POST' });
+    });
+
+    document.getElementById('noteSelectBtn').addEventListener('click', () => {
+        if (selectMode) exitSelectMode(); else enterSelectMode();
+    });
+
+    document.getElementById('bulkDeleteBtn').addEventListener('click', () => {
+        const ids = [...selectedIds];
+        if (!ids.length) return;
+        openDeleteModal(`Excluir ${ids.length} nota(s)?`, () => doBulkDelete(ids));
+    });
+
+    document.getElementById('bulkDownloadBtn').addEventListener('click', async () => {
+        const ids = [...selectedIds];
+        if (!ids.length) return;
+        await fetch('/api/notes/export-bulk', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ ids }),
+        });
+        exitSelectMode();
+    });
+
+    document.getElementById('notePinBtn').addEventListener('click', async () => {
+        isPinned = !isPinned;
+        applyPinIcon();
+        if (currentNoteId) {
+            await fetch('/api/notes/' + currentNoteId, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_pinned: isPinned }),
+            });
+            await loadNotes();
+        }
+    });
+
+    document.getElementById('noteIconValue').addEventListener('change', async function () {
+        if (!this.value) return;
+        document.getElementById('noteIconPreview').className = this.value;
+        if (currentNoteId) {
+            await fetch('/api/notes/' + currentNoteId, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ icon: this.value }),
+            });
+            await loadNotes();
+        }
+    });
+
+    document.querySelectorAll('[data-color]').forEach(el => {
+        el.addEventListener('click', async function (e) {
             e.preventDefault();
-            const color = this.dataset.color;
-            const dot = document.getElementById('noteColorDot');
-            dot.className = 'rounded-circle d-inline-block bg-' + color + (color.includes('subtle') ? ' border' : '');
+            currentColor = this.dataset.color;
+            applyColorDot(currentColor);
+            if (currentNoteId) {
+                await fetch('/api/notes/' + currentNoteId, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ color: currentColor }),
+                });
+                await loadNotes();
+            }
         });
     });
 
-    // Atualiza o ícone do botão ao confirmar no picker
-    document.getElementById('noteIconValue').addEventListener('change', function () {
-        const icon = this.value;
-        if (icon) document.getElementById('noteIconPreview').className = icon;
-    });
+    document.getElementById('noteSearch').addEventListener('input', applyFilter);
+
+    // ── Init ─────────────────────────────────────────────────────────────
+    loadNotes();
+})();
 </script>
 {% endblock %}

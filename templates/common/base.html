@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
         <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-icons-1.13.1/bootstrap-icons.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='aos/aos.css') }}">
         <title>{% block title %}Planner App{% endblock %}</title>
         {% block head %}{% endblock %}
     </head>
@@ -30,9 +31,11 @@
     {% include 'common/footer.html' %}
 
         {% include 'common/modals/search_bar.html' %}
-        {% include 'common/modals/new_note.html' %}
         {% include 'common/modals/new_event.html' %}
         {% include 'common/modals/icon_picker.html' %}
     </body>
     <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='aos/aos.js') }}"></script>
+    <script>AOS.init({ once: true, duration: 300 });</script>
+    {% block scripts %}{% endblock %}
 </html>

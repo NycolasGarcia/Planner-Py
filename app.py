@@ -25,6 +25,20 @@ app.register_blueprint(profile_bp)
 def index():
     return render_template('index.html', active_page='index')
 
+@app.route('/api/window/<action>', methods=['POST'])
+def window_control(action):
+    if webview.windows:
+        w = webview.windows[0]
+        if action == 'minimize':
+            w.minimize()
+        elif action == 'maximize':
+            w.maximize()
+        elif action == 'restore':
+            w.restore()
+        elif action == 'close':
+            w.destroy()
+    return '', 204
+
 if __name__ == '__main__':
     init_db()
 
@@ -32,9 +46,13 @@ if __name__ == '__main__':
         'Planner App',
         app,
         frameless=True,
+        easy_drag=False,
         height=720,
         width=1280,
         resizable=True
     )
 
-    webview.start()
+    try:
+        webview.start()
+    except KeyboardInterrupt:
+        pass
