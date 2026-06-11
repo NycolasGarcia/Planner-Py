@@ -48,18 +48,61 @@
     <section class="d-flex flex-column flex-grow-1 p-3">
 
         <!-- Header da nota -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2 mb-3">
 
-            <input type="text" 
-                   class="form-control form-control-lg border-0 fw-bold" 
-                   placeholder="Título da nota">
+            <!-- Seletor de cor -->
+            <div class="dropdown flex-shrink-0">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-1"
+                        type="button" id="noteColorBtn"
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="rounded-circle d-inline-block bg-primary" id="noteColorDot" style="width:14px;height:14px;"></span>
+                </button>
+                <ul class="dropdown-menu p-2" style="min-width: unset;">
+                    <div class="d-flex flex-wrap gap-1" style="width: 104px;">
+                        <a href="#" data-color="primary"         title="Primary"          class="color-swatch rounded-circle d-inline-block bg-primary"          style="width:20px;height:20px;"></a>
+                        <a href="#" data-color="secondary"       title="Secondary"        class="color-swatch rounded-circle d-inline-block bg-secondary"        style="width:20px;height:20px;"></a>
+                        <a href="#" data-color="success"         title="Success"          class="color-swatch rounded-circle d-inline-block bg-success"          style="width:20px;height:20px;"></a>
+                        <a href="#" data-color="warning"         title="Warning"          class="color-swatch rounded-circle d-inline-block bg-warning"          style="width:20px;height:20px;"></a>
+                        <a href="#" data-color="danger"          title="Danger"           class="color-swatch rounded-circle d-inline-block bg-danger"           style="width:20px;height:20px;"></a>
+                        <a href="#" data-color="info"            title="Info"             class="color-swatch rounded-circle d-inline-block bg-info"             style="width:20px;height:20px;"></a>
+                        <a href="#" data-color="primary-subtle"   title="Primary subtle"   class="color-swatch rounded-circle d-inline-block bg-primary-subtle border"   style="width:20px;height:20px;"></a>
+                        <a href="#" data-color="secondary-subtle" title="Secondary subtle" class="color-swatch rounded-circle d-inline-block bg-secondary-subtle border" style="width:20px;height:20px;"></a>
+                        <a href="#" data-color="success-subtle"   title="Success subtle"   class="color-swatch rounded-circle d-inline-block bg-success-subtle border"   style="width:20px;height:20px;"></a>
+                        <a href="#" data-color="warning-subtle"   title="Warning subtle"   class="color-swatch rounded-circle d-inline-block bg-warning-subtle border"   style="width:20px;height:20px;"></a>
+                        <a href="#" data-color="danger-subtle"    title="Danger subtle"    class="color-swatch rounded-circle d-inline-block bg-danger-subtle border"    style="width:20px;height:20px;"></a>
+                        <a href="#" data-color="info-subtle"      title="Info subtle"      class="color-swatch rounded-circle d-inline-block bg-info-subtle border"      style="width:20px;height:20px;"></a>
+                    </div>
+                </ul>
+            </div>
 
-            <div class="d-flex gap-3 ms-3">
-                <button class="btn btn-sm btn-outline-secondary text-body icon-link icon-link-hover" style="--bs-icon-link-transform: translate3d(0, -.125rem, 0);" href="#">
+            <!-- Botão de ícone -->
+            <button class="btn btn-sm btn-outline-secondary flex-shrink-0"
+                    type="button"
+                    data-bs-toggle="modal"
+                    data-bs-target="#iconPickerModal"
+                    data-target-input="#noteIconValue"
+                    title="Escolher ícone">
+                <i class="bi bi-tag" id="noteIconPreview"></i>
+            </button>
+            <input type="hidden" id="noteIconValue">
+
+            <!-- Título -->
+            <input type="text"
+                   class="form-control border-0 fw-bold flex-grow-1"
+                   placeholder="Título da nota" id="noteTitleInput">
+
+            <!-- Ações -->
+            <div class="d-flex gap-1 flex-shrink-0">
+                <button class="btn btn-sm btn-outline-secondary" type="button"
+                        id="noteMarkdownToggle" title="Alternar visualização Markdown">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" type="button"
+                        id="notePinBtn" title="Fixar nota">
                     <i class="bi bi-pin"></i>
                 </button>
-            
-                <button class="btn btn-sm btn-outline-secondary text-body icon-link icon-link-hover" style="--bs-icon-link-transform: translate3d(0, -.125rem, 0);" href="#">
+                <button class="btn btn-sm btn-outline-secondary" type="button"
+                        id="noteSaveBtn" title="Salvar nota">
                     <i class="bi bi-floppy"></i>
                 </button>
             </div>
@@ -75,5 +118,21 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Scripts aqui -->
+<script>
+    // Atualiza o dot de cor ao selecionar
+    document.querySelectorAll('[data-color]').forEach(item => {
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+            const color = this.dataset.color;
+            const dot = document.getElementById('noteColorDot');
+            dot.className = 'rounded-circle d-inline-block bg-' + color + (color.includes('subtle') ? ' border' : '');
+        });
+    });
+
+    // Atualiza o ícone do botão ao confirmar no picker
+    document.getElementById('noteIconValue').addEventListener('change', function () {
+        const icon = this.value;
+        if (icon) document.getElementById('noteIconPreview').className = icon;
+    });
+</script>
 {% endblock %}

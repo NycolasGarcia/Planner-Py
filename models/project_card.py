@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, Date
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -13,13 +13,15 @@ class Card(Base):
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     rank = Column(Integer, nullable=True)
-    
+
     color = Column(String, nullable=True)
     icon = Column(String, nullable=True)
 
+    due_date = Column(Date, nullable=True)
+
     column_id = Column(Integer, ForeignKey("project_columns.id"), nullable=False)
-    notes_id = Column(Integer, ForeignKey("notes.id"), nullable=True)
-    
+    notes_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
+
     order = Column(Integer, nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

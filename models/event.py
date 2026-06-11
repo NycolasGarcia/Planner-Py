@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, Time, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, Time, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -8,31 +8,27 @@ from db.base import Base
 class Event(Base):
     __tablename__ = "events"
 
-#Essenciais
     id = Column(Integer, primary_key=True, index=True)
-    
     name = Column(String, nullable=False)
 
-# Customização
     color = Column(String, nullable=False)
     icon = Column(String, nullable=True)
-    
-# Data + Horário
+
     date_start = Column(Date, nullable=False, index=True)
-    
     time_start = Column(Time, nullable=True)
     time_end = Column(Time, nullable=True)
 
-# Recorrência
-    recurrence_enabled = Column(Boolean, default=False, nullable=False)       #True ou False
-
-    recurrence_type = Column(String, nullable=True)                     # "daily", "weekly", "monthly" ou "yearly"
+    recurrence_enabled = Column(Boolean, default=False, nullable=False)
+    recurrence_type = Column(String, nullable=True)       # "interval" | "weekdays" | "monthday" | "yearday"
     recurrence_end = Column(Date, nullable=True)
+    recurrence_interval = Column(Integer, nullable=True)  # a cada N dias
+    recurrence_weekdays = Column(String, nullable=True)   # "0,2,4" (0=seg, 6=dom)
+    recurrence_monthday = Column(Integer, nullable=True)  # dia fixo do mês: 1–31
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    notes_id = Column(Integer, ForeignKey("notes.id"), nullable=True)    #Associar nota a esse evento
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)    #Associar task a esse evento
+    notes_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True)
 
-    notes = relationship("notes", backref="events")                       # 
-    task = relationship("Task", backref="events")                       #
+    note = relationship("Note", backref="events")
+    task = relationship("Task", backref="event", uselist=False)

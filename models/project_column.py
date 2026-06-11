@@ -18,7 +18,7 @@ class Column(Base):
     color = Column(String, nullable=True)
     icon = Column(String, nullable=True)
 
-    notes_id = Column(Integer, ForeignKey("notes.id"), nullable=True)
+    notes_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
 
     order = Column(Integer, nullable=False)
 

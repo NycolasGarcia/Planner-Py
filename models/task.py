@@ -28,4 +28,4 @@ class Task(Base):
 
     due_date = Column(Date, nullable=True)
 
-    notes_id = Column(Integer, ForeignKey("notes.id"), nullable=True)
+    notes_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)

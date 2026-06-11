@@ -1,0 +1,9 @@
+venv/
+.git/
+.claude/
+CLAUDE.md
+planner.db
+docs/
+__pycache__/
+*.pyc
+*.pyo

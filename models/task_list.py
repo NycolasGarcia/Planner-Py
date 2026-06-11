@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, Boolean, DateTime, Date
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -17,10 +17,11 @@ class TaskList(Base):
     icon = Column(String, nullable=True)
 
     is_pinned = Column(Boolean, default=False, nullable=False)
+    due_date = Column(Date, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    notes_id = Column(Integer, ForeignKey("notes.id"), nullable=True)
+    notes_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
 
     # Origem opcional (Kanban)
     card_id = Column(Integer, ForeignKey("project_cards.id"), nullable=True)

@@ -1,0 +1,112 @@
+<!-- Modal Icon Picker -->
+<!-- Usage: data-bs-toggle="modal" data-bs-target="#iconPickerModal" + data-target-input="#myIconField" -->
+<div class="modal fade" id="iconPickerModal" tabindex="-1" aria-labelledby="iconPickerLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="iconPickerLabel">Escolher ícone</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+
+            <div class="modal-body">
+                <input type="text" id="iconPickerSearch" class="form-control mb-3" placeholder="Buscar ícone...">
+
+                <div id="iconPickerGrid" class="d-flex flex-wrap gap-2" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Preenchido por icon_picker.js -->
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <span class="me-auto text-secondary small">
+                    Selecionado: <code id="iconPickerSelected">nenhum</code>
+                </span>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="iconPickerConfirm" data-bs-dismiss="modal">Confirmar</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const ICONS = [
+        "bi-alarm","bi-archive","bi-arrow-repeat","bi-at","bi-award",
+        "bi-bag","bi-bar-chart","bi-bell","bi-book","bi-bookmark",
+        "bi-briefcase","bi-brush","bi-bug","bi-building","bi-calendar",
+        "bi-calendar-event","bi-camera","bi-cart","bi-chat","bi-check-circle",
+        "bi-clipboard","bi-clock","bi-cloud","bi-code","bi-code-slash",
+        "bi-collection","bi-columns","bi-compass","bi-cpu","bi-credit-card",
+        "bi-cursor","bi-dash-circle","bi-diagram-3","bi-display","bi-download",
+        "bi-egg","bi-emoji-smile","bi-envelope","bi-exclamation-circle","bi-eye",
+        "bi-file","bi-file-earmark","bi-file-earmark-text","bi-file-text","bi-filter",
+        "bi-flag","bi-folder","bi-funnel","bi-gear","bi-gift",
+        "bi-globe","bi-graph-up","bi-grid","bi-hammer","bi-heart",
+        "bi-house","bi-image","bi-inbox","bi-info-circle","bi-journal",
+        "bi-key","bi-layers","bi-lightning","bi-link","bi-list",
+        "bi-list-check","bi-list-task","bi-lock","bi-map","bi-megaphone",
+        "bi-mic","bi-moon","bi-music-note","bi-palette","bi-paperclip",
+        "bi-patch-check","bi-pause","bi-pencil","bi-people","bi-person",
+        "bi-phone","bi-pin","bi-play","bi-plug","bi-plus-circle",
+        "bi-printer","bi-puzzle","bi-question-circle","bi-receipt","bi-record",
+        "bi-recycle","bi-reply","bi-robot","bi-rocket","bi-search",
+        "bi-share","bi-shield","bi-shuffle","bi-signal","bi-sliders",
+        "bi-sort-down","bi-star","bi-stopwatch","bi-sun","bi-tag",
+        "bi-tags","bi-terminal","bi-toggles","bi-tools","bi-trash",
+        "bi-trophy","bi-truck","bi-tv","bi-upload","bi-wallet",
+        "bi-wifi","bi-wrench","bi-x-circle","bi-zoom-in","bi-zoom-out"
+    ];
+
+    let selectedIcon = null;
+    let targetInput = null;
+
+    const modal = document.getElementById('iconPickerModal');
+    const grid = document.getElementById('iconPickerGrid');
+    const search = document.getElementById('iconPickerSearch');
+    const selectedLabel = document.getElementById('iconPickerSelected');
+    const confirmBtn = document.getElementById('iconPickerConfirm');
+
+    function renderIcons(filter) {
+        const filtered = filter
+            ? ICONS.filter(i => i.includes(filter.toLowerCase()))
+            : ICONS;
+
+        grid.innerHTML = '';
+        filtered.forEach(icon => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-outline-secondary p-2' + (icon === selectedIcon ? ' active' : '');
+            btn.title = icon;
+            btn.dataset.icon = icon;
+            btn.innerHTML = `<i class="${icon} fs-5"></i>`;
+            btn.addEventListener('click', () => selectIcon(icon));
+            grid.appendChild(btn);
+        });
+    }
+
+    function selectIcon(icon) {
+        selectedIcon = icon;
+        selectedLabel.textContent = icon;
+        grid.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.icon === icon));
+    }
+
+    modal.addEventListener('show.bs.modal', (e) => {
+        const trigger = e.relatedTarget;
+        targetInput = trigger ? document.querySelector(trigger.dataset.targetInput) : null;
+        selectedIcon = targetInput ? targetInput.value : null;
+        search.value = '';
+        selectedLabel.textContent = selectedIcon || 'nenhum';
+        renderIcons('');
+    });
+
+    search.addEventListener('input', () => renderIcons(search.value));
+
+    confirmBtn.addEventListener('click', () => {
+        if (targetInput && selectedIcon) {
+            targetInput.value = selectedIcon;
+            targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
+})();
+</script>

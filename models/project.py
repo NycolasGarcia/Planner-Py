@@ -15,7 +15,7 @@ class Project(Base):
     color = Column(String, nullable=True)
     icon = Column(String, nullable=True)
 
-    notes_id = Column(Integer, ForeignKey("notes.id"), nullable=True)
+    notes_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
 
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
