@@ -129,6 +129,24 @@ def export_note(note_id):
     return jsonify({'path': str(path)}), 200
 
 
+@notes_bp.route('/api/notes/bulk-update', methods=['POST'])
+def bulk_update_notes():
+    data = request.get_json(silent=True) or {}
+    ids  = data.get('ids', [])
+    if not ids:
+        return jsonify({'error': 'no ids'}), 422
+    fields = {k: v for k, v in data.items() if k in ('color', 'icon', 'is_pinned') and v is not None}
+    if not fields:
+        return jsonify({'error': 'no fields to update'}), 422
+    with SessionLocal() as db:
+        rows = db.execute(select(Note).where(Note.id.in_(ids))).scalars().all()
+        for note in rows:
+            for k, v in fields.items():
+                setattr(note, k, v)
+        db.commit()
+    return jsonify({'updated': len(rows)}), 200
+
+
 @notes_bp.route('/api/notes/export-bulk', methods=['POST'])
 def export_notes_bulk():
     data = request.get_json(silent=True) or {}

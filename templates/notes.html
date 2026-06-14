@@ -58,19 +58,58 @@
         <hr>
 
         <!-- Ações em massa (oculto por padrão) -->
-        <div id="bulkActions" class="d-none d-flex gap-1 mb-2">
-            <button class="btn btn-sm btn-outline-danger flex-grow-1" id="bulkDeleteBtn">
-                <i class="bi bi-trash"></i> Excluir
-            </button>
-            <button class="btn btn-sm btn-outline-info flex-grow-1" id="bulkDownloadBtn">
-                <i class="bi bi-download"></i> Baixar
-            </button>
+        <div id="bulkActions" class="d-none flex-column gap-1 mb-2">
+            <div class="d-grid gap-1" style="grid-template-columns: 1fr 1fr;">
+                <!-- Bulk color picker -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-primary w-100" type="button"
+                            data-bs-toggle="dropdown" title="Aplicar cor em massa">
+                        <i class="bi bi-palette"></i> Cor
+                    </button>
+                    <ul class="dropdown-menu p-2" style="min-width: unset;">
+                        <div class="d-flex flex-wrap gap-1" style="width: 80px;" id="bulkColorSwatches"></div>
+                    </ul>
+                </div>
+                <!-- Bulk icon picker -->
+                <button class="btn btn-sm btn-outline-warning" type="button"
+                        data-bs-toggle="modal"
+                        data-bs-target="#iconPickerModal"
+                        data-target-input="#bulkIconValue"
+                        title="Aplicar ícone em massa">
+                    <i class="bi bi-tag"></i> Ícone
+                </button>
+                <input type="hidden" id="bulkIconValue">
+            </div>
+            <div class="d-grid gap-1" style="grid-template-columns: 1fr 1fr;">
+                <button class="btn btn-sm btn-outline-info" id="bulkDownloadBtn">
+                    <i class="bi bi-download"></i> Baixar
+                </button>
+                <button class="btn btn-sm btn-outline-danger" id="bulkDeleteBtn">
+                    <i class="bi bi-trash"></i> Excluir
+                </button>
+            </div>
         </div>
 
-        <!-- Busca -->
-        <input type="text"
-               class="form-control form-control-sm mb-3 shadow-sm"
-               placeholder="Buscar notas..." id="noteSearch">
+        <!-- Busca + Ordenação -->
+        <div class="d-flex gap-1 mb-3">
+            <input type="text"
+                   class="form-control form-control-sm shadow-sm"
+                   placeholder="Buscar notas..." id="noteSearch">
+            <div class="dropdown flex-shrink-0">
+                <button class="btn btn-sm btn-outline-secondary" type="button"
+                        data-bs-toggle="dropdown" title="Ordenar" id="sortBtn">
+                    <i class="bi bi-sort-down" id="sortIcon"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><h6 class="dropdown-header">Ordenar por</h6></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="order" data-dir="asc"><i class="bi bi-clock me-1"></i>Criação ↑</a></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="order" data-dir="desc"><i class="bi bi-clock me-1"></i>Criação ↓</a></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="alpha" data-dir="asc"><i class="bi bi-sort-alpha-down me-1"></i>A → Z</a></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="alpha" data-dir="desc"><i class="bi bi-sort-alpha-up me-1"></i>Z → A</a></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="color" data-dir="asc"><i class="bi bi-palette me-1"></i>Por cor</a></li>
+                </ul>
+            </div>
+        </div>
 
         <!-- Seções -->
         <div class="flex-grow-1 overflow-auto">
@@ -115,37 +154,20 @@
 
                 <!-- Seletor de cor -->
                 <div class="dropdown flex-shrink-0">
-                    <button class="btn btn-sm btn-outline-secondary"
-                            type="button" id="noteColorBtn"
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="noteColorBtn"
                             data-bs-toggle="dropdown" aria-expanded="false">
                         <span class="rounded-circle d-inline-block bg-primary" id="noteColorDot"
                               style="width:14px;height:14px;"></span>
                     </button>
                     <ul class="dropdown-menu p-2" style="min-width: unset;">
-                        <div class="d-flex flex-wrap gap-1" style="width: 104px;">
-                            <a href="#" data-color="primary"          title="Primary"          class="color-swatch rounded-circle d-inline-block bg-primary"                 style="width:20px;height:20px;"></a>
-                            <a href="#" data-color="secondary"        title="Secondary"        class="color-swatch rounded-circle d-inline-block bg-secondary"               style="width:20px;height:20px;"></a>
-                            <a href="#" data-color="success"          title="Success"          class="color-swatch rounded-circle d-inline-block bg-success"                 style="width:20px;height:20px;"></a>
-                            <a href="#" data-color="warning"          title="Warning"          class="color-swatch rounded-circle d-inline-block bg-warning"                 style="width:20px;height:20px;"></a>
-                            <a href="#" data-color="danger"           title="Danger"           class="color-swatch rounded-circle d-inline-block bg-danger"                  style="width:20px;height:20px;"></a>
-                            <a href="#" data-color="info"             title="Info"             class="color-swatch rounded-circle d-inline-block bg-info"                    style="width:20px;height:20px;"></a>
-                            <a href="#" data-color="primary-subtle"   title="Primary subtle"   class="color-swatch rounded-circle d-inline-block bg-primary-subtle border"   style="width:20px;height:20px;"></a>
-                            <a href="#" data-color="secondary-subtle" title="Secondary subtle" class="color-swatch rounded-circle d-inline-block bg-secondary-subtle border" style="width:20px;height:20px;"></a>
-                            <a href="#" data-color="success-subtle"   title="Success subtle"   class="color-swatch rounded-circle d-inline-block bg-success-subtle border"   style="width:20px;height:20px;"></a>
-                            <a href="#" data-color="warning-subtle"   title="Warning subtle"   class="color-swatch rounded-circle d-inline-block bg-warning-subtle border"   style="width:20px;height:20px;"></a>
-                            <a href="#" data-color="danger-subtle"    title="Danger subtle"    class="color-swatch rounded-circle d-inline-block bg-danger-subtle border"    style="width:20px;height:20px;"></a>
-                            <a href="#" data-color="info-subtle"      title="Info subtle"      class="color-swatch rounded-circle d-inline-block bg-info-subtle border"      style="width:20px;height:20px;"></a>
-                        </div>
+                        <div class="d-flex flex-wrap gap-1" style="width: 80px;" id="noteColorSwatches"></div>
                     </ul>
                 </div>
 
                 <!-- Botão de ícone -->
-                <button class="btn btn-sm btn-outline-secondary flex-shrink-0"
-                        type="button"
-                        data-bs-toggle="modal"
-                        data-bs-target="#iconPickerModal"
-                        data-target-input="#noteIconValue"
-                        title="Escolher ícone">
+                <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button"
+                        data-bs-toggle="modal" data-bs-target="#iconPickerModal"
+                        data-target-input="#noteIconValue" title="Escolher ícone">
                     <i class="bi bi-tag" id="noteIconPreview"></i>
                 </button>
                 <input type="hidden" id="noteIconValue">
@@ -180,15 +202,126 @@
                 </div>
             </div>
 
+            <!-- Toolbar Markdown (visível apenas no modo edição) -->
+            <div id="mdToolbar" class="d-flex flex-wrap align-items-center gap-2 mb-2 flex-shrink-0">
+
+                <!-- G1: Títulos + HR -->
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary dropdown-toggle px-2" type="button"
+                            data-bs-toggle="dropdown" title="Títulos (Ctrl+1–4)">H</button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item d-flex justify-content-between" href="#" data-heading="1"><span><strong>H1</strong> — Título</span><kbd>Ctrl+1</kbd></a></li>
+                        <li><a class="dropdown-item d-flex justify-content-between" href="#" data-heading="2"><span><strong>H2</strong> — Seção</span><kbd>Ctrl+2</kbd></a></li>
+                        <li><a class="dropdown-item d-flex justify-content-between" href="#" data-heading="3"><span><strong>H3</strong> — Subseção</span><kbd>Ctrl+3</kbd></a></li>
+                        <li><a class="dropdown-item d-flex justify-content-between" href="#" data-heading="4"><span><strong>H4</strong> — Sub-sub</span><kbd>Ctrl+4</kbd></a></li>
+                    </ul>
+                    <button class="btn btn-outline-secondary px-2" type="button" id="tbHr"
+                            title="Linha horizontal (Ctrl+Shift+L)"><i class="bi bi-dash-lg"></i></button>
+                </div>
+
+                <div class="vr"></div>
+
+                <!-- G2: Formatação inline -->
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary px-2" type="button" data-wrap="**"
+                            title="Negrito (Ctrl+B)"><i class="bi bi-type-bold"></i></button>
+                    <button class="btn btn-outline-secondary px-2" type="button" data-wrap="_"
+                            title="Itálico (Ctrl+I)"><i class="bi bi-type-italic"></i></button>
+                    <button class="btn btn-outline-secondary px-2" type="button" data-wrap="~~"
+                            title="Tachado (Ctrl+Shift+S)"><i class="bi bi-type-strikethrough"></i></button>
+                    <button class="btn btn-outline-secondary px-2" type="button" id="tbCode"
+                            title="Código inline (Ctrl+Shift+C)"><i class="bi bi-code"></i></button>
+                    <button class="btn btn-outline-secondary px-2" type="button" id="tbCodeBlock"
+                            title="Bloco de código"><i class="bi bi-code-slash"></i></button>
+                    <button class="btn btn-outline-secondary px-2" type="button" id="tbBlockquote"
+                            title="Citação (Ctrl+Shift+B)"><i class="bi bi-blockquote-left"></i></button>
+                </div>
+
+                <div class="vr"></div>
+
+                <!-- G2b: Links + Imagens -->
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary px-2" type="button" id="tbLink"
+                            title="Inserir link (Ctrl+K)"><i class="bi bi-link-45deg"></i></button>
+                    <button class="btn btn-outline-secondary px-2" type="button" id="tbImage"
+                            title="Inserir imagem"><i class="bi bi-image"></i></button>
+                </div>
+
+                <div class="vr"></div>
+
+                <!-- G3: Listas + Tabela -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle px-2" type="button"
+                            data-bs-toggle="dropdown" title="Inserir lista">
+                        <i class="bi bi-list-ul"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item d-flex justify-content-between" href="#" id="tbCheck"><span><i class="bi bi-check2-square me-2"></i>Checklist</span><kbd>Ctrl+Shift+9</kbd></a></li>
+                        <li><a class="dropdown-item d-flex justify-content-between" href="#" id="tbUl"><span><i class="bi bi-list-ul me-2"></i>Não ordenada</span><kbd>Ctrl+Shift+8</kbd></a></li>
+                        <li><a class="dropdown-item d-flex justify-content-between" href="#" id="tbOl"><span><i class="bi bi-list-ol me-2"></i>Ordenada</span><kbd>Ctrl+Shift+7</kbd></a></li>
+                    </ul>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary px-2" type="button"
+                            data-bs-toggle="dropdown" title="Inserir tabela (Ctrl+Shift+T)">
+                        <i class="bi bi-table"></i>
+                    </button>
+                    <div class="dropdown-menu p-2" style="min-width: 180px;">
+                        <div class="small text-muted mb-1">Colunas × Linhas</div>
+                        <div class="d-flex gap-1 align-items-center mb-2">
+                            <input type="number" id="tableCols" value="3" min="1" max="10"
+                                   class="form-control form-control-sm text-center" style="width:56px;">
+                            <span class="small">×</span>
+                            <input type="number" id="tableRows" value="3" min="1" max="20"
+                                   class="form-control form-control-sm text-center" style="width:56px;">
+                        </div>
+                        <button class="btn btn-sm btn-primary w-100" id="tableInsertBtn">Inserir</button>
+                    </div>
+                </div>
+
+                <div class="vr"></div>
+
+                <!-- G4: Busca + Substituição (popup) -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary px-2" type="button" id="tbFind"
+                            data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                            title="Buscar (Ctrl+F) / Substituir (Ctrl+H)">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <div class="dropdown-menu p-3" style="min-width:370px;">
+                        <div class="d-flex gap-1 align-items-center mb-1">
+                            <input type="text" id="findInput" class="form-control form-control-sm"
+                                   placeholder="Buscar...">
+                            <span id="findCount" class="small text-muted text-nowrap px-1"
+                                  style="min-width:56px;"></span>
+                            <button class="btn btn-sm btn-outline-secondary" id="findPrev"
+                                    title="Anterior (Shift+Enter)"><i class="bi bi-chevron-up"></i></button>
+                            <button class="btn btn-sm btn-outline-secondary" id="findNext"
+                                    title="Próximo (Enter)"><i class="bi bi-chevron-down"></i></button>
+                            <button class="btn btn-sm btn-outline-secondary" id="findToggleReplace"
+                                    title="Substituição"><i class="bi bi-arrow-left-right"></i></button>
+                        </div>
+                        <div id="replaceRow" class="d-none mt-1">
+                            <div class="d-flex gap-1 align-items-center">
+                                <input type="text" id="replaceInput" class="form-control form-control-sm"
+                                       placeholder="Substituir por...">
+                                <button class="btn btn-sm btn-outline-secondary" id="replaceOne">1×</button>
+                                <button class="btn btn-sm btn-outline-secondary" id="replaceAll">Todos</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Conteúdo -->
             <textarea class="form-control flex-grow-1 border-0"
-                      placeholder="Escreva sua nota..."
+                      placeholder="Escreva sua nota... (arraste arquivos .txt / .md para importar)"
                       id="noteContent"
                       style="resize: none; overflow-y: auto; min-height: 0;"></textarea>
 
             <!-- Render Markdown -->
             <div id="noteRender" class="flex-grow-1 overflow-y-auto d-none px-1"
-                 style="overflow-y: auto; min-height: 0;"></div>
+                 style="overflow-y: auto; min-height: 0; user-select: text;"></div>
 
         </div>
 
@@ -200,37 +333,44 @@
 {% block scripts %}
 <script>
 (function () {
-    let currentNoteId = null;
-    let currentColor  = 'primary';
-    let isPinned      = false;
-    let editMode      = true;
-    let selectMode    = false;
-    let selectedIds   = new Set();
-    let pendingDelete = null;
-    let allNotes      = [];
+    // ── Constants ─────────────────────────────────────────────────────────
+    const COLORS = ['secondary', 'info', 'primary', 'success', 'warning', 'danger'];
+    const COLOR_ORDER = Object.fromEntries(COLORS.map((c, i) => [c, i]));
 
-    // ── Markdown / Mermaid ───────────────────────────────────────────────
+    // ── State ─────────────────────────────────────────────────────────────
+    let currentNoteId    = null;
+    let currentColor     = 'primary';
+    let isPinned         = false;
+    let editMode         = true;
+    let selectMode       = false;
+    let selectedIds      = new Set();
+    let pendingDelete    = null;
+    let allNotes         = [];
+    let sortBy           = 'order';
+    let sortDir          = 'asc';
+    let isDirty      = false;
+    let _saving      = false;
+    let _findMatches = [];
+    let _findIdx         = -1;
+    let _findOpen        = false;
+
+    // ── Markdown / Mermaid ────────────────────────────────────────────────
     marked.use({ breaks: true, gfm: true });
     mermaid.initialize({ startOnLoad: false, theme: 'dark' });
 
     function renderMarkdown() {
-        const textarea = document.getElementById('noteContent');
-        const render   = document.getElementById('noteRender');
-        render.innerHTML = marked.parse(textarea.value || '');
-
-        // Mermaid: substitui antes do highlight
-        render.querySelectorAll('code.language-mermaid').forEach(code => {
-            const div = document.createElement('div');
-            div.className = 'mermaid';
-            div.textContent = code.textContent;
-            code.parentElement.replaceWith(div);
+        const ta  = document.getElementById('noteContent');
+        const div = document.getElementById('noteRender');
+        div.innerHTML = marked.parse(ta.value || '');
+        div.querySelectorAll('code.language-mermaid').forEach(code => {
+            const d = document.createElement('div');
+            d.className = 'mermaid';
+            d.textContent = code.textContent;
+            code.parentElement.replaceWith(d);
         });
-        mermaid.run({ nodes: render.querySelectorAll('.mermaid') });
-
-        // Syntax highlighting + botão de cópia
-        render.querySelectorAll('pre code').forEach(code => {
+        mermaid.run({ nodes: div.querySelectorAll('.mermaid') });
+        div.querySelectorAll('pre code').forEach(code => {
             hljs.highlightElement(code);
-
             const pre = code.parentElement;
             pre.style.position = 'relative';
             const btn = document.createElement('button');
@@ -245,50 +385,70 @@
             });
             pre.appendChild(btn);
         });
-
-        // Tabelas com estilo Bootstrap
-        render.querySelectorAll('table').forEach(t => {
-            t.classList.add('table', 'table-bordered', 'table-sm', 'my-2');
-        });
+        div.querySelectorAll('table').forEach(t =>
+            t.classList.add('table', 'table-bordered', 'table-sm', 'my-2'));
+        div.querySelectorAll('blockquote').forEach(bq =>
+            bq.classList.add('border-start', 'border-secondary', 'border-3', 'ps-3', 'text-secondary', 'my-2'));
     }
 
     function setEditMode(isEdit) {
         editMode = isEdit;
-        const textarea   = document.getElementById('noteContent');
-        const render     = document.getElementById('noteRender');
-        const toggleIcon = document.getElementById('noteMarkdownToggle').querySelector('i');
+        const ta   = document.getElementById('noteContent');
+        const div  = document.getElementById('noteRender');
+        const tb   = document.getElementById('mdToolbar');
+        const icon = document.getElementById('noteMarkdownToggle').querySelector('i');
         if (isEdit) {
-            textarea.classList.remove('d-none');
-            render.classList.add('d-none');
-            toggleIcon.className = 'bi bi-eye';
+            ta.classList.remove('d-none');
+            div.classList.add('d-none');
+            tb.classList.remove('d-none');
+            icon.className = 'bi bi-eye';
         } else {
             renderMarkdown();
-            textarea.classList.add('d-none');
-            render.classList.remove('d-none');
-            toggleIcon.className = 'bi bi-pencil';
+            ta.classList.add('d-none');
+            div.classList.remove('d-none');
+            tb.classList.add('d-none');
+            icon.className = 'bi bi-pencil';
         }
     }
 
-    // ── Toast ────────────────────────────────────────────────────────────
-    function showToast(msg) {
+    // ── Toast ─────────────────────────────────────────────────────────────
+    function showToast(msg, type = 'success') {
+        const el = document.getElementById('noteToast');
+        el.className = `toast align-items-center text-bg-${type} border-0`;
         document.getElementById('noteToastBody').textContent = msg;
-        bootstrap.Toast.getOrCreateInstance(
-            document.getElementById('noteToast')
-        ).show();
+        bootstrap.Toast.getOrCreateInstance(el).show();
     }
 
-    // ── Utilitários ──────────────────────────────────────────────────────
-    function escHtml(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+    // ── Color swatches ────────────────────────────────────────────────────
+    function buildColorSwatches(containerId, onClick) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        COLORS.forEach(color => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `btn btn-${color} rounded-circle p-0`;
+            btn.style.cssText = 'width:22px;height:22px;';
+            btn.title = color;
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClick(color);
+                const trigger = container.closest('.dropdown')?.querySelector('[data-bs-toggle="dropdown"]');
+                if (trigger) bootstrap.Dropdown.getInstance(trigger)?.hide();
+            });
+            container.appendChild(btn);
+        });
+    }
+
+    // ── Utilities ─────────────────────────────────────────────────────────
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
     function applyColorDot(color) {
-        const dot = document.getElementById('noteColorDot');
-        dot.className = 'rounded-circle d-inline-block bg-' + color
-                      + (color.includes('subtle') ? ' border' : '');
+        document.getElementById('noteColorDot').className =
+            `rounded-circle d-inline-block bg-${color}`;
     }
 
     function applyPinIcon() {
@@ -296,12 +456,265 @@
             isPinned ? 'bi bi-pin-fill' : 'bi bi-pin';
     }
 
-    // ── Seleção múltipla ─────────────────────────────────────────────────
+    // ── Toolbar helpers ───────────────────────────────────────────────────
+    function wrapSelection(before, after) {
+        const ta = document.getElementById('noteContent');
+        const s = ta.selectionStart, e = ta.selectionEnd;
+        const sel = ta.value.slice(s, e);
+        ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
+        ta.setSelectionRange(s + before.length, s + before.length + sel.length);
+        ta.focus();
+        markDirty();
+    }
+
+    function insertHeading(level) {
+        const ta = document.getElementById('noteContent');
+        const s = ta.selectionStart;
+        const lStart = ta.value.lastIndexOf('\n', s - 1) + 1;
+        const lEnd   = ta.value.indexOf('\n', s);
+        const line   = ta.value.slice(lStart, lEnd === -1 ? undefined : lEnd);
+        const clean  = line.replace(/^#{1,6}\s*/, '');
+        const newLine = level === 0 ? clean : '#'.repeat(level) + ' ' + clean;
+        ta.value = ta.value.slice(0, lStart) + newLine + (lEnd === -1 ? '' : ta.value.slice(lEnd));
+        ta.setSelectionRange(lStart + newLine.length, lStart + newLine.length);
+        ta.focus();
+        markDirty();
+    }
+
+    function insertList(type) {
+        const ta  = document.getElementById('noteContent');
+        const s   = ta.selectionStart, e = ta.selectionEnd;
+        const pfx = type === 'check' ? '- [ ] ' : type === 'ul' ? '- ' : '1. ';
+
+        if (s === e) {
+            const lStart = ta.value.lastIndexOf('\n', s - 1) + 1;
+            const line   = ta.value.slice(lStart, s);
+            if (!line.trim()) {
+                ta.value = ta.value.slice(0, lStart) + pfx + ta.value.slice(s);
+                ta.selectionStart = ta.selectionEnd = lStart + pfx.length;
+            } else {
+                const ins = '\n' + pfx;
+                ta.value = ta.value.slice(0, s) + ins + ta.value.slice(e);
+                ta.selectionStart = ta.selectionEnd = s + ins.length;
+            }
+        } else {
+            const before = ta.value.slice(0, s);
+            const sel    = ta.value.slice(s, e);
+            const after  = ta.value.slice(e);
+            const ins    = sel.split('\n').map((l, i) => {
+                if (!l.trim()) return l;
+                if (type === 'check') return '- [ ] ' + l;
+                if (type === 'ul')    return '- ' + l;
+                return (i + 1) + '. ' + l;
+            }).join('\n');
+            ta.value = before + ins + after;
+            ta.setSelectionRange(s, s + ins.length);
+        }
+        ta.focus();
+        markDirty();
+    }
+
+    function insertHR() {
+        const ta = document.getElementById('noteContent');
+        const p  = ta.selectionStart;
+        const ins = '\n---\n';
+        ta.value = ta.value.slice(0, p) + ins + ta.value.slice(p);
+        ta.selectionStart = ta.selectionEnd = p + ins.length;
+        ta.focus();
+        markDirty();
+    }
+
+    function insertTable(cols, rows) {
+        const header = '| ' + Array(cols).fill('').join(' | ') + ' |';
+        const sep    = '| ' + Array(cols).fill('---').join(' | ') + ' |';
+        const row    = '| ' + Array(cols).fill('').join(' | ') + ' |';
+        const table  = [header, sep, ...Array(rows).fill(row)].join('\n');
+        const ta = document.getElementById('noteContent');
+        const p  = ta.selectionStart;
+        const ins = '\n' + table + '\n';
+        ta.value = ta.value.slice(0, p) + ins + ta.value.slice(p);
+        ta.selectionStart = ta.selectionEnd = p + ins.length;
+        ta.focus();
+        markDirty();
+    }
+
+    function insertLink() {
+        const ta  = document.getElementById('noteContent');
+        const s   = ta.selectionStart, e = ta.selectionEnd;
+        const sel = ta.value.slice(s, e) || 'texto';
+        const ins = '[' + sel + '](url)';
+        ta.value  = ta.value.slice(0, s) + ins + ta.value.slice(e);
+        ta.setSelectionRange(s + sel.length + 3, s + sel.length + 6);
+        ta.focus();
+        markDirty();
+    }
+
+    function insertImage() {
+        const ta  = document.getElementById('noteContent');
+        const s   = ta.selectionStart, e = ta.selectionEnd;
+        const sel = ta.value.slice(s, e) || 'alt';
+        const ins = '![' + sel + '](url)';
+        ta.value  = ta.value.slice(0, s) + ins + ta.value.slice(e);
+        ta.setSelectionRange(s + sel.length + 4, s + sel.length + 7);
+        ta.focus();
+        markDirty();
+    }
+
+    function insertInlineCode() { wrapSelection('`', '`'); }
+
+    function insertCodeBlock() {
+        const ta  = document.getElementById('noteContent');
+        const s   = ta.selectionStart, e = ta.selectionEnd;
+        const sel = ta.value.slice(s, e);
+        const ins = '\n```\n' + (sel || '') + '\n```\n';
+        ta.value = ta.value.slice(0, s) + ins + ta.value.slice(e);
+        ta.setSelectionRange(s + 5, s + 5 + sel.length);
+        ta.focus();
+        markDirty();
+    }
+
+    function insertBlockquote() {
+        const ta = document.getElementById('noteContent');
+        const s  = ta.selectionStart, e = ta.selectionEnd;
+        if (s === e) {
+            const lStart = ta.value.lastIndexOf('\n', s - 1) + 1;
+            const line   = ta.value.slice(lStart, s);
+            if (!line.trim()) {
+                ta.value = ta.value.slice(0, lStart) + '> ' + ta.value.slice(s);
+                ta.selectionStart = ta.selectionEnd = lStart + 2;
+            } else {
+                const ins = '\n> ';
+                ta.value = ta.value.slice(0, s) + ins + ta.value.slice(e);
+                ta.selectionStart = ta.selectionEnd = s + ins.length;
+            }
+        } else {
+            const before = ta.value.slice(0, s);
+            const sel    = ta.value.slice(s, e);
+            const after  = ta.value.slice(e);
+            const ins    = sel.split('\n').map(l => '> ' + l).join('\n');
+            ta.value = before + ins + after;
+            ta.setSelectionRange(s, s + ins.length);
+        }
+        ta.focus();
+        markDirty();
+    }
+
+    // ── Smart Enter ───────────────────────────────────────────────────────
+    function handleSmartEnter(e) {
+        const ta     = document.getElementById('noteContent');
+        const pos    = ta.selectionStart;
+        if (pos !== ta.selectionEnd) return;
+
+        const before = ta.value.slice(0, pos);
+        const after  = ta.value.slice(pos);
+        const lStart = before.lastIndexOf('\n') + 1;
+        const line   = before.slice(lStart);
+
+        // Table row (non-separator)
+        const isSep = line.split('|').slice(1, -1).every(c => /^[\s:-]+$/.test(c));
+        if (/^\|.+\|$/.test(line.trimEnd()) && !isSep) {
+            const cols   = (line.match(/\|/g) || []).length - 1;
+            const newRow = '\n| ' + Array(cols).fill('').join(' | ') + ' |';
+            e.preventDefault();
+            ta.value = before + newRow + after;
+            ta.selectionStart = ta.selectionEnd = pos + 3;
+            markDirty();
+            return;
+        }
+
+        // Checklist (must precede ul check — same prefix pattern)
+        const checkM = line.match(/^(\s*)-\s\[[ x]\]\s(.*)$/);
+        if (checkM) {
+            e.preventDefault();
+            if (!checkM[2].trim()) {
+                ta.value = ta.value.slice(0, lStart) + '\n' + after;
+                ta.selectionStart = ta.selectionEnd = lStart + 1;
+            } else {
+                const ins = '\n' + checkM[1] + '- [ ] ';
+                ta.value = before + ins + after;
+                ta.selectionStart = ta.selectionEnd = pos + ins.length;
+            }
+            markDirty();
+            return;
+        }
+
+        // Blockquote
+        const bqM = line.match(/^(\s*>)\s(.*)$/);
+        if (bqM) {
+            e.preventDefault();
+            if (!bqM[2].trim()) {
+                ta.value = ta.value.slice(0, lStart) + '\n' + after;
+                ta.selectionStart = ta.selectionEnd = lStart + 1;
+            } else {
+                const ins = '\n' + bqM[1] + ' ';
+                ta.value = before + ins + after;
+                ta.selectionStart = ta.selectionEnd = pos + ins.length;
+            }
+            markDirty();
+            return;
+        }
+
+        // Unordered list
+        const ulM = line.match(/^(\s*)([-*])\s(.*)$/);
+        if (ulM) {
+            e.preventDefault();
+            if (!ulM[3].trim()) {
+                ta.value = ta.value.slice(0, lStart) + '\n' + after;
+                ta.selectionStart = ta.selectionEnd = lStart + 1;
+            } else {
+                const ins = '\n' + ulM[1] + ulM[2] + ' ';
+                ta.value = before + ins + after;
+                ta.selectionStart = ta.selectionEnd = pos + ins.length;
+            }
+            markDirty();
+            return;
+        }
+
+        // Ordered list
+        const olM = line.match(/^(\s*)(\d+)\.\s(.*)$/);
+        if (olM) {
+            e.preventDefault();
+            if (!olM[3].trim()) {
+                ta.value = ta.value.slice(0, lStart) + '\n' + after;
+                ta.selectionStart = ta.selectionEnd = lStart + 1;
+            } else {
+                const ins = '\n' + olM[1] + (parseInt(olM[2]) + 1) + '. ';
+                ta.value = before + ins + after;
+                ta.selectionStart = ta.selectionEnd = pos + ins.length;
+            }
+            markDirty();
+            return;
+        }
+    }
+
+    // ── Sort ──────────────────────────────────────────────────────────────
+    function sortNotes(notes) {
+        return [...notes].sort((a, b) => {
+            if (sortBy === 'alpha') {
+                const cmp = a.title.localeCompare(b.title);
+                return sortDir === 'asc' ? cmp : -cmp;
+            }
+            if (sortBy === 'color') {
+                return (COLOR_ORDER[a.color] ?? 99) - (COLOR_ORDER[b.color] ?? 99);
+            }
+            const cmp = (a.order ?? 0) - (b.order ?? 0);
+            return sortDir === 'asc' ? cmp : -cmp;
+        });
+    }
+
+    // ── Auto-save ─────────────────────────────────────────────────────────
+    function markDirty() { isDirty = true; }
+
+    async function saveIfDirty() {
+        if (isDirty) await saveNote();
+    }
+
+    // ── Select mode ───────────────────────────────────────────────────────
     function enterSelectMode() {
         selectMode = true;
         selectedIds.clear();
         document.getElementById('noteSelectBtn').querySelector('i').className = 'bi bi-x-lg';
-        document.getElementById('bulkActions').classList.remove('d-none');
+        document.getElementById('bulkActions').classList.replace('d-none', 'd-flex');
         loadNotes();
     }
 
@@ -309,20 +722,17 @@
         selectMode = false;
         selectedIds.clear();
         document.getElementById('noteSelectBtn').querySelector('i').className = 'bi bi-check2-square';
-        document.getElementById('bulkActions').classList.add('d-none');
+        document.getElementById('bulkActions').classList.replace('d-flex', 'd-none');
         loadNotes();
     }
 
-    // ── Sidebar ──────────────────────────────────────────────────────────
+    // ── Sidebar ───────────────────────────────────────────────────────────
     function noteCardHtml(note) {
-        const baseColor  = note.color ? note.color.replace('-subtle', '') : 'secondary';
-        const icon       = note.icon || 'bi-file-text';
-        const isSelected = selectedIds.has(note.id);
-        const activeClass = isSelected ? ' active' : '';
-        const leftIcon   = selectMode
-            ? (isSelected ? 'bi-check-circle-fill' : 'bi-circle')
-            : escHtml(icon);
-        return `<button class="note-card btn btn-outline-${baseColor} w-100 text-start mb-1 py-1 px-2 d-flex align-items-center gap-2 overflow-hidden${activeClass}"
+        const color    = COLORS.includes(note.color) ? note.color : 'secondary';
+        const icon     = note.icon || 'bi-file-text';
+        const selected = selectedIds.has(note.id);
+        const leftIcon = selectMode ? (selected ? 'bi-check-circle-fill' : 'bi-circle') : escHtml(icon);
+        return `<button class="note-card btn btn-outline-${color} w-100 text-start mb-1 py-1 px-2 d-flex align-items-center gap-2 overflow-hidden${selected ? ' active' : ''}"
                         data-id="${note.id}">
                     <i class="${leftIcon} flex-shrink-0"></i>
                     <span class="text-truncate small fw-semibold">${escHtml(note.title)}</span>
@@ -330,14 +740,14 @@
     }
 
     function renderSidebar(notes) {
-        const pinned = notes.filter(n => n.is_pinned);
-        const others = notes.filter(n => !n.is_pinned);
+        const sorted = sortNotes(notes);
+        const pinned = sorted.filter(n =>  n.is_pinned);
+        const others = sorted.filter(n => !n.is_pinned);
 
         document.getElementById('pinnedList').innerHTML = pinned.map(noteCardHtml).join('');
         document.getElementById('notesList').innerHTML  = others.map(noteCardHtml).join('');
-
-        document.getElementById('pinnedSection').classList.toggle('d-none', pinned.length === 0);
-        document.getElementById('othersSection').classList.toggle('d-none', others.length === 0);
+        document.getElementById('pinnedSection').classList.toggle('d-none', !pinned.length);
+        document.getElementById('othersSection').classList.toggle('d-none', !others.length);
 
         document.querySelectorAll('.note-card').forEach(el => {
             el.addEventListener('click', async () => {
@@ -353,8 +763,8 @@
                         el.querySelector('i').className = 'bi-check-circle-fill flex-shrink-0';
                     }
                 } else {
-                    const res  = await fetch('/api/notes/' + id);
-                    const note = await res.json();
+                    await saveIfDirty();
+                    const note = await fetch('/api/notes/' + id).then(r => r.json());
                     openNote(note);
                 }
             });
@@ -363,65 +773,75 @@
 
     function applyFilter() {
         const q = document.getElementById('noteSearch').value.trim().toLowerCase();
-        const filtered = q ? allNotes.filter(n => n.title.toLowerCase().includes(q)) : allNotes;
-        renderSidebar(filtered);
+        renderSidebar(q ? allNotes.filter(n => n.title.toLowerCase().includes(q)) : allNotes);
     }
 
     async function loadNotes() {
-        const res = await fetch('/api/notes');
-        allNotes  = await res.json();
+        allNotes = await fetch('/api/notes').then(r => r.json());
         applyFilter();
     }
 
-    // ── Editor ───────────────────────────────────────────────────────────
+    // ── Editor ────────────────────────────────────────────────────────────
     function openNote(note) {
         currentNoteId = note.id;
-        currentColor  = note.color || 'primary';
+        currentColor  = COLORS.includes(note.color) ? note.color : 'primary';
         isPinned      = !!note.is_pinned;
+        isDirty       = false;
 
-        document.getElementById('noteTitleInput').value       = note.title || '';
-        document.getElementById('noteContent').value          = note.text  || '';
-        document.getElementById('noteIconValue').value        = note.icon  || '';
-        document.getElementById('noteIconPreview').className  = note.icon  || 'bi bi-tag';
+        document.getElementById('noteTitleInput').value      = note.title || '';
+        document.getElementById('noteContent').value         = note.text  || '';
+        document.getElementById('noteIconValue').value       = note.icon  || '';
+        document.getElementById('noteIconPreview').className = note.icon  || 'bi bi-tag';
 
         applyColorDot(currentColor);
         applyPinIcon();
-        setEditMode(false);  // abre em modo visualização
+        setEditMode(false);
 
         document.getElementById('noteEmptyState').classList.add('d-none');
         document.getElementById('noteEditor').classList.remove('d-none');
     }
 
     async function saveNote() {
-        const title = document.getElementById('noteTitleInput').value.trim();
-        if (!title) { document.getElementById('noteTitleInput').focus(); return; }
-
-        const isNew = !currentNoteId;
-        if (currentNoteId) {
-            await fetch('/api/notes/' + currentNoteId, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title,
-                    text: document.getElementById('noteContent').value,
-                }),
-            });
-        } else {
-            const res  = await fetch('/api/notes', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title,
-                    text:      document.getElementById('noteContent').value,
-                    color:     currentColor,
-                    icon:      document.getElementById('noteIconValue').value || null,
-                    is_pinned: isPinned,
-                }),
-            });
-            const note = await res.json();
-            currentNoteId = note.id;
+        if (_saving) return;
+        let title = document.getElementById('noteTitleInput').value.trim();
+        if (!title) {
+            const d = new Date();
+            title = String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            document.getElementById('noteTitleInput').value = title;
         }
 
-        showToast(isNew ? 'Nota criada!' : 'Nota salva!');
-        await loadNotes();
+        _saving = true;
+        isDirty = false;
+        try {
+            const isNew = !currentNoteId;
+            if (currentNoteId) {
+                await fetch('/api/notes/' + currentNoteId, {
+                    method:  'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title,
+                        text: document.getElementById('noteContent').value,
+                    }),
+                });
+            } else {
+                const data = await fetch('/api/notes', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title,
+                        text:      document.getElementById('noteContent').value,
+                        color:     currentColor,
+                        icon:      document.getElementById('noteIconValue').value || null,
+                        is_pinned: isPinned,
+                    }),
+                }).then(r => r.json());
+                currentNoteId = data.id;
+            }
+            showToast(isNew ? 'Nota criada!' : 'Nota salva!', isNew ? 'primary' : 'success');
+            await loadNotes();
+        } finally {
+            _saving = false;
+        }
     }
 
     const _deleteModal = new bootstrap.Modal(document.getElementById('deleteNoteModal'));
@@ -437,9 +857,10 @@
             await fetch('/api/notes/' + currentNoteId, { method: 'DELETE' });
         }
         currentNoteId = null;
+        isDirty = false;
         document.getElementById('noteEditor').classList.add('d-none');
         document.getElementById('noteEmptyState').classList.remove('d-none');
-        showToast('Nota excluída!');
+        showToast('Nota excluída!', 'danger');
         await loadNotes();
     }
 
@@ -447,18 +868,22 @@
         await Promise.all(ids.map(id => fetch('/api/notes/' + id, { method: 'DELETE' })));
         if (ids.includes(currentNoteId)) {
             currentNoteId = null;
+            isDirty = false;
             document.getElementById('noteEditor').classList.add('d-none');
             document.getElementById('noteEmptyState').classList.remove('d-none');
         }
-        showToast(ids.length + ' nota(s) excluída(s)!');
+        showToast(ids.length + ' nota(s) excluída(s)!', 'danger');
         exitSelectMode();
     }
 
-    // ── Eventos ──────────────────────────────────────────────────────────
-    document.getElementById('newNoteBtn').addEventListener('click', () => {
+    // ── Event listeners ───────────────────────────────────────────────────
+
+    document.getElementById('newNoteBtn').addEventListener('click', async () => {
+        await saveIfDirty();
         currentNoteId = null;
         currentColor  = 'primary';
         isPinned      = false;
+        isDirty       = false;
 
         document.getElementById('noteTitleInput').value      = '';
         document.getElementById('noteContent').value         = '';
@@ -466,7 +891,7 @@
         document.getElementById('noteIconPreview').className = 'bi bi-tag';
         applyColorDot(currentColor);
         applyPinIcon();
-        setEditMode(true);  // nova nota abre em edição
+        setEditMode(true);
 
         document.getElementById('noteEmptyState').classList.add('d-none');
         document.getElementById('noteEditor').classList.remove('d-none');
@@ -474,7 +899,11 @@
     });
 
     document.getElementById('noteSaveBtn').addEventListener('click', saveNote);
-    document.getElementById('noteMarkdownToggle').addEventListener('click', () => setEditMode(!editMode));
+
+    document.getElementById('noteMarkdownToggle').addEventListener('click', async () => {
+        await saveIfDirty();
+        setEditMode(!editMode);
+    });
 
     document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
         _deleteModal.hide();
@@ -486,8 +915,10 @@
     });
 
     document.getElementById('noteDownloadBtn').addEventListener('click', async () => {
+        await saveIfDirty();
         if (!currentNoteId) return;
-        await fetch('/api/notes/' + currentNoteId + '/export', { method: 'POST' });
+        const data = await fetch('/api/notes/' + currentNoteId + '/export', { method: 'POST' }).then(r => r.json());
+        if (!data.cancelled) showToast('Download concluído!', 'info');
     });
 
     document.getElementById('noteSelectBtn').addEventListener('click', () => {
@@ -508,17 +939,21 @@
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ ids }),
         });
+        showToast(ids.length + ' nota(s) baixada(s)!', 'info');
         exitSelectMode();
     });
 
     document.getElementById('notePinBtn').addEventListener('click', async () => {
+        await saveIfDirty();
         isPinned = !isPinned;
         applyPinIcon();
         if (currentNoteId) {
             await fetch('/api/notes/' + currentNoteId, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ is_pinned: isPinned }),
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ is_pinned: isPinned }),
             });
+            showToast(isPinned ? 'Nota fixada!' : 'Nota desafixada!', 'info');
             await loadNotes();
         }
     });
@@ -528,31 +963,294 @@
         document.getElementById('noteIconPreview').className = this.value;
         if (currentNoteId) {
             await fetch('/api/notes/' + currentNoteId, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ icon: this.value }),
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ icon: this.value }),
             });
             await loadNotes();
         }
     });
 
-    document.querySelectorAll('[data-color]').forEach(el => {
-        el.addEventListener('click', async function (e) {
-            e.preventDefault();
-            currentColor = this.dataset.color;
-            applyColorDot(currentColor);
-            if (currentNoteId) {
-                await fetch('/api/notes/' + currentNoteId, {
-                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ color: currentColor }),
-                });
-                await loadNotes();
-            }
+    document.getElementById('bulkIconValue').addEventListener('change', async function () {
+        if (!this.value) return;
+        const ids = [...selectedIds];
+        if (!ids.length) return;
+        await fetch('/api/notes/bulk-update', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ ids, icon: this.value }),
         });
+        showToast(`Ícone aplicado em ${ids.length} nota(s)!`, 'info');
+        await loadNotes();
+    });
+
+    buildColorSwatches('noteColorSwatches', async (color) => {
+        currentColor = color;
+        applyColorDot(color);
+        if (currentNoteId) {
+            await fetch('/api/notes/' + currentNoteId, {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ color }),
+            });
+            await loadNotes();
+        }
+    });
+
+    buildColorSwatches('bulkColorSwatches', async (color) => {
+        const ids = [...selectedIds];
+        if (!ids.length) return;
+        await fetch('/api/notes/bulk-update', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ ids, color }),
+        });
+        showToast(`Cor aplicada em ${ids.length} nota(s)!`, 'info');
+        await loadNotes();
     });
 
     document.getElementById('noteSearch').addEventListener('input', applyFilter);
 
-    // ── Init ─────────────────────────────────────────────────────────────
+    document.querySelectorAll('.sort-opt').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            sortBy  = a.dataset.sort;
+            sortDir = a.dataset.dir;
+            applyFilter();
+        });
+    });
+
+    // ── Textarea: Tab, Smart Enter, Ctrl shortcuts, Auto-save ─────────────
+    document.getElementById('noteContent').addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const ta     = document.getElementById('noteContent');
+            const s      = ta.selectionStart, end = ta.selectionEnd;
+            const lStart = ta.value.lastIndexOf('\n', s - 1) + 1;
+            const line   = ta.value.slice(lStart);
+            const isList = /^\s*([-*]|\d+\.|-\s*\[)\s/.test(line);
+
+            if (e.shiftKey) {
+                if (ta.value[lStart] === '\t') {
+                    ta.value = ta.value.slice(0, lStart) + ta.value.slice(lStart + 1);
+                    ta.selectionStart = ta.selectionEnd = Math.max(lStart, s - 1);
+                }
+            } else if (isList && s === end) {
+                // Indent list item at line start → sub-item
+                ta.value = ta.value.slice(0, lStart) + '\t' + ta.value.slice(lStart);
+                ta.selectionStart = ta.selectionEnd = s + 1;
+            } else {
+                ta.value = ta.value.slice(0, s) + '\t' + ta.value.slice(end);
+                ta.selectionStart = ta.selectionEnd = s + 1;
+            }
+            markDirty();
+            return;
+        }
+        if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) { handleSmartEnter(e); return; }
+        if (e.key === 'Escape' && _findOpen) { e.preventDefault(); closeFind(); return; }
+        if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveNote(); return; }
+        if (e.ctrlKey && e.key === 'b') { e.preventDefault(); wrapSelection('**', '**'); return; }
+        if (e.ctrlKey && e.key === 'i') { e.preventDefault(); wrapSelection('_', '_'); return; }
+        if (e.ctrlKey && e.shiftKey && e.key === 'S') { e.preventDefault(); wrapSelection('~~', '~~'); return; }
+        if (e.ctrlKey && e.shiftKey && e.key === 'C') { e.preventDefault(); insertInlineCode(); return; }
+        if (e.ctrlKey && e.shiftKey && e.key === 'B') { e.preventDefault(); insertBlockquote(); return; }
+        if (e.ctrlKey && e.shiftKey && e.key === 'L') { e.preventDefault(); insertHR(); return; }
+        if (e.ctrlKey && e.shiftKey && e.key === '7') { e.preventDefault(); insertList('ol'); return; }
+        if (e.ctrlKey && e.shiftKey && e.key === '8') { e.preventDefault(); insertList('ul'); return; }
+        if (e.ctrlKey && e.shiftKey && e.key === '9') { e.preventDefault(); insertList('check'); return; }
+        if (e.ctrlKey && !e.shiftKey && e.key >= '1' && e.key <= '4') { e.preventDefault(); insertHeading(parseInt(e.key)); return; }
+        if (e.ctrlKey && e.key === 'k') { e.preventDefault(); insertLink(); return; }
+        if (e.ctrlKey && e.key === 'f') { e.preventDefault(); openFind(false); return; }
+        if (e.ctrlKey && e.key === 'h') { e.preventDefault(); openFind(true); return; }
+    });
+
+    document.getElementById('noteContent').addEventListener('input', markDirty);
+
+    document.getElementById('noteEditor').addEventListener('focusout', (e) => {
+        if (!e.relatedTarget || !document.getElementById('noteEditor').contains(e.relatedTarget)) {
+            saveIfDirty();
+        }
+    });
+
+    document.getElementById('noteTitleInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); saveNote(); }
+    });
+    document.getElementById('noteTitleInput').addEventListener('input', markDirty);
+
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveNote(); }
+        if (e.ctrlKey && e.key === 'f') { e.preventDefault(); openFind(false); }
+        if (e.ctrlKey && e.key === 'h') { e.preventDefault(); openFind(true); }
+        if (e.key === 'Escape' && _findOpen) { closeFind(); }
+    });
+
+    // ── Find & Replace ────────────────────────────────────────────────────
+    function openFind(withReplace = false) {
+        document.getElementById('replaceRow').classList.toggle('d-none', !withReplace);
+        const dd = bootstrap.Dropdown.getOrCreateInstance(document.getElementById('tbFind'));
+        dd.show();
+        requestAnimationFrame(() => {
+            const inp = document.getElementById('findInput');
+            inp.focus();
+            inp.select();
+            doFind();
+        });
+    }
+
+    function closeFind() {
+        _findMatches = [];
+        _findIdx     = -1;
+        document.getElementById('findCount').textContent = '';
+        const dd = bootstrap.Dropdown.getInstance(document.getElementById('tbFind'));
+        if (dd) dd.hide();
+        document.getElementById('noteContent').focus();
+    }
+
+    function doFind() {
+        const query = document.getElementById('findInput').value;
+        const ta    = document.getElementById('noteContent');
+        _findMatches = [];
+        _findIdx     = -1;
+        if (!query) { updateFindCount(); return; }
+        const lower = ta.value.toLowerCase();
+        const q     = query.toLowerCase();
+        let p = 0;
+        while ((p = lower.indexOf(q, p)) !== -1) { _findMatches.push(p); p += q.length || 1; }
+        if (_findMatches.length) _findIdx = 0;
+        updateFindCount();
+    }
+
+    function gotoMatch(idx) {
+        if (!_findMatches.length) return;
+        _findIdx    = ((idx % _findMatches.length) + _findMatches.length) % _findMatches.length;
+        const start = _findMatches[_findIdx];
+        const ta    = document.getElementById('noteContent');
+        const lh    = parseInt(getComputedStyle(ta).lineHeight) || 21;
+        const lines = (ta.value.slice(0, start).match(/\n/g) || []).length;
+        ta.scrollTop = Math.max(0, lines * lh - ta.clientHeight / 2);
+        ta.focus();
+        ta.setSelectionRange(start, start + document.getElementById('findInput').value.length);
+        updateFindCount();
+    }
+
+    function updateFindCount() {
+        const inp = document.getElementById('findInput').value;
+        document.getElementById('findCount').textContent =
+            !inp             ? '' :
+            !_findMatches.length ? '0 resultados' :
+            (_findIdx + 1) + '/' + _findMatches.length;
+    }
+
+    function doReplace() {
+        if (!_findMatches.length || _findIdx < 0) return;
+        const ta    = document.getElementById('noteContent');
+        const query = document.getElementById('findInput').value;
+        const repl  = document.getElementById('replaceInput').value;
+        const start = _findMatches[_findIdx];
+        if (ta.selectionStart !== start) { gotoMatch(_findIdx); return; }
+        ta.value = ta.value.slice(0, start) + repl + ta.value.slice(start + query.length);
+        markDirty();
+        doFind();
+        if (_findMatches.length) gotoMatch(_findIdx);
+    }
+
+    function doReplaceAll() {
+        const query = document.getElementById('findInput').value;
+        const repl  = document.getElementById('replaceInput').value;
+        if (!query) return;
+        const count = _findMatches.length;
+        const re    = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        document.getElementById('noteContent').value =
+            document.getElementById('noteContent').value.replace(re, repl);
+        markDirty();
+        showToast(count + ' substituição(ões) feita(s)!', 'success');
+        doFind();
+    }
+
+    document.getElementById('tbFind').addEventListener('shown.bs.dropdown', () => {
+        _findOpen = true;
+        requestAnimationFrame(() => document.getElementById('findInput').focus());
+    });
+    document.getElementById('tbFind').addEventListener('hidden.bs.dropdown', () => {
+        _findOpen    = false;
+        _findMatches = [];
+        _findIdx     = -1;
+        document.getElementById('findCount').textContent = '';
+    });
+    document.getElementById('findToggleReplace').addEventListener('click', () =>
+        document.getElementById('replaceRow').classList.toggle('d-none')
+    );
+    document.getElementById('findInput').addEventListener('input', doFind);
+    document.getElementById('findPrev').addEventListener('click', () => gotoMatch(_findIdx - 1));
+    document.getElementById('findNext').addEventListener('click', () => gotoMatch(_findIdx + 1));
+    document.getElementById('replaceOne').addEventListener('click', doReplace);
+    document.getElementById('replaceAll').addEventListener('click', doReplaceAll);
+    document.getElementById('findInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); closeFind(); }
+        if (e.key === 'Enter')  { e.preventDefault(); gotoMatch(e.shiftKey ? _findIdx - 1 : _findIdx + 1); }
+    });
+
+    // ── Toolbar wiring ────────────────────────────────────────────────────
+    document.querySelectorAll('[data-wrap]').forEach(btn =>
+        btn.addEventListener('click', () => { const v = btn.dataset.wrap; wrapSelection(v, v); })
+    );
+    document.querySelectorAll('[data-heading]').forEach(a =>
+        a.addEventListener('click', (e) => { e.preventDefault(); insertHeading(parseInt(a.dataset.heading)); })
+    );
+    document.getElementById('tbCheck').addEventListener('click', (e) => { e.preventDefault(); insertList('check'); });
+    document.getElementById('tbUl').addEventListener('click', (e) => { e.preventDefault(); insertList('ul'); });
+    document.getElementById('tbOl').addEventListener('click', (e) => { e.preventDefault(); insertList('ol'); });
+    document.getElementById('tbCode').addEventListener('click', () => insertInlineCode());
+    document.getElementById('tbCodeBlock').addEventListener('click', () => insertCodeBlock());
+    document.getElementById('tbBlockquote').addEventListener('click', () => insertBlockquote());
+    document.getElementById('tbLink').addEventListener('click', () => insertLink());
+    document.getElementById('tbImage').addEventListener('click', () => insertImage());
+    document.getElementById('tbHr').addEventListener('click', () => insertHR());
+    document.getElementById('tableInsertBtn').addEventListener('click', () => {
+        const cols = Math.max(1, parseInt(document.getElementById('tableCols').value) || 3);
+        const rows = Math.max(1, parseInt(document.getElementById('tableRows').value) || 3);
+        insertTable(cols, rows);
+        const trigger = document.getElementById('tableInsertBtn')
+            .closest('.dropdown')?.querySelector('[data-bs-toggle="dropdown"]');
+        if (trigger) bootstrap.Dropdown.getInstance(trigger)?.hide();
+    });
+
+    // ── File drag & drop import ───────────────────────────────────────────
+    const dropZone = document.querySelector('.d-flex.h-100.gap-3');
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        for (const file of [...e.dataTransfer.files]) {
+            if (!/\.(txt|md)$/i.test(file.name)) continue;
+            const text  = await file.text();
+            const title = file.name.replace(/\.(txt|md)$/i, '');
+            const res   = await fetch('/api/notes', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ title, text, color: 'secondary' }),
+            });
+            if (res.ok) {
+                const note = await res.json();
+                await loadNotes();
+                openNote(note);
+                showToast(`"${title}" importada!`, 'primary');
+            }
+        }
+    });
+
+    // ── Nav: save before navigating away ─────────────────────────────────
+    document.querySelectorAll('aside a[href], nav a[href]').forEach(a => {
+        if (!a.href || a.href.includes('#')) return;
+        a.addEventListener('click', async (e) => {
+            if (isDirty) {
+                e.preventDefault();
+                await saveIfDirty();
+                window.location.href = a.href;
+            }
+        });
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────
     loadNotes();
 })();
 </script>

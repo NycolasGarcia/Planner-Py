@@ -18,32 +18,7 @@
                 <i class="bi bi-moon"></i>
             </button>
 
-            <button onclick="windowControls('minimize')" class="btn btn-sm border-0">
-                <i class="bi bi-dash-lg"></i>
-            </button>
-
-            <button onclick="windowControls('maximize')" class="btn btn-sm border-0">
-                <i class="bi bi-square"></i>
-            </button>
-
-            <button onclick="windowControls('close')" class="btn btn-sm border-0">
-                <i class="bi bi-x-lg"></i>
-            </button>
-
         </div>
     </header>
 
 <script src="static/js/theme_toggle.js"></script>
-<script>
-(function () {
-    let _maximized = false;
-    window.windowControls = function (action) {
-        let req = action;
-        if (action === 'maximize') {
-            req = _maximized ? 'restore' : 'maximize';
-            _maximized = !_maximized;
-        }
-        fetch('/api/window/' + req, { method: 'POST' });
-    };
-})();
-</script>
