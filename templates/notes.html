@@ -4,9 +4,12 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='highlight/styles/github-dark.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='easymde/easymde.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='easymde/theme.css') }}">
 <script src="{{ url_for('static', filename='js/marked.min.js') }}"></script>
 <script src="{{ url_for('static', filename='mermaid/mermaid.min.js') }}"></script>
 <script src="{{ url_for('static', filename='highlight/highlight.min.js') }}"></script>
+<script src="{{ url_for('static', filename='easymde/easymde.min.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -39,6 +42,47 @@
     </div>
 </div>
 
+<!-- Modal de pasta (criar/editar) -->
+<div class="modal fade" id="folderModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="folderModalTitle">Nova pasta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body d-flex flex-column gap-3">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary flex-shrink-0" type="button" disabled>
+                        <span class="rounded-circle d-inline-block bg-secondary" id="folderColorDot"
+                              style="width:14px;height:14px;"></span>
+                    </button>
+                    <input type="text" class="form-control" placeholder="Nome da pasta" id="folderNameInput">
+                    <button class="btn btn-outline-secondary flex-shrink-0" type="button"
+                            id="folderIconTrigger" data-target-input="#folderIconValue" title="Escolher ícone">
+                        <i class="bi bi-folder" id="folderIconPreview"></i>
+                    </button>
+                    <input type="hidden" id="folderIconValue">
+                </div>
+                <div>
+                    <label class="form-label mb-2 small text-secondary">Cor</label>
+                    <div class="d-flex flex-wrap gap-1" id="folderColorSwatches"></div>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-danger d-none" id="folderDeleteBtn">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" type="button" id="folderPinBtn" title="Fixar pasta">
+                        <i class="bi bi-pin"></i>
+                    </button>
+                </div>
+                <button class="btn btn-sm btn-primary" id="folderSaveBtn">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="d-flex h-100 gap-3">
 
     <!-- SIDEBAR DAS NOTAS -->
@@ -49,6 +93,9 @@
             <h1 class="display-6 fw-semibold mb-4">Notas</h1>
             <div class="d-flex gap-1">
                 <button class="btn btn-sm bg-primary-subtle" id="newNoteBtn">Novo</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" id="newFolderBtn" title="Nova pasta">
+                    <i class="bi bi-folder-plus"></i>
+                </button>
                 <button class="btn btn-sm btn-outline-secondary" id="noteSelectBtn" title="Selecionar notas">
                     <i class="bi bi-check2-square"></i>
                 </button>
@@ -80,10 +127,24 @@
                 </button>
                 <input type="hidden" id="bulkIconValue">
             </div>
-            <div class="d-grid gap-1" style="grid-template-columns: 1fr 1fr;">
-                <button class="btn btn-sm btn-outline-info" id="bulkDownloadBtn">
-                    <i class="bi bi-download"></i> Baixar
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary w-100 dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown" title="Mover notas selecionadas pra pasta">
+                    <i class="bi bi-folder2"></i> Mover pra pasta
                 </button>
+                <ul class="dropdown-menu" id="bulkFolderMenu" style="min-width: 180px;"></ul>
+            </div>
+            <div class="d-grid gap-1" style="grid-template-columns: 1fr 1fr;">
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-info w-100 dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown">
+                        <i class="bi bi-download"></i> Baixar
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" id="bulkDownloadMd">Markdown (.md)</a></li>
+                        <li><a class="dropdown-item" href="#" id="bulkDownloadTxt">Texto (.txt)</a></li>
+                    </ul>
+                </div>
                 <button class="btn btn-sm btn-outline-danger" id="bulkDeleteBtn">
                     <i class="bi bi-trash"></i> Excluir
                 </button>
@@ -164,6 +225,15 @@
                     </ul>
                 </div>
 
+                <!-- Pasta da nota -->
+                <div class="dropdown flex-shrink-0">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="noteFolderBtn"
+                            data-bs-toggle="dropdown" title="Mover para pasta">
+                        <i class="bi bi-folder"></i>
+                    </button>
+                    <ul class="dropdown-menu" id="noteFolderMenu" style="min-width: 180px;"></ul>
+                </div>
+
                 <!-- Botão de ícone -->
                 <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button"
                         data-bs-toggle="modal" data-bs-target="#iconPickerModal"
@@ -179,10 +249,6 @@
 
                 <!-- Ações -->
                 <div class="d-flex gap-1 flex-shrink-0">
-                    <button class="btn btn-sm btn-outline-warning" type="button"
-                            id="noteMarkdownToggle" title="Alternar visualização Markdown">
-                        <i class="bi bi-eye"></i>
-                    </button>
                     <button class="btn btn-sm btn-outline-success" type="button"
                             id="notePinBtn" title="Fixar nota">
                         <i class="bi bi-pin"></i>
@@ -191,10 +257,16 @@
                             id="noteSaveBtn" title="Salvar nota">
                         <i class="bi bi-floppy"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-info" type="button"
-                            id="noteDownloadBtn" title="Baixar nota como .txt">
-                        <i class="bi bi-download"></i>
-                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-info" type="button"
+                                data-bs-toggle="dropdown" title="Baixar nota">
+                            <i class="bi bi-download"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" id="noteDownloadMd">Markdown (.md)</a></li>
+                            <li><a class="dropdown-item" href="#" id="noteDownloadTxt">Texto (.txt)</a></li>
+                        </ul>
+                    </div>
                     <button class="btn btn-sm btn-outline-danger" type="button"
                             id="noteDeleteBtn" title="Excluir nota">
                         <i class="bi bi-trash"></i>
@@ -202,126 +274,11 @@
                 </div>
             </div>
 
-            <!-- Toolbar Markdown (visível apenas no modo edição) -->
-            <div id="mdToolbar" class="d-flex flex-wrap align-items-center gap-2 mb-2 flex-shrink-0">
-
-                <!-- G1: Títulos + HR -->
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary dropdown-toggle px-2" type="button"
-                            data-bs-toggle="dropdown" title="Títulos (Ctrl+1–4)">H</button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item d-flex justify-content-between" href="#" data-heading="1"><span><strong>H1</strong> — Título</span><kbd>Ctrl+1</kbd></a></li>
-                        <li><a class="dropdown-item d-flex justify-content-between" href="#" data-heading="2"><span><strong>H2</strong> — Seção</span><kbd>Ctrl+2</kbd></a></li>
-                        <li><a class="dropdown-item d-flex justify-content-between" href="#" data-heading="3"><span><strong>H3</strong> — Subseção</span><kbd>Ctrl+3</kbd></a></li>
-                        <li><a class="dropdown-item d-flex justify-content-between" href="#" data-heading="4"><span><strong>H4</strong> — Sub-sub</span><kbd>Ctrl+4</kbd></a></li>
-                    </ul>
-                    <button class="btn btn-outline-secondary px-2" type="button" id="tbHr"
-                            title="Linha horizontal (Ctrl+Shift+L)"><i class="bi bi-dash-lg"></i></button>
-                </div>
-
-                <div class="vr"></div>
-
-                <!-- G2: Formatação inline -->
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary px-2" type="button" data-wrap="**"
-                            title="Negrito (Ctrl+B)"><i class="bi bi-type-bold"></i></button>
-                    <button class="btn btn-outline-secondary px-2" type="button" data-wrap="_"
-                            title="Itálico (Ctrl+I)"><i class="bi bi-type-italic"></i></button>
-                    <button class="btn btn-outline-secondary px-2" type="button" data-wrap="~~"
-                            title="Tachado (Ctrl+Shift+S)"><i class="bi bi-type-strikethrough"></i></button>
-                    <button class="btn btn-outline-secondary px-2" type="button" id="tbCode"
-                            title="Código inline (Ctrl+Shift+C)"><i class="bi bi-code"></i></button>
-                    <button class="btn btn-outline-secondary px-2" type="button" id="tbCodeBlock"
-                            title="Bloco de código"><i class="bi bi-code-slash"></i></button>
-                    <button class="btn btn-outline-secondary px-2" type="button" id="tbBlockquote"
-                            title="Citação (Ctrl+Shift+B)"><i class="bi bi-blockquote-left"></i></button>
-                </div>
-
-                <div class="vr"></div>
-
-                <!-- G2b: Links + Imagens -->
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary px-2" type="button" id="tbLink"
-                            title="Inserir link (Ctrl+K)"><i class="bi bi-link-45deg"></i></button>
-                    <button class="btn btn-outline-secondary px-2" type="button" id="tbImage"
-                            title="Inserir imagem"><i class="bi bi-image"></i></button>
-                </div>
-
-                <div class="vr"></div>
-
-                <!-- G3: Listas + Tabela -->
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle px-2" type="button"
-                            data-bs-toggle="dropdown" title="Inserir lista">
-                        <i class="bi bi-list-ul"></i>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item d-flex justify-content-between" href="#" id="tbCheck"><span><i class="bi bi-check2-square me-2"></i>Checklist</span><kbd>Ctrl+Shift+9</kbd></a></li>
-                        <li><a class="dropdown-item d-flex justify-content-between" href="#" id="tbUl"><span><i class="bi bi-list-ul me-2"></i>Não ordenada</span><kbd>Ctrl+Shift+8</kbd></a></li>
-                        <li><a class="dropdown-item d-flex justify-content-between" href="#" id="tbOl"><span><i class="bi bi-list-ol me-2"></i>Ordenada</span><kbd>Ctrl+Shift+7</kbd></a></li>
-                    </ul>
-                </div>
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary px-2" type="button"
-                            data-bs-toggle="dropdown" title="Inserir tabela (Ctrl+Shift+T)">
-                        <i class="bi bi-table"></i>
-                    </button>
-                    <div class="dropdown-menu p-2" style="min-width: 180px;">
-                        <div class="small text-muted mb-1">Colunas × Linhas</div>
-                        <div class="d-flex gap-1 align-items-center mb-2">
-                            <input type="number" id="tableCols" value="3" min="1" max="10"
-                                   class="form-control form-control-sm text-center" style="width:56px;">
-                            <span class="small">×</span>
-                            <input type="number" id="tableRows" value="3" min="1" max="20"
-                                   class="form-control form-control-sm text-center" style="width:56px;">
-                        </div>
-                        <button class="btn btn-sm btn-primary w-100" id="tableInsertBtn">Inserir</button>
-                    </div>
-                </div>
-
-                <div class="vr"></div>
-
-                <!-- G4: Busca + Substituição (popup) -->
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary px-2" type="button" id="tbFind"
-                            data-bs-toggle="dropdown" data-bs-auto-close="outside"
-                            title="Buscar (Ctrl+F) / Substituir (Ctrl+H)">
-                        <i class="bi bi-search"></i>
-                    </button>
-                    <div class="dropdown-menu p-3" style="min-width:370px;">
-                        <div class="d-flex gap-1 align-items-center mb-1">
-                            <input type="text" id="findInput" class="form-control form-control-sm"
-                                   placeholder="Buscar...">
-                            <span id="findCount" class="small text-muted text-nowrap px-1"
-                                  style="min-width:56px;"></span>
-                            <button class="btn btn-sm btn-outline-secondary" id="findPrev"
-                                    title="Anterior (Shift+Enter)"><i class="bi bi-chevron-up"></i></button>
-                            <button class="btn btn-sm btn-outline-secondary" id="findNext"
-                                    title="Próximo (Enter)"><i class="bi bi-chevron-down"></i></button>
-                            <button class="btn btn-sm btn-outline-secondary" id="findToggleReplace"
-                                    title="Substituição"><i class="bi bi-arrow-left-right"></i></button>
-                        </div>
-                        <div id="replaceRow" class="d-none mt-1">
-                            <div class="d-flex gap-1 align-items-center">
-                                <input type="text" id="replaceInput" class="form-control form-control-sm"
-                                       placeholder="Substituir por...">
-                                <button class="btn btn-sm btn-outline-secondary" id="replaceOne">1×</button>
-                                <button class="btn btn-sm btn-outline-secondary" id="replaceAll">Todos</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Conteúdo (EasyMDE monta a toolbar/preview em cima desta textarea) -->
+            <div id="noteEditorWrap">
+                <textarea id="noteContent"
+                          placeholder="Escreva sua nota... (arraste arquivos .txt / .md para importar)"></textarea>
             </div>
-
-            <!-- Conteúdo -->
-            <textarea class="form-control flex-grow-1 border-0"
-                      placeholder="Escreva sua nota... (arraste arquivos .txt / .md para importar)"
-                      id="noteContent"
-                      style="resize: none; overflow-y: auto; min-height: 0;"></textarea>
-
-            <!-- Render Markdown -->
-            <div id="noteRender" class="flex-grow-1 overflow-y-auto d-none px-1"
-                 style="overflow-y: auto; min-height: 0; user-select: text;"></div>
 
         </div>
 
@@ -338,38 +295,45 @@
     const COLOR_ORDER = Object.fromEntries(COLORS.map((c, i) => [c, i]));
 
     // ── State ─────────────────────────────────────────────────────────────
-    let currentNoteId    = null;
-    let currentColor     = 'primary';
-    let isPinned         = false;
-    let editMode         = true;
-    let selectMode       = false;
-    let selectedIds      = new Set();
-    let pendingDelete    = null;
-    let allNotes         = [];
-    let sortBy           = 'order';
-    let sortDir          = 'asc';
-    let isDirty      = false;
-    let _saving      = false;
-    let _findMatches = [];
-    let _findIdx         = -1;
-    let _findOpen        = false;
+    let currentNoteId = null;
+    let currentColor  = 'primary';
+    let isPinned      = false;
+    let selectMode    = false;
+    let selectedIds   = new Set();
+    let pendingDelete = null;
+    let allNotes      = [];
+    const [_defaultSortBy, _defaultSortDir] = (window.__settings?.['notes.default_sort'] || 'order-asc').split('-');
+    let sortBy        = _defaultSortBy;
+    let sortDir        = _defaultSortDir || 'asc';
+    let isDirty       = false;
+    let _saving       = false;
+    let allFolders          = [];
+    let expandedFolderIds   = new Set();
+    let editingFolderId     = null;
+    let folderColor         = 'secondary';
+    let folderIsPinned      = false;
+    let _folderModalReopenAfterIcon = false;
+
+    const SETTINGS = window.__settings || {};
 
     // ── Markdown / Mermaid ────────────────────────────────────────────────
     marked.use({ breaks: true, gfm: true });
     mermaid.initialize({ startOnLoad: false, theme: 'dark' });
 
-    function renderMarkdown() {
-        const ta  = document.getElementById('noteContent');
-        const div = document.getElementById('noteRender');
-        div.innerHTML = marked.parse(ta.value || '');
-        div.querySelectorAll('code.language-mermaid').forEach(code => {
+    function postProcessPreview(container) {
+        const accentMode = SETTINGS['notes.render_accent'] || 'secondary';
+        const accent = accentMode === 'primary' ? 'primary'
+            : accentMode === 'note' ? (COLORS.includes(currentColor) ? currentColor : 'secondary')
+            : 'secondary';
+
+        container.querySelectorAll('code.language-mermaid').forEach(code => {
             const d = document.createElement('div');
             d.className = 'mermaid';
             d.textContent = code.textContent;
             code.parentElement.replaceWith(d);
         });
-        mermaid.run({ nodes: div.querySelectorAll('.mermaid') });
-        div.querySelectorAll('pre code').forEach(code => {
+        mermaid.run({ nodes: container.querySelectorAll('.mermaid') });
+        container.querySelectorAll('pre code').forEach(code => {
             hljs.highlightElement(code);
             const pre = code.parentElement;
             pre.style.position = 'relative';
@@ -385,31 +349,115 @@
             });
             pre.appendChild(btn);
         });
-        div.querySelectorAll('table').forEach(t =>
-            t.classList.add('table', 'table-bordered', 'table-sm', 'my-2'));
-        div.querySelectorAll('blockquote').forEach(bq =>
-            bq.classList.add('border-start', 'border-secondary', 'border-3', 'ps-3', 'text-secondary', 'my-2'));
+        container.querySelectorAll('table').forEach(t => {
+            t.classList.add('table', 'table-bordered', 'table-sm', 'my-2');
+            if (accentMode !== 'secondary') {
+                // --bs-table-border-color só afeta a borda externa do <table>
+                // em si — as células internas não herdam border-color (essa
+                // propriedade não é herdável em CSS), tem que setar em cada uma.
+                t.style.setProperty('--bs-table-border-color', `var(--bs-${accent})`);
+                t.querySelectorAll('td, th').forEach(cell => {
+                    cell.style.borderColor = `var(--bs-${accent})`;
+                });
+            }
+        });
+        container.querySelectorAll('blockquote').forEach(bq =>
+            bq.classList.add('border-start', 'border-' + accent, 'border-3', 'ps-3', 'text-secondary', 'my-2'));
+        container.querySelectorAll('hr').forEach(hr => {
+            if (accentMode !== 'secondary') hr.classList.add('border-' + accent, 'border-2', 'opacity-75');
+        });
+        container.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
+            if (accentMode !== 'secondary') h.classList.add('text-' + accent);
+        });
+        container.querySelectorAll('del, s').forEach(el => {
+            if (accentMode !== 'secondary') el.classList.add('text-' + accent);
+        });
+        container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            if (accentMode === 'secondary') return;
+            // accent-color e border-color não têm efeito visível num checkbox
+            // nativo desmarcado (confirmado testando lado a lado) — só no
+            // estado marcado. Desenha a caixa na mão pra funcionar nos dois
+            // estados, reaproveitando o mesmo tique SVG do próprio Bootstrap.
+            cb.style.appearance = 'none';
+            cb.style.webkitAppearance = 'none';
+            cb.style.width = '1em';
+            cb.style.height = '1em';
+            cb.style.verticalAlign = 'middle';
+            cb.style.border = `2px solid var(--bs-${accent})`;
+            cb.style.borderRadius = '0.25em';
+            cb.style.backgroundRepeat = 'no-repeat';
+            cb.style.backgroundPosition = 'center';
+            cb.style.backgroundSize = '0.75em';
+            if (cb.checked) {
+                cb.style.backgroundColor = `var(--bs-${accent})`;
+                cb.style.backgroundImage = "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e\")";
+            }
+        });
     }
 
-    function setEditMode(isEdit) {
-        editMode = isEdit;
-        const ta   = document.getElementById('noteContent');
-        const div  = document.getElementById('noteRender');
-        const tb   = document.getElementById('mdToolbar');
-        const icon = document.getElementById('noteMarkdownToggle').querySelector('i');
-        if (isEdit) {
-            ta.classList.remove('d-none');
-            div.classList.add('d-none');
-            tb.classList.remove('d-none');
-            icon.className = 'bi bi-eye';
-        } else {
-            renderMarkdown();
-            ta.classList.add('d-none');
-            div.classList.remove('d-none');
-            tb.classList.add('d-none');
-            icon.className = 'bi bi-pencil';
-        }
+    // Trocar a cor da nota muda `currentColor`, usado pelo accent "Cor da
+    // própria nota" — mas o EasyMDE só re-renderiza o preview quando o
+    // conteúdo muda, não quando um estado externo como esse muda. Força
+    // o re-render manualmente se o preview (ou side-by-side) estiver ativo.
+    function refreshPreviewIfActive() {
+        const previewEl = document.querySelector(
+            '#noteEditorWrap .editor-preview-active, #noteEditorWrap .editor-preview-active-side'
+        );
+        if (!previewEl) return;
+        previewEl.innerHTML = marked.parse(easyMDE.value() || '');
+        postProcessPreview(previewEl);
     }
+
+    // ── EasyMDE ───────────────────────────────────────────────────────────
+    const easyMDE = new EasyMDE({
+        element: document.getElementById('noteContent'),
+        autoDownloadFontAwesome: false,
+        spellChecker: false,
+        status: ['lines', 'words', 'cursor'],
+        toolbar: [
+            { name: 'heading', action: EasyMDE.toggleHeadingSmaller, text: 'H', title: 'Título (Ctrl+H, clique repetido aumenta o nível)' },
+            '|',
+            { name: 'bold', action: EasyMDE.toggleBold, className: 'bi bi-type-bold', title: 'Negrito (Ctrl+B)' },
+            { name: 'italic', action: EasyMDE.toggleItalic, className: 'bi bi-type-italic', title: 'Itálico (Ctrl+I)' },
+            { name: 'strikethrough', action: EasyMDE.toggleStrikethrough, className: 'bi bi-type-strikethrough', title: 'Tachado' },
+            '|',
+            { name: 'code', action: EasyMDE.toggleCodeBlock, className: 'bi bi-code-slash', title: 'Código (Ctrl+Alt+C)' },
+            { name: 'quote', action: EasyMDE.toggleBlockquote, className: 'bi bi-blockquote-left', title: "Citação (Ctrl+')" },
+            { name: 'unordered-list', action: EasyMDE.toggleUnorderedList, className: 'bi bi-list-ul', title: 'Lista (Ctrl+L)' },
+            { name: 'ordered-list', action: EasyMDE.toggleOrderedList, className: 'bi bi-list-ol', title: 'Lista numerada (Ctrl+Alt+L)' },
+            { name: 'check-list', action: EasyMDE.toggleCheckList, className: 'bi bi-check2-square', title: 'Checklist (Shift+Ctrl+L)' },
+            '|',
+            { name: 'link', action: EasyMDE.drawLink, className: 'bi bi-link-45deg', title: 'Link (Ctrl+K)' },
+            { name: 'image', action: EasyMDE.drawImage, className: 'bi bi-image', title: 'Imagem (Ctrl+Alt+I)' },
+            { name: 'table', action: EasyMDE.drawTable, className: 'bi bi-table', title: 'Tabela' },
+            { name: 'horizontal-rule', action: EasyMDE.drawHorizontalRule, className: 'bi bi-dash-lg', title: 'Linha horizontal' },
+            '|',
+            { name: 'preview', action: async (editor) => { await saveIfDirty(); EasyMDE.togglePreview(editor); }, className: 'bi bi-eye', title: 'Preview (Ctrl+P)', noDisable: true },
+            { name: 'side-by-side', action: async (editor) => { await saveIfDirty(); EasyMDE.toggleSideBySide(editor); }, className: 'bi bi-layout-split', title: 'Lado a lado (F9)', noDisable: true },
+            { name: 'fullscreen', action: EasyMDE.toggleFullScreen, className: 'bi bi-arrows-fullscreen', title: 'Tela cheia (F11)', noDisable: true },
+        ],
+        previewRender(plainText, previewEl) {
+            const html = marked.parse(plainText || '');
+            // EasyMDE só torna o container de preview visível (display:block) DEPOIS
+            // de chamar previewRender, com atraso variável conforme o conteúdo — rodar
+            // mermaid.run() antes disso mede texto num elemento invisível (SVG 0x0).
+            // Espera ativamente até o container ficar visível antes de renderizar.
+            // offsetParent não serve aqui: .editor-preview-side é position:fixed,
+            // que sempre retorna offsetParent nulo mesmo quando visível.
+            const waitVisible = (tries) => {
+                const r = previewEl.getBoundingClientRect();
+                if ((r.width > 0 && r.height > 0) || tries <= 0) {
+                    previewEl.innerHTML = html;
+                    postProcessPreview(previewEl);
+                } else {
+                    requestAnimationFrame(() => waitVisible(tries - 1));
+                }
+            };
+            waitVisible(60);
+            return previewEl.innerHTML || '';
+        },
+    });
+    easyMDE.codemirror.on('change', markDirty);
 
     // ── Toast ─────────────────────────────────────────────────────────────
     function showToast(msg, type = 'success') {
@@ -454,237 +502,6 @@
     function applyPinIcon() {
         document.getElementById('notePinBtn').querySelector('i').className =
             isPinned ? 'bi bi-pin-fill' : 'bi bi-pin';
-    }
-
-    // ── Toolbar helpers ───────────────────────────────────────────────────
-    function wrapSelection(before, after) {
-        const ta = document.getElementById('noteContent');
-        const s = ta.selectionStart, e = ta.selectionEnd;
-        const sel = ta.value.slice(s, e);
-        ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
-        ta.setSelectionRange(s + before.length, s + before.length + sel.length);
-        ta.focus();
-        markDirty();
-    }
-
-    function insertHeading(level) {
-        const ta = document.getElementById('noteContent');
-        const s = ta.selectionStart;
-        const lStart = ta.value.lastIndexOf('\n', s - 1) + 1;
-        const lEnd   = ta.value.indexOf('\n', s);
-        const line   = ta.value.slice(lStart, lEnd === -1 ? undefined : lEnd);
-        const clean  = line.replace(/^#{1,6}\s*/, '');
-        const newLine = level === 0 ? clean : '#'.repeat(level) + ' ' + clean;
-        ta.value = ta.value.slice(0, lStart) + newLine + (lEnd === -1 ? '' : ta.value.slice(lEnd));
-        ta.setSelectionRange(lStart + newLine.length, lStart + newLine.length);
-        ta.focus();
-        markDirty();
-    }
-
-    function insertList(type) {
-        const ta  = document.getElementById('noteContent');
-        const s   = ta.selectionStart, e = ta.selectionEnd;
-        const pfx = type === 'check' ? '- [ ] ' : type === 'ul' ? '- ' : '1. ';
-
-        if (s === e) {
-            const lStart = ta.value.lastIndexOf('\n', s - 1) + 1;
-            const line   = ta.value.slice(lStart, s);
-            if (!line.trim()) {
-                ta.value = ta.value.slice(0, lStart) + pfx + ta.value.slice(s);
-                ta.selectionStart = ta.selectionEnd = lStart + pfx.length;
-            } else {
-                const ins = '\n' + pfx;
-                ta.value = ta.value.slice(0, s) + ins + ta.value.slice(e);
-                ta.selectionStart = ta.selectionEnd = s + ins.length;
-            }
-        } else {
-            const before = ta.value.slice(0, s);
-            const sel    = ta.value.slice(s, e);
-            const after  = ta.value.slice(e);
-            const ins    = sel.split('\n').map((l, i) => {
-                if (!l.trim()) return l;
-                if (type === 'check') return '- [ ] ' + l;
-                if (type === 'ul')    return '- ' + l;
-                return (i + 1) + '. ' + l;
-            }).join('\n');
-            ta.value = before + ins + after;
-            ta.setSelectionRange(s, s + ins.length);
-        }
-        ta.focus();
-        markDirty();
-    }
-
-    function insertHR() {
-        const ta = document.getElementById('noteContent');
-        const p  = ta.selectionStart;
-        const ins = '\n---\n';
-        ta.value = ta.value.slice(0, p) + ins + ta.value.slice(p);
-        ta.selectionStart = ta.selectionEnd = p + ins.length;
-        ta.focus();
-        markDirty();
-    }
-
-    function insertTable(cols, rows) {
-        const header = '| ' + Array(cols).fill('').join(' | ') + ' |';
-        const sep    = '| ' + Array(cols).fill('---').join(' | ') + ' |';
-        const row    = '| ' + Array(cols).fill('').join(' | ') + ' |';
-        const table  = [header, sep, ...Array(rows).fill(row)].join('\n');
-        const ta = document.getElementById('noteContent');
-        const p  = ta.selectionStart;
-        const ins = '\n' + table + '\n';
-        ta.value = ta.value.slice(0, p) + ins + ta.value.slice(p);
-        ta.selectionStart = ta.selectionEnd = p + ins.length;
-        ta.focus();
-        markDirty();
-    }
-
-    function insertLink() {
-        const ta  = document.getElementById('noteContent');
-        const s   = ta.selectionStart, e = ta.selectionEnd;
-        const sel = ta.value.slice(s, e) || 'texto';
-        const ins = '[' + sel + '](url)';
-        ta.value  = ta.value.slice(0, s) + ins + ta.value.slice(e);
-        ta.setSelectionRange(s + sel.length + 3, s + sel.length + 6);
-        ta.focus();
-        markDirty();
-    }
-
-    function insertImage() {
-        const ta  = document.getElementById('noteContent');
-        const s   = ta.selectionStart, e = ta.selectionEnd;
-        const sel = ta.value.slice(s, e) || 'alt';
-        const ins = '![' + sel + '](url)';
-        ta.value  = ta.value.slice(0, s) + ins + ta.value.slice(e);
-        ta.setSelectionRange(s + sel.length + 4, s + sel.length + 7);
-        ta.focus();
-        markDirty();
-    }
-
-    function insertInlineCode() { wrapSelection('`', '`'); }
-
-    function insertCodeBlock() {
-        const ta  = document.getElementById('noteContent');
-        const s   = ta.selectionStart, e = ta.selectionEnd;
-        const sel = ta.value.slice(s, e);
-        const ins = '\n```\n' + (sel || '') + '\n```\n';
-        ta.value = ta.value.slice(0, s) + ins + ta.value.slice(e);
-        ta.setSelectionRange(s + 5, s + 5 + sel.length);
-        ta.focus();
-        markDirty();
-    }
-
-    function insertBlockquote() {
-        const ta = document.getElementById('noteContent');
-        const s  = ta.selectionStart, e = ta.selectionEnd;
-        if (s === e) {
-            const lStart = ta.value.lastIndexOf('\n', s - 1) + 1;
-            const line   = ta.value.slice(lStart, s);
-            if (!line.trim()) {
-                ta.value = ta.value.slice(0, lStart) + '> ' + ta.value.slice(s);
-                ta.selectionStart = ta.selectionEnd = lStart + 2;
-            } else {
-                const ins = '\n> ';
-                ta.value = ta.value.slice(0, s) + ins + ta.value.slice(e);
-                ta.selectionStart = ta.selectionEnd = s + ins.length;
-            }
-        } else {
-            const before = ta.value.slice(0, s);
-            const sel    = ta.value.slice(s, e);
-            const after  = ta.value.slice(e);
-            const ins    = sel.split('\n').map(l => '> ' + l).join('\n');
-            ta.value = before + ins + after;
-            ta.setSelectionRange(s, s + ins.length);
-        }
-        ta.focus();
-        markDirty();
-    }
-
-    // ── Smart Enter ───────────────────────────────────────────────────────
-    function handleSmartEnter(e) {
-        const ta     = document.getElementById('noteContent');
-        const pos    = ta.selectionStart;
-        if (pos !== ta.selectionEnd) return;
-
-        const before = ta.value.slice(0, pos);
-        const after  = ta.value.slice(pos);
-        const lStart = before.lastIndexOf('\n') + 1;
-        const line   = before.slice(lStart);
-
-        // Table row (non-separator)
-        const isSep = line.split('|').slice(1, -1).every(c => /^[\s:-]+$/.test(c));
-        if (/^\|.+\|$/.test(line.trimEnd()) && !isSep) {
-            const cols   = (line.match(/\|/g) || []).length - 1;
-            const newRow = '\n| ' + Array(cols).fill('').join(' | ') + ' |';
-            e.preventDefault();
-            ta.value = before + newRow + after;
-            ta.selectionStart = ta.selectionEnd = pos + 3;
-            markDirty();
-            return;
-        }
-
-        // Checklist (must precede ul check — same prefix pattern)
-        const checkM = line.match(/^(\s*)-\s\[[ x]\]\s(.*)$/);
-        if (checkM) {
-            e.preventDefault();
-            if (!checkM[2].trim()) {
-                ta.value = ta.value.slice(0, lStart) + '\n' + after;
-                ta.selectionStart = ta.selectionEnd = lStart + 1;
-            } else {
-                const ins = '\n' + checkM[1] + '- [ ] ';
-                ta.value = before + ins + after;
-                ta.selectionStart = ta.selectionEnd = pos + ins.length;
-            }
-            markDirty();
-            return;
-        }
-
-        // Blockquote
-        const bqM = line.match(/^(\s*>)\s(.*)$/);
-        if (bqM) {
-            e.preventDefault();
-            if (!bqM[2].trim()) {
-                ta.value = ta.value.slice(0, lStart) + '\n' + after;
-                ta.selectionStart = ta.selectionEnd = lStart + 1;
-            } else {
-                const ins = '\n' + bqM[1] + ' ';
-                ta.value = before + ins + after;
-                ta.selectionStart = ta.selectionEnd = pos + ins.length;
-            }
-            markDirty();
-            return;
-        }
-
-        // Unordered list
-        const ulM = line.match(/^(\s*)([-*])\s(.*)$/);
-        if (ulM) {
-            e.preventDefault();
-            if (!ulM[3].trim()) {
-                ta.value = ta.value.slice(0, lStart) + '\n' + after;
-                ta.selectionStart = ta.selectionEnd = lStart + 1;
-            } else {
-                const ins = '\n' + ulM[1] + ulM[2] + ' ';
-                ta.value = before + ins + after;
-                ta.selectionStart = ta.selectionEnd = pos + ins.length;
-            }
-            markDirty();
-            return;
-        }
-
-        // Ordered list
-        const olM = line.match(/^(\s*)(\d+)\.\s(.*)$/);
-        if (olM) {
-            e.preventDefault();
-            if (!olM[3].trim()) {
-                ta.value = ta.value.slice(0, lStart) + '\n' + after;
-                ta.selectionStart = ta.selectionEnd = lStart + 1;
-            } else {
-                const ins = '\n' + olM[1] + (parseInt(olM[2]) + 1) + '. ';
-                ta.value = before + ins + after;
-                ta.selectionStart = ta.selectionEnd = pos + ins.length;
-            }
-            markDirty();
-            return;
-        }
     }
 
     // ── Sort ──────────────────────────────────────────────────────────────
@@ -739,16 +556,7 @@
                 </button>`;
     }
 
-    function renderSidebar(notes) {
-        const sorted = sortNotes(notes);
-        const pinned = sorted.filter(n =>  n.is_pinned);
-        const others = sorted.filter(n => !n.is_pinned);
-
-        document.getElementById('pinnedList').innerHTML = pinned.map(noteCardHtml).join('');
-        document.getElementById('notesList').innerHTML  = others.map(noteCardHtml).join('');
-        document.getElementById('pinnedSection').classList.toggle('d-none', !pinned.length);
-        document.getElementById('othersSection').classList.toggle('d-none', !others.length);
-
+    function wireNoteCardClicks() {
         document.querySelectorAll('.note-card').forEach(el => {
             el.addEventListener('click', async () => {
                 const id = parseInt(el.dataset.id);
@@ -771,14 +579,216 @@
         });
     }
 
-    function applyFilter() {
+    // ── Pastas (accordion embutido na lista) ─────────────────────────────
+    function noteMatchesQuery(note, q) {
+        return !q || note.title.toLowerCase().includes(q);
+    }
+
+    function folderBlockHtml(folder, notes, isOpen) {
+        const color   = COLORS.includes(folder.color) ? folder.color : 'secondary';
+        const icon    = folder.icon || 'bi-folder';
+        const chevron = isOpen ? 'bi-chevron-down' : 'bi-chevron-right';
+        const notesHtml = isOpen
+            ? `<div class="ps-3 mt-1">${notes.map(noteCardHtml).join('')}</div>`
+            : '';
+        return `<div class="mb-1">
+                    <div class="btn-group btn-group-sm w-100">
+                        <button type="button" class="btn btn-${color} d-flex align-items-center gap-1 flex-grow-1 text-start overflow-hidden"
+                                data-folder-toggle="${folder.id}">
+                            <i class="${chevron} flex-shrink-0"></i>
+                            <i class="${escHtml(icon)} flex-shrink-0"></i>
+                            <span class="text-truncate">${escHtml(folder.name)}</span>
+                        </button>
+                        <button type="button" class="btn btn-${color} px-1 flex-shrink-0" data-folder-edit="${folder.id}" title="Editar pasta">
+                            <i class="bi bi-pencil-fill" style="font-size:.65rem;"></i>
+                        </button>
+                    </div>
+                    ${notesHtml}
+                </div>`;
+    }
+
+    function wireFolderControls() {
+        document.querySelectorAll('[data-folder-toggle]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = parseInt(btn.dataset.folderToggle);
+                if (expandedFolderIds.has(id)) expandedFolderIds.delete(id); else expandedFolderIds.add(id);
+                renderSidebar();
+            });
+        });
+        document.querySelectorAll('[data-folder-edit]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = parseInt(btn.dataset.folderEdit);
+                const folder = allFolders.find(f => f.id === id);
+                if (folder) openFolderModal(folder);
+            });
+        });
+    }
+
+    function renderSidebar() {
         const q = document.getElementById('noteSearch').value.trim().toLowerCase();
-        renderSidebar(q ? allNotes.filter(n => n.title.toLowerCase().includes(q)) : allNotes);
+
+        const notesByFolder = new Map();
+        const folderless = [];
+        for (const n of allNotes) {
+            if (n.folder_id) {
+                if (!notesByFolder.has(n.folder_id)) notesByFolder.set(n.folder_id, []);
+                notesByFolder.get(n.folder_id).push(n);
+            } else {
+                folderless.push(n);
+            }
+        }
+
+        const pinnedFolderIds = new Set(
+            allFolders
+                .filter(f => f.is_pinned || (notesByFolder.get(f.id) || []).some(n => n.is_pinned))
+                .map(f => f.id)
+        );
+
+        function folderVisibleAndNotes(folder) {
+            const notes = sortNotes(notesByFolder.get(folder.id) || []);
+            if (!q) {
+                return { visible: true, notes, open: expandedFolderIds.has(folder.id) };
+            }
+            const nameMatches    = folder.name.toLowerCase().includes(q);
+            const matchingNotes  = notes.filter(n => noteMatchesQuery(n, q));
+            if (nameMatches) return { visible: true, notes, open: true };
+            if (matchingNotes.length) return { visible: true, notes: matchingNotes, open: true };
+            return { visible: false, notes: [], open: false };
+        }
+
+        function renderGroup(folderIdSet, looseNotes) {
+            let html = allFolders
+                .filter(f => folderIdSet.has(f.id))
+                .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                .map(folder => {
+                    const { visible, notes, open } = folderVisibleAndNotes(folder);
+                    return visible ? folderBlockHtml(folder, notes, open) : '';
+                })
+                .join('');
+            const loose = sortNotes(looseNotes).filter(n => noteMatchesQuery(n, q));
+            html += loose.map(noteCardHtml).join('');
+            return html;
+        }
+
+        const otherFolderIds = new Set(allFolders.filter(f => !pinnedFolderIds.has(f.id)).map(f => f.id));
+        const pinnedLoose = folderless.filter(n => n.is_pinned);
+        const otherLoose  = folderless.filter(n => !n.is_pinned);
+
+        const pinnedHtml = renderGroup(pinnedFolderIds, pinnedLoose);
+        const othersHtml = renderGroup(otherFolderIds, otherLoose);
+
+        document.getElementById('pinnedList').innerHTML = pinnedHtml;
+        document.getElementById('notesList').innerHTML  = othersHtml;
+        document.getElementById('pinnedSection').classList.toggle('d-none', !pinnedHtml);
+        document.getElementById('othersSection').classList.toggle('d-none', !othersHtml);
+
+        wireNoteCardClicks();
+        wireFolderControls();
+    }
+
+    function applyFilter() {
+        renderSidebar();
     }
 
     async function loadNotes() {
         allNotes = await fetch('/api/notes').then(r => r.json());
-        applyFilter();
+        renderSidebar();
+    }
+
+    function folderMenuItemsHtml() {
+        const items = ['<li><a class="dropdown-item" href="#" data-note-folder="">Sem pasta</a></li>'];
+        allFolders.forEach(f => {
+            const color = COLORS.includes(f.color) ? f.color : 'secondary';
+            items.push(`<li><a class="dropdown-item d-flex align-items-center gap-2" href="#" data-note-folder="${f.id}">
+                            <span class="rounded-circle d-inline-block bg-${color}" style="width:10px;height:10px;"></span>
+                            ${escHtml(f.name)}
+                        </a></li>`);
+        });
+        return items.join('');
+    }
+
+    function renderNoteFolderMenu() {
+        const menu = document.getElementById('noteFolderMenu');
+        menu.innerHTML = folderMenuItemsHtml();
+        menu.querySelectorAll('[data-note-folder]').forEach(a => {
+            a.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const val = a.dataset.noteFolder;
+                const folder_id = val ? parseInt(val) : null;
+                if (!currentNoteId) return;
+                await fetch('/api/notes/' + currentNoteId, {
+                    method:  'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ folder_id }),
+                });
+                showToast(folder_id ? 'Nota movida!' : 'Nota removida da pasta!', 'info');
+                await loadNotes();
+            });
+        });
+    }
+
+    function renderBulkFolderMenu() {
+        const menu = document.getElementById('bulkFolderMenu');
+        menu.innerHTML = folderMenuItemsHtml();
+        menu.querySelectorAll('[data-note-folder]').forEach(a => {
+            a.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const ids = [...selectedIds];
+                if (!ids.length) return;
+                const val = a.dataset.noteFolder;
+                const folder_id = val ? parseInt(val) : null;
+                await fetch('/api/notes/bulk-update', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ ids, folder_id }),
+                });
+                showToast(folder_id ? `${ids.length} nota(s) movida(s)!` : `${ids.length} nota(s) removida(s) da pasta!`, 'info');
+                exitSelectMode();
+            });
+        });
+    }
+
+    let _seenFolderIds = new Set();
+
+    async function loadFolders() {
+        allFolders = await fetch('/api/note-folders').then(r => r.json());
+        const openByDefault = SETTINGS['notes.folders_open_default'] === 'true';
+        allFolders.forEach(f => {
+            // Só decide o estado inicial (aberta/fechada) na primeira vez que
+            // a pasta aparece nesta sessão — depois disso, respeita o toggle
+            // manual do usuário sem sobrescrever de novo a cada reload.
+            if (!_seenFolderIds.has(f.id)) {
+                _seenFolderIds.add(f.id);
+                if (openByDefault) expandedFolderIds.add(f.id);
+            }
+        });
+        renderNoteFolderMenu();
+        renderBulkFolderMenu();
+        renderSidebar();
+    }
+
+    const _folderModal = new bootstrap.Modal(document.getElementById('folderModal'));
+
+    function applyFolderPinIcon() {
+        document.getElementById('folderPinBtn').querySelector('i').className =
+            folderIsPinned ? 'bi bi-pin-fill' : 'bi bi-pin';
+    }
+
+    function openFolderModal(folder) {
+        editingFolderId = folder ? folder.id : null;
+        folderColor     = folder && COLORS.includes(folder.color) ? folder.color : 'secondary';
+        folderIsPinned  = !!(folder && folder.is_pinned);
+
+        document.getElementById('folderModalTitle').textContent      = folder ? 'Editar pasta' : 'Nova pasta';
+        document.getElementById('folderNameInput').value              = folder ? folder.name : '';
+        document.getElementById('folderIconValue').value              = folder ? (folder.icon || '') : '';
+        document.getElementById('folderIconPreview').className       = (folder && folder.icon) || 'bi bi-folder';
+        document.getElementById('folderColorDot').className           = `rounded-circle d-inline-block bg-${folderColor}`;
+        document.getElementById('folderDeleteBtn').classList.toggle('d-none', !folder);
+        applyFolderPinIcon();
+
+        _folderModal.show();
     }
 
     // ── Editor ────────────────────────────────────────────────────────────
@@ -789,16 +799,21 @@
         isDirty       = false;
 
         document.getElementById('noteTitleInput').value      = note.title || '';
-        document.getElementById('noteContent').value         = note.text  || '';
+        easyMDE.value(note.text || '');
         document.getElementById('noteIconValue').value       = note.icon  || '';
         document.getElementById('noteIconPreview').className = note.icon  || 'bi bi-tag';
 
         applyColorDot(currentColor);
         applyPinIcon();
-        setEditMode(false);
 
         document.getElementById('noteEmptyState').classList.add('d-none');
         document.getElementById('noteEditor').classList.remove('d-none');
+        easyMDE.codemirror.refresh();
+
+        const wantPreview = SETTINGS['notes.default_open_mode'] === 'preview';
+        if (wantPreview !== easyMDE.isPreviewActive()) {
+            EasyMDE.togglePreview(easyMDE);
+        }
     }
 
     async function saveNote() {
@@ -820,7 +835,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title,
-                        text: document.getElementById('noteContent').value,
+                        text: easyMDE.value(),
                     }),
                 });
             } else {
@@ -829,7 +844,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title,
-                        text:      document.getElementById('noteContent').value,
+                        text:      easyMDE.value(),
                         color:     currentColor,
                         icon:      document.getElementById('noteIconValue').value || null,
                         is_pinned: isPinned,
@@ -886,24 +901,19 @@
         isDirty       = false;
 
         document.getElementById('noteTitleInput').value      = '';
-        document.getElementById('noteContent').value         = '';
+        easyMDE.value('');
         document.getElementById('noteIconValue').value       = '';
         document.getElementById('noteIconPreview').className = 'bi bi-tag';
         applyColorDot(currentColor);
         applyPinIcon();
-        setEditMode(true);
 
         document.getElementById('noteEmptyState').classList.add('d-none');
         document.getElementById('noteEditor').classList.remove('d-none');
+        easyMDE.codemirror.refresh();
         document.getElementById('noteTitleInput').focus();
     });
 
     document.getElementById('noteSaveBtn').addEventListener('click', saveNote);
-
-    document.getElementById('noteMarkdownToggle').addEventListener('click', async () => {
-        await saveIfDirty();
-        setEditMode(!editMode);
-    });
 
     document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
         _deleteModal.hide();
@@ -914,12 +924,18 @@
         openDeleteModal('Excluir esta nota?', deleteNote);
     });
 
-    document.getElementById('noteDownloadBtn').addEventListener('click', async () => {
+    async function downloadNote(format) {
         await saveIfDirty();
         if (!currentNoteId) return;
-        const data = await fetch('/api/notes/' + currentNoteId + '/export', { method: 'POST' }).then(r => r.json());
+        const data = await fetch('/api/notes/' + currentNoteId + '/export', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ format }),
+        }).then(r => r.json());
         if (!data.cancelled) showToast('Download concluído!', 'info');
-    });
+    }
+    document.getElementById('noteDownloadMd').addEventListener('click', (e) => { e.preventDefault(); downloadNote('md'); });
+    document.getElementById('noteDownloadTxt').addEventListener('click', (e) => { e.preventDefault(); downloadNote('txt'); });
 
     document.getElementById('noteSelectBtn').addEventListener('click', () => {
         if (selectMode) exitSelectMode(); else enterSelectMode();
@@ -931,17 +947,19 @@
         openDeleteModal(`Excluir ${ids.length} nota(s)?`, () => doBulkDelete(ids));
     });
 
-    document.getElementById('bulkDownloadBtn').addEventListener('click', async () => {
+    async function bulkDownload(format) {
         const ids = [...selectedIds];
         if (!ids.length) return;
         await fetch('/api/notes/export-bulk', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ ids }),
+            body:    JSON.stringify({ ids, format }),
         });
         showToast(ids.length + ' nota(s) baixada(s)!', 'info');
         exitSelectMode();
-    });
+    }
+    document.getElementById('bulkDownloadMd').addEventListener('click', (e) => { e.preventDefault(); bulkDownload('md'); });
+    document.getElementById('bulkDownloadTxt').addEventListener('click', (e) => { e.preventDefault(); bulkDownload('txt'); });
 
     document.getElementById('notePinBtn').addEventListener('click', async () => {
         await saveIfDirty();
@@ -971,6 +989,10 @@
         }
     });
 
+    document.getElementById('folderIconValue').addEventListener('change', function () {
+        if (this.value) document.getElementById('folderIconPreview').className = this.value;
+    });
+
     document.getElementById('bulkIconValue').addEventListener('change', async function () {
         if (!this.value) return;
         const ids = [...selectedIds];
@@ -987,6 +1009,7 @@
     buildColorSwatches('noteColorSwatches', async (color) => {
         currentColor = color;
         applyColorDot(color);
+        refreshPreviewIfActive();
         if (currentNoteId) {
             await fetch('/api/notes/' + currentNoteId, {
                 method:  'PUT',
@@ -1009,6 +1032,74 @@
         await loadNotes();
     });
 
+    buildColorSwatches('folderColorSwatches', (color) => {
+        folderColor = color;
+        document.getElementById('folderColorDot').className = `rounded-circle d-inline-block bg-${color}`;
+    });
+
+    document.getElementById('newFolderBtn').addEventListener('click', () => openFolderModal(null));
+
+    document.getElementById('folderPinBtn').addEventListener('click', () => {
+        folderIsPinned = !folderIsPinned;
+        applyFolderPinIcon();
+    });
+
+    document.getElementById('folderSaveBtn').addEventListener('click', async () => {
+        const name = document.getElementById('folderNameInput').value.trim();
+        if (!name) return;
+        const payload = {
+            name,
+            color: folderColor,
+            icon:  document.getElementById('folderIconValue').value || null,
+            is_pinned: folderIsPinned,
+        };
+        if (editingFolderId) {
+            await fetch('/api/note-folders/' + editingFolderId, {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload),
+            });
+        } else {
+            await fetch('/api/note-folders', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload),
+            });
+        }
+        _folderModal.hide();
+        showToast(editingFolderId ? 'Pasta atualizada!' : 'Pasta criada!', 'success');
+        await loadFolders();
+    });
+
+    document.getElementById('folderDeleteBtn').addEventListener('click', () => {
+        const id = editingFolderId;
+        _folderModal.hide();
+        openDeleteModal('Excluir esta pasta? As notas dentro dela não serão apagadas.', async () => {
+            await fetch('/api/note-folders/' + id, { method: 'DELETE' });
+            expandedFolderIds.delete(id);
+            showToast('Pasta excluída!', 'danger');
+            await loadFolders();
+            await loadNotes();
+        });
+    });
+
+    // Bootstrap 5 não suporta modal-dentro-de-modal via data-bs-toggle
+    // declarativo — abrir o icon picker por cima do folderModal fecharia os
+    // dois ao confirmar. Aqui a troca é manual: esconde o folderModal antes,
+    // reabre depois que o icon picker fechar (só se foi essa a origem).
+    document.getElementById('folderIconTrigger').addEventListener('click', () => {
+        _folderModalReopenAfterIcon = true;
+        _folderModal.hide();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('iconPickerModal'))
+            .show(document.getElementById('folderIconTrigger'));
+    });
+    document.getElementById('iconPickerModal').addEventListener('hidden.bs.modal', () => {
+        if (_folderModalReopenAfterIcon) {
+            _folderModalReopenAfterIcon = false;
+            _folderModal.show();
+        }
+    });
+
     document.getElementById('noteSearch').addEventListener('input', applyFilter);
 
     document.querySelectorAll('.sort-opt').forEach(a => {
@@ -1020,52 +1111,7 @@
         });
     });
 
-    // ── Textarea: Tab, Smart Enter, Ctrl shortcuts, Auto-save ─────────────
-    document.getElementById('noteContent').addEventListener('keydown', (e) => {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const ta     = document.getElementById('noteContent');
-            const s      = ta.selectionStart, end = ta.selectionEnd;
-            const lStart = ta.value.lastIndexOf('\n', s - 1) + 1;
-            const line   = ta.value.slice(lStart);
-            const isList = /^\s*([-*]|\d+\.|-\s*\[)\s/.test(line);
-
-            if (e.shiftKey) {
-                if (ta.value[lStart] === '\t') {
-                    ta.value = ta.value.slice(0, lStart) + ta.value.slice(lStart + 1);
-                    ta.selectionStart = ta.selectionEnd = Math.max(lStart, s - 1);
-                }
-            } else if (isList && s === end) {
-                // Indent list item at line start → sub-item
-                ta.value = ta.value.slice(0, lStart) + '\t' + ta.value.slice(lStart);
-                ta.selectionStart = ta.selectionEnd = s + 1;
-            } else {
-                ta.value = ta.value.slice(0, s) + '\t' + ta.value.slice(end);
-                ta.selectionStart = ta.selectionEnd = s + 1;
-            }
-            markDirty();
-            return;
-        }
-        if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) { handleSmartEnter(e); return; }
-        if (e.key === 'Escape' && _findOpen) { e.preventDefault(); closeFind(); return; }
-        if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveNote(); return; }
-        if (e.ctrlKey && e.key === 'b') { e.preventDefault(); wrapSelection('**', '**'); return; }
-        if (e.ctrlKey && e.key === 'i') { e.preventDefault(); wrapSelection('_', '_'); return; }
-        if (e.ctrlKey && e.shiftKey && e.key === 'S') { e.preventDefault(); wrapSelection('~~', '~~'); return; }
-        if (e.ctrlKey && e.shiftKey && e.key === 'C') { e.preventDefault(); insertInlineCode(); return; }
-        if (e.ctrlKey && e.shiftKey && e.key === 'B') { e.preventDefault(); insertBlockquote(); return; }
-        if (e.ctrlKey && e.shiftKey && e.key === 'L') { e.preventDefault(); insertHR(); return; }
-        if (e.ctrlKey && e.shiftKey && e.key === '7') { e.preventDefault(); insertList('ol'); return; }
-        if (e.ctrlKey && e.shiftKey && e.key === '8') { e.preventDefault(); insertList('ul'); return; }
-        if (e.ctrlKey && e.shiftKey && e.key === '9') { e.preventDefault(); insertList('check'); return; }
-        if (e.ctrlKey && !e.shiftKey && e.key >= '1' && e.key <= '4') { e.preventDefault(); insertHeading(parseInt(e.key)); return; }
-        if (e.ctrlKey && e.key === 'k') { e.preventDefault(); insertLink(); return; }
-        if (e.ctrlKey && e.key === 'f') { e.preventDefault(); openFind(false); return; }
-        if (e.ctrlKey && e.key === 'h') { e.preventDefault(); openFind(true); return; }
-    });
-
-    document.getElementById('noteContent').addEventListener('input', markDirty);
-
+    // ── Auto-save ────────────────────────────────────────────────────────
     document.getElementById('noteEditor').addEventListener('focusout', (e) => {
         if (!e.relatedTarget || !document.getElementById('noteEditor').contains(e.relatedTarget)) {
             saveIfDirty();
@@ -1079,140 +1125,6 @@
 
     document.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveNote(); }
-        if (e.ctrlKey && e.key === 'f') { e.preventDefault(); openFind(false); }
-        if (e.ctrlKey && e.key === 'h') { e.preventDefault(); openFind(true); }
-        if (e.key === 'Escape' && _findOpen) { closeFind(); }
-    });
-
-    // ── Find & Replace ────────────────────────────────────────────────────
-    function openFind(withReplace = false) {
-        document.getElementById('replaceRow').classList.toggle('d-none', !withReplace);
-        const dd = bootstrap.Dropdown.getOrCreateInstance(document.getElementById('tbFind'));
-        dd.show();
-        requestAnimationFrame(() => {
-            const inp = document.getElementById('findInput');
-            inp.focus();
-            inp.select();
-            doFind();
-        });
-    }
-
-    function closeFind() {
-        _findMatches = [];
-        _findIdx     = -1;
-        document.getElementById('findCount').textContent = '';
-        const dd = bootstrap.Dropdown.getInstance(document.getElementById('tbFind'));
-        if (dd) dd.hide();
-        document.getElementById('noteContent').focus();
-    }
-
-    function doFind() {
-        const query = document.getElementById('findInput').value;
-        const ta    = document.getElementById('noteContent');
-        _findMatches = [];
-        _findIdx     = -1;
-        if (!query) { updateFindCount(); return; }
-        const lower = ta.value.toLowerCase();
-        const q     = query.toLowerCase();
-        let p = 0;
-        while ((p = lower.indexOf(q, p)) !== -1) { _findMatches.push(p); p += q.length || 1; }
-        if (_findMatches.length) _findIdx = 0;
-        updateFindCount();
-    }
-
-    function gotoMatch(idx) {
-        if (!_findMatches.length) return;
-        _findIdx    = ((idx % _findMatches.length) + _findMatches.length) % _findMatches.length;
-        const start = _findMatches[_findIdx];
-        const ta    = document.getElementById('noteContent');
-        const lh    = parseInt(getComputedStyle(ta).lineHeight) || 21;
-        const lines = (ta.value.slice(0, start).match(/\n/g) || []).length;
-        ta.scrollTop = Math.max(0, lines * lh - ta.clientHeight / 2);
-        ta.focus();
-        ta.setSelectionRange(start, start + document.getElementById('findInput').value.length);
-        updateFindCount();
-    }
-
-    function updateFindCount() {
-        const inp = document.getElementById('findInput').value;
-        document.getElementById('findCount').textContent =
-            !inp             ? '' :
-            !_findMatches.length ? '0 resultados' :
-            (_findIdx + 1) + '/' + _findMatches.length;
-    }
-
-    function doReplace() {
-        if (!_findMatches.length || _findIdx < 0) return;
-        const ta    = document.getElementById('noteContent');
-        const query = document.getElementById('findInput').value;
-        const repl  = document.getElementById('replaceInput').value;
-        const start = _findMatches[_findIdx];
-        if (ta.selectionStart !== start) { gotoMatch(_findIdx); return; }
-        ta.value = ta.value.slice(0, start) + repl + ta.value.slice(start + query.length);
-        markDirty();
-        doFind();
-        if (_findMatches.length) gotoMatch(_findIdx);
-    }
-
-    function doReplaceAll() {
-        const query = document.getElementById('findInput').value;
-        const repl  = document.getElementById('replaceInput').value;
-        if (!query) return;
-        const count = _findMatches.length;
-        const re    = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        document.getElementById('noteContent').value =
-            document.getElementById('noteContent').value.replace(re, repl);
-        markDirty();
-        showToast(count + ' substituição(ões) feita(s)!', 'success');
-        doFind();
-    }
-
-    document.getElementById('tbFind').addEventListener('shown.bs.dropdown', () => {
-        _findOpen = true;
-        requestAnimationFrame(() => document.getElementById('findInput').focus());
-    });
-    document.getElementById('tbFind').addEventListener('hidden.bs.dropdown', () => {
-        _findOpen    = false;
-        _findMatches = [];
-        _findIdx     = -1;
-        document.getElementById('findCount').textContent = '';
-    });
-    document.getElementById('findToggleReplace').addEventListener('click', () =>
-        document.getElementById('replaceRow').classList.toggle('d-none')
-    );
-    document.getElementById('findInput').addEventListener('input', doFind);
-    document.getElementById('findPrev').addEventListener('click', () => gotoMatch(_findIdx - 1));
-    document.getElementById('findNext').addEventListener('click', () => gotoMatch(_findIdx + 1));
-    document.getElementById('replaceOne').addEventListener('click', doReplace);
-    document.getElementById('replaceAll').addEventListener('click', doReplaceAll);
-    document.getElementById('findInput').addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') { e.preventDefault(); closeFind(); }
-        if (e.key === 'Enter')  { e.preventDefault(); gotoMatch(e.shiftKey ? _findIdx - 1 : _findIdx + 1); }
-    });
-
-    // ── Toolbar wiring ────────────────────────────────────────────────────
-    document.querySelectorAll('[data-wrap]').forEach(btn =>
-        btn.addEventListener('click', () => { const v = btn.dataset.wrap; wrapSelection(v, v); })
-    );
-    document.querySelectorAll('[data-heading]').forEach(a =>
-        a.addEventListener('click', (e) => { e.preventDefault(); insertHeading(parseInt(a.dataset.heading)); })
-    );
-    document.getElementById('tbCheck').addEventListener('click', (e) => { e.preventDefault(); insertList('check'); });
-    document.getElementById('tbUl').addEventListener('click', (e) => { e.preventDefault(); insertList('ul'); });
-    document.getElementById('tbOl').addEventListener('click', (e) => { e.preventDefault(); insertList('ol'); });
-    document.getElementById('tbCode').addEventListener('click', () => insertInlineCode());
-    document.getElementById('tbCodeBlock').addEventListener('click', () => insertCodeBlock());
-    document.getElementById('tbBlockquote').addEventListener('click', () => insertBlockquote());
-    document.getElementById('tbLink').addEventListener('click', () => insertLink());
-    document.getElementById('tbImage').addEventListener('click', () => insertImage());
-    document.getElementById('tbHr').addEventListener('click', () => insertHR());
-    document.getElementById('tableInsertBtn').addEventListener('click', () => {
-        const cols = Math.max(1, parseInt(document.getElementById('tableCols').value) || 3);
-        const rows = Math.max(1, parseInt(document.getElementById('tableRows').value) || 3);
-        insertTable(cols, rows);
-        const trigger = document.getElementById('tableInsertBtn')
-            .closest('.dropdown')?.querySelector('[data-bs-toggle="dropdown"]');
-        if (trigger) bootstrap.Dropdown.getInstance(trigger)?.hide();
     });
 
     // ── File drag & drop import ───────────────────────────────────────────
@@ -1251,6 +1163,16 @@
     });
 
     // ── Init ──────────────────────────────────────────────────────────────
+    const previewFontSize   = SETTINGS['notes.preview_font_size'];
+    const previewFontFamily = SETTINGS['notes.preview_font_family'];
+    if (previewFontSize) {
+        document.getElementById('noteEditorWrap').style.setProperty('--notes-preview-font-size', previewFontSize + 'px');
+    }
+    if (previewFontFamily && previewFontFamily !== 'default') {
+        document.getElementById('noteEditorWrap').style.setProperty('--notes-preview-font-family', previewFontFamily);
+    }
+
+    loadFolders();
     loadNotes();
 })();
 </script>

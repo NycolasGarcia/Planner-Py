@@ -8,4 +8,5 @@ from .task import Task
 from .task_list import TaskList
 
 from .note import Note
+from .note_folder import NoteFolder
 from .settings import Setting

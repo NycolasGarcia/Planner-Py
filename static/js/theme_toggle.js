@@ -1,35 +1,52 @@
-// theme-toggle.js - Versão simplificada e eficiente
+// theme-toggle.js - localStorage pro toggle rápido do header,
+// window.__settings (Settings > Customização) como default de inicialização,
+// com suporte a "Sistema" (segue prefers-color-scheme, reage ao vivo).
 
 (function() {
-    // Estado inicial - verifica preferência salva ou do sistema
-    let dark_mode = localStorage.getItem('theme') === 'dark' || 
-                    (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
-    // Aplica o tema inicial
-    const htmlElement = document.documentElement;
+    const htmlElement  = document.documentElement;
     const toggleButton = document.getElementById('theme_toggle');
-    const iconElement = toggleButton?.querySelector('i');
-    
-    function setTheme(isDark) {
-        // Atualiza variável de estado
-        dark_mode = isDark;
-        
-        // Aplica o tema no Bootstrap
-        htmlElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
-        
-        // Salva no localStorage
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    const media        = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const savedMode    = localStorage.getItem('theme'); // 'light' | 'dark' | null
+    const settingsMode = (window.__settings && window.__settings['theme.mode']) || 'dark';
+
+    let followSystem = false;
+    let dark_mode;
+
+    if (savedMode === 'light' || savedMode === 'dark') {
+        dark_mode = savedMode === 'dark';
+    } else if (settingsMode === 'system') {
+        followSystem = true;
+        dark_mode = media.matches;
+    } else {
+        dark_mode = settingsMode === 'dark';
     }
-    
-    // Aplica tema inicial
-    setTheme(dark_mode);
-    
-    // Adiciona evento de clique
+
+    function applyTheme(isDark) {
+        dark_mode = isDark;
+        htmlElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
+    }
+
+    applyTheme(dark_mode);
+
+    if (followSystem) {
+        media.addEventListener('change', (e) => {
+            if (followSystem) applyTheme(e.matches);
+        });
+    }
+
+    function setTheme(isDark) {
+        // Clique explícito no toggle sempre sai do modo "Sistema" pra essa sessão —
+        // trocar o modo de volta só é feito em Settings.
+        followSystem = false;
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        applyTheme(isDark);
+    }
+
     if (toggleButton) {
         toggleButton.addEventListener('click', () => setTheme(!dark_mode));
     }
-    
-    // Expor variável global se necessário (opcional)
+
     window.dark_mode = dark_mode;
     window.setTheme = setTheme;
 })();

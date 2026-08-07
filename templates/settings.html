@@ -2,300 +2,463 @@
 
 {% block title %}Configurações{% endblock %}
 
+{% block head %}
+<style>
+    /* Destaque explícito de seleção nos swatches de cor (botões sólidos —
+       o checked-state padrão do Bootstrap quase não aparece nesse caso). */
+    input[name="color"].btn-check:checked + label {
+        outline: 3px solid var(--bs-emphasis-color);
+        outline-offset: 2px;
+    }
+    .settings-tab.active {
+        background-color: var(--bs-primary);
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 
-<div class="container-fluid py-3">
-
-    <h1 class="display-6 fw-semibold mb-4">Configurações</h1>
-
-    <!-- NAV -->
-    <div class="d-flex flex-wrap gap-2 mb-5">
-        {% set sections = [
-            ("customizacao", "Customização"),
-            ("eventos", "Eventos"),
-            ("projetos", "Projetos"),
-            ("tarefas", "Tarefas"),
-            ("notas", "Notas"),
-            ("foco", "Foco"),
-            ("rank", "Ranking")
-        ] %}
-
-        {% for id, label in sections %}
-            <a href="#{{ id }}" class="btn btn-outline-primary btn-sm rounded-pill">
-                {{ label }}
-            </a>
-        {% endfor %}
-    </div>
-
-    <!-- CUSTOMIZAÇÃO -->
-    <section id="customizacao" class="mb-5">
-        <h2 class="display-6 fw-semibold">Customização</h2>
-        <hr>
-
-        <div class="row g-4">
-
-            <div class="col-md-6">
-                <label class="form-label">Tela Inicial</label>
-                <select class="form-select">
-                    <option>Dashboard</option>
-                    <option>Eventos</option>
-                    <option>Tarefas</option>
-                    <option>Projetos</option>
-                    <option>Notas</option>
-                    <option>Foco</option>
-                    <option>Rank</option>
-                </select>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Tamanho Padrão</label>
-                <div class="d-flex gap-2">
-                    <input type="number" class="form-control" placeholder="Largura">
-                    <input type="number" class="form-control" placeholder="Altura">
-                </div>
-            </div>
-
-            <!-- SWITCHES CLEAN -->
-            <div class="col-md-6">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="fw-semibold">Redimensionável</div>
-                        <small class="text-muted">Permite alterar o tamanho da janela</small>
-                    </div>
-                    <input type="checkbox" class="form-check-input">
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="fw-semibold">Abrir ao iniciar</div>
-                        <small class="text-muted">Inicia automaticamente com o sistema</small>
-                    </div>
-                    <input type="checkbox" class="form-check-input">
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="fw-semibold">Tema</div>
-                        <small class="text-muted">Alternar entre modo claro e escuro</small>
-                    </div>
-                    <input type="checkbox" class="form-check-input">
-                </div>
-            </div>
-
-            <!-- NOVO SWITCH -->
-            <div class="col-md-6">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="fw-semibold">Exibir animações</div>
-                        <small class="text-muted">Ativa transições e efeitos visuais</small>
-                    </div>
-                    <input type="checkbox" class="form-check-input" checked>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Cor Principal</label>
-                <div class="d-flex gap-2">
-                    <input type="radio" class="btn-check" name="color" id="c1">
-                    <label class="btn btn-primary" for="c1"></label>
-
-                    <input type="radio" class="btn-check" name="color" id="c2">
-                    <label class="btn btn-success" for="c2"></label>
-
-                    <input type="radio" class="btn-check" name="color" id="c3">
-                    <label class="btn btn-danger" for="c3"></label>
-
-                    <input type="radio" class="btn-check" name="color" id="c4">
-                    <label class="btn btn-warning" for="c4"></label>
-
-                    <input type="radio" class="btn-check" name="color" id="c5">
-                    <label class="btn btn-info" for="c5"></label>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Fonte</label>
-                <select class="form-select">
-                    <option>Fonte A</option>
-                    <option>Fonte B</option>
-                    <option>Fonte C</option>
-                </select>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Tamanho da Fonte</label>
-                <input type="number" class="form-control">
-            </div>
-
-        </div>
-    </section>
-
-    <!-- EVENTOS -->
-    <section id="eventos" class="mb-5">
-        <h2 class="display-6 fw-semibold">Eventos</h2>
-        <hr>
-
-        <div class="row g-4">
-
-            <div class="col-md-6">
-                <label class="form-label">Formato de Data</label>
-                <select class="form-select">
-                    <option>dd/mm/yy</option>
-                    <option>mm/dd/yy</option>
-                    <option>yy/mm/dd</option>
-                </select>
-            </div>
-
-            <div class="col-md-6 d-flex justify-content-between align-items-center">
-                <span class="fw-semibold">Formato 24h</span>
-                <input type="checkbox" class="form-check-input">
-            </div>
-
-            <div class="col-md-6 d-flex justify-content-between align-items-center">
-                <span class="fw-semibold">Ano completo</span>
-                <input type="checkbox" class="form-check-input">
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Primeiro dia da semana</label>
-                <select class="form-select">
-                    <option>Segunda-feira</option>
-                    <option>Domingo</option>
-                </select>
-            </div>
-
-            <div class="col-12">
-                <label class="form-label">Ressaltar dias</label>
-                <div class="d-flex flex-wrap gap-3">
-                    {% for d in ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"] %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox">
-                            <label class="form-check-label">{{ d }}</label>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-
-        </div>
-    </section>
-
-    <!-- PROJETOS -->
-    <section id="projetos" class="mb-5">
-        <h2 class="display-6 fw-semibold">Projetos</h2>
-        <hr>
-
-        <div class="row g-4">
-
-            <div class="col-md-6 d-flex justify-content-between align-items-center">
-                <span class="fw-semibold">Exibir Progresso</span>
-                <input type="checkbox" class="form-check-input">
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Máx. colunas</label>
-                <input type="number" class="form-control">
-            </div>
-
-        </div>
-    </section>
-
-    <!-- TAREFAS -->
-    <section id="tarefas" class="mb-5">
-        <h2 class="display-6 fw-semibold">Tarefas</h2>
-        <hr>
-
-        <div class="d-flex justify-content-between align-items-center">
-            <span class="fw-semibold">Exibir concluídas</span>
-            <input type="checkbox" class="form-check-input">
-        </div>
-    </section>
-
-    <!-- NOTAS -->
-    <section id="notas" class="mb-5">
-        <h2 class="display-6 fw-semibold">Notas</h2>
-        <hr>
-
-        <div class="d-flex justify-content-between align-items-center">
-            <span class="fw-semibold">Salvar automaticamente</span>
-            <input type="checkbox" class="form-check-input">
-        </div>
-    </section>
-
-    <!-- FOCO -->
-    <section id="foco" class="mb-5">
-        <h2 class="display-6 fw-semibold">Foco</h2>
-        <hr>
-
-        <div class="row g-4">
-
-            <div class="col-md-6">
-                <label class="form-label">Tempo de trabalho</label>
-                <input type="time" class="form-control">
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Descanso curto</label>
-                <input type="time" class="form-control">
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Descanso longo</label>
-                <input type="time" class="form-control">
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Repetições</label>
-                <input type="number" class="form-control">
-            </div>
-
-            {% for label in [
-                "Exibir widget de tempo restante",
-                "Permitir alarmes",
-                "Permitir notificações"
-            ] %}
-            <div class="col-md-6 d-flex justify-content-between align-items-center">
-                <span class="fw-semibold">{{ label }}</span>
-                <input type="checkbox" class="form-check-input">
-            </div>
-            {% endfor %}
-
-            <div class="col-md-6">
-                <label class="form-label">Volume</label>
-                <input type="range" class="form-range">
-            </div>
-
-        </div>
-    </section>
-
-    <!-- RANK -->
-    <section id="rank" class="mb-5">
-        <h2 class="display-6 fw-semibold">Ranking</h2>
-        <hr>
-
-        <div class="d-flex justify-content-between align-items-center">
-            <span class="fw-semibold">Ocultar descartadas</span>
-            <input type="checkbox" class="form-check-input">
-        </div>
-    </section>
-
-    <!-- ACTIONS -->
-    <div class="d-flex justify-content-between mt-5">
-        <div class="d-flex gap-2">
-            <button class="btn btn-success">Exportar</button>
-            <button class="btn btn-info">Importar</button>
-        </div>
-
-        <div class="d-flex gap-2">
-            <button class="btn btn-outline-danger">Resetar</button>
-            <button class="btn btn-outline-warning">Descartar</button>
-            <button class="btn btn-primary">Salvar</button>
+<!-- Toast -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    <div id="settingsToast" class="toast align-items-center text-bg-success border-0"
+         role="alert" data-bs-delay="2000" data-bs-autohide="true">
+        <div class="d-flex">
+            <div class="toast-body" id="settingsToastBody"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
     </div>
-
 </div>
 
+<!-- Modal de confirmação de reset -->
+<div class="modal fade" id="resetSettingsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <p class="mb-3">Resetar todas as configurações para o padrão?</p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-sm btn-danger" id="confirmResetBtn">Resetar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex h-100 gap-3">
+
+    <!-- SUB-NAV -->
+    <section class="d-flex flex-column p-2 border-end bg-body-secondary" style="width: 190px; flex-shrink: 0;">
+        <h1 class="display-6 fw-semibold mb-3 px-1" style="font-size: 1.5rem;">Configurações</h1>
+        <ul class="nav nav-pills flex-column gap-1">
+            {% set sections = [
+                ("customizacao", "Customização", "bi-sliders"),
+                ("eventos", "Eventos", "bi-calendar-event"),
+                ("projetos", "Projetos", "bi-kanban"),
+                ("tarefas", "Tarefas", "bi-check2-square"),
+                ("notas", "Notas", "bi-journal-text"),
+                ("foco", "Foco", "bi-clock-history"),
+                ("rank", "Ranking", "bi-grid")
+            ] %}
+            {% for id, label, icon in sections %}
+            <li class="nav-item">
+                <a href="#" class="nav-link settings-tab d-flex align-items-center gap-2{% if loop.first %} active{% endif %}"
+                   data-section="{{ id }}">
+                    <i class="{{ icon }}"></i> {{ label }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <div class="mt-auto d-flex flex-column gap-1 pt-3">
+            <button class="btn btn-sm btn-outline-success" id="settingsExportBtn">
+                <i class="bi bi-box-arrow-up"></i> Exportar
+            </button>
+            <button class="btn btn-sm btn-outline-info" id="settingsImportBtn">
+                <i class="bi bi-box-arrow-in-down"></i> Importar
+            </button>
+            <button class="btn btn-sm btn-outline-danger" id="settingsResetBtn">
+                <i class="bi bi-arrow-counterclockwise"></i> Resetar
+            </button>
+        </div>
+    </section>
+
+    <!-- CONTEÚDO -->
+    <section class="flex-grow-1 overflow-auto p-3" style="min-height: 0;">
+
+        <!-- CUSTOMIZAÇÃO -->
+        <div class="settings-section" data-section="customizacao">
+            <h2 class="d-flex align-items-center gap-2"><i class="bi bi-sliders"></i> Customização</h2>
+            <hr>
+
+            <div class="row g-4">
+
+                <div class="col-md-6">
+                    <label class="form-label">Tela Inicial</label>
+                    <select class="form-select" data-setting="customizacao.tela_inicial">
+                        <option value="index">Dashboard</option>
+                        <option value="events">Eventos</option>
+                        <option value="tasks">Tarefas</option>
+                        <option value="projects">Projetos</option>
+                        <option value="notes">Notas</option>
+                        <option value="focus">Foco</option>
+                        <option value="ranks">Rank</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Tamanho Padrão</label>
+                    <div class="d-flex gap-2">
+                        <input type="number" class="form-control" placeholder="Largura" data-setting="customizacao.largura">
+                        <input type="number" class="form-control" placeholder="Altura" data-setting="customizacao.altura">
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold">Redimensionável</div>
+                            <small class="text-muted">Permite alterar o tamanho da janela</small>
+                        </div>
+                        <input type="checkbox" class="form-check-input" data-setting="customizacao.redimensionavel">
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold">Abrir ao iniciar</div>
+                            <small class="text-muted">Inicia automaticamente com o sistema</small>
+                        </div>
+                        <input type="checkbox" class="form-check-input" data-setting="customizacao.abrir_ao_iniciar">
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label d-block">Tema</label>
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="theme_mode" id="theme_light" value="light" data-setting="theme.mode">
+                        <label class="btn btn-outline-secondary" for="theme_light"><i class="bi bi-sun"></i> Claro</label>
+
+                        <input type="radio" class="btn-check" name="theme_mode" id="theme_dark" value="dark" data-setting="theme.mode">
+                        <label class="btn btn-outline-secondary" for="theme_dark"><i class="bi bi-moon"></i> Escuro</label>
+
+                        <input type="radio" class="btn-check" name="theme_mode" id="theme_system" value="system" data-setting="theme.mode">
+                        <label class="btn btn-outline-secondary" for="theme_system"><i class="bi bi-circle-half"></i> Sistema</label>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold">Exibir animações</div>
+                            <small class="text-muted">Ativa transições e efeitos visuais</small>
+                        </div>
+                        <input type="checkbox" class="form-check-input" data-setting="customizacao.animacoes">
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Cor Principal</label>
+                    <div class="d-flex gap-2">
+                        {% for color in ["primary", "success", "danger", "warning", "info"] %}
+                        <input type="radio" class="btn-check" name="color" id="c_{{ color }}" value="{{ color }}" data-setting="theme.primary_color">
+                        <label class="btn btn-{{ color }}" for="c_{{ color }}"></label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Fonte</label>
+                    <select class="form-select" data-setting="customizacao.fonte">
+                        <option value="a">Fonte A</option>
+                        <option value="b">Fonte B</option>
+                        <option value="c">Fonte C</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Tamanho da Fonte</label>
+                    <input type="number" class="form-control" data-setting="customizacao.tamanho_fonte">
+                </div>
+
+            </div>
+        </div>
+
+        <!-- EVENTOS -->
+        <div class="settings-section d-none" data-section="eventos">
+            <h2 class="d-flex align-items-center gap-2"><i class="bi bi-calendar-event"></i> Eventos</h2>
+            <hr>
+
+            <div class="row g-4">
+
+                <div class="col-md-6">
+                    <label class="form-label">Formato de Data</label>
+                    <select class="form-select" data-setting="eventos.formato_data">
+                        <option value="dmy">dd/mm/yy</option>
+                        <option value="mdy">mm/dd/yy</option>
+                        <option value="ymd">yy/mm/dd</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6 d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Formato 24h</span>
+                    <input type="checkbox" class="form-check-input" data-setting="eventos.formato_24h">
+                </div>
+
+                <div class="col-md-6 d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Ano completo</span>
+                    <input type="checkbox" class="form-check-input" data-setting="eventos.ano_completo">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Primeiro dia da semana</label>
+                    <select class="form-select" data-setting="eventos.primeiro_dia_semana">
+                        <option value="mon">Segunda-feira</option>
+                        <option value="sun">Domingo</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Ressaltar dias</label>
+                    <div class="d-flex flex-wrap gap-3">
+                        {% for d in ["seg","ter","qua","qui","sex","sab","dom"] %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" data-setting="eventos.ressaltar_{{ d }}">
+                                <label class="form-check-label">{{ d }}</label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- PROJETOS -->
+        <div class="settings-section d-none" data-section="projetos">
+            <h2 class="d-flex align-items-center gap-2"><i class="bi bi-kanban"></i> Projetos</h2>
+            <hr>
+
+            <div class="row g-4">
+                <div class="col-md-6 d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Exibir Progresso</span>
+                    <input type="checkbox" class="form-check-input" data-setting="projetos.exibir_progresso">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Máx. colunas</label>
+                    <input type="number" class="form-control" data-setting="projetos.max_colunas">
+                </div>
+            </div>
+        </div>
+
+        <!-- TAREFAS -->
+        <div class="settings-section d-none" data-section="tarefas">
+            <h2 class="d-flex align-items-center gap-2"><i class="bi bi-check2-square"></i> Tarefas</h2>
+            <hr>
+
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Exibir concluídas</span>
+                <input type="checkbox" class="form-check-input" data-setting="tarefas.exibir_concluidas">
+            </div>
+        </div>
+
+        <!-- NOTAS -->
+        <div class="settings-section d-none" data-section="notas">
+            <h2 class="d-flex align-items-center gap-2"><i class="bi bi-journal-text"></i> Notas</h2>
+            <hr>
+
+            <div class="row g-4">
+
+                <div class="col-md-6 d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-semibold">Abrir pastas expandidas</div>
+                        <small class="text-muted">Pastas já aparecem abertas ao entrar em Notas</small>
+                    </div>
+                    <input type="checkbox" class="form-check-input" data-setting="notes.folders_open_default">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Ordenação padrão</label>
+                    <select class="form-select" data-setting="notes.default_sort">
+                        <option value="order-asc">Criação ↑</option>
+                        <option value="order-desc">Criação ↓</option>
+                        <option value="alpha-asc">A → Z</option>
+                        <option value="alpha-desc">Z → A</option>
+                        <option value="color">Por cor</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Abrir nota em modo</label>
+                    <select class="form-select" data-setting="notes.default_open_mode">
+                        <option value="edit">Edição</option>
+                        <option value="preview">Preview</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Cor de destaque do render</label>
+                    <select class="form-select" data-setting="notes.render_accent">
+                        <option value="secondary">Secundária (padrão atual)</option>
+                        <option value="primary">Cor Principal do sistema</option>
+                        <option value="note">Cor da própria nota</option>
+                    </select>
+                    <small class="text-muted">Afeta citação (&gt;), bordas de tabela, linha horizontal (---), títulos (# e sublinhado), tachado (~~texto~~) e checklist no preview</small>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Fonte do preview</label>
+                    <select class="form-select" data-setting="notes.preview_font_family">
+                        <option value="default">Padrão</option>
+                        <option value="monospace">Monoespaçada</option>
+                        <option value="serif">Serifada</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Tamanho da fonte do preview</label>
+                    <input type="number" class="form-control" min="10" max="32"
+                           data-setting="notes.preview_font_size">
+                </div>
+
+            </div>
+        </div>
+
+        <!-- FOCO -->
+        <div class="settings-section d-none" data-section="foco">
+            <h2 class="d-flex align-items-center gap-2"><i class="bi bi-clock-history"></i> Foco</h2>
+            <hr>
+
+            <div class="row g-4">
+
+                <div class="col-md-6">
+                    <label class="form-label">Tempo de trabalho</label>
+                    <input type="time" class="form-control" data-setting="foco.tempo_trabalho">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Descanso curto</label>
+                    <input type="time" class="form-control" data-setting="foco.descanso_curto">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Descanso longo</label>
+                    <input type="time" class="form-control" data-setting="foco.descanso_longo">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Repetições</label>
+                    <input type="number" class="form-control" data-setting="foco.repeticoes">
+                </div>
+
+                {% for key, label in [
+                    ("foco.widget_tempo", "Exibir widget de tempo restante"),
+                    ("foco.alarmes", "Permitir alarmes"),
+                    ("foco.notificacoes", "Permitir notificações")
+                ] %}
+                <div class="col-md-6 d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">{{ label }}</span>
+                    <input type="checkbox" class="form-check-input" data-setting="{{ key }}">
+                </div>
+                {% endfor %}
+
+                <div class="col-md-6">
+                    <label class="form-label">Volume</label>
+                    <input type="range" class="form-range" data-setting="foco.volume">
+                </div>
+
+            </div>
+        </div>
+
+        <!-- RANK -->
+        <div class="settings-section d-none" data-section="rank">
+            <h2 class="d-flex align-items-center gap-2"><i class="bi bi-grid"></i> Ranking</h2>
+            <hr>
+
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Ocultar descartadas</span>
+                <input type="checkbox" class="form-check-input" data-setting="rank.ocultar_descartadas">
+            </div>
+        </div>
+
+    </section>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    function showToast(msg, type = 'success') {
+        const el = document.getElementById('settingsToast');
+        el.className = `toast align-items-center text-bg-${type} border-0`;
+        document.getElementById('settingsToastBody').textContent = msg;
+        bootstrap.Toast.getOrCreateInstance(el).show();
+    }
+
+    // ── Tabs ──────────────────────────────────────────────────────────────
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const id = tab.dataset.section;
+            document.querySelectorAll('.settings-section').forEach(s =>
+                s.classList.toggle('d-none', s.dataset.section !== id));
+        });
+    });
+
+    // ── Collect / apply ──────────────────────────────────────────────────
+    function collectSettings() {
+        const out = {};
+        document.querySelectorAll('[data-setting]').forEach(el => {
+            const key = el.dataset.setting;
+            if (el.type === 'checkbox') out[key] = el.checked ? 'true' : 'false';
+            else if (el.type === 'radio') { if (el.checked) out[key] = el.value; }
+            else out[key] = el.value;
+        });
+        return out;
+    }
+
+    function applySettings(settings) {
+        document.querySelectorAll('[data-setting]').forEach(el => {
+            const key = el.dataset.setting;
+            const val = settings[key];
+            if (val === undefined || val === null) return;
+            if (el.type === 'checkbox') el.checked = (val === 'true' || val === true);
+            else if (el.type === 'radio') el.checked = (el.value === val);
+            else el.value = val;
+        });
+    }
+
+    // ── Auto-save ─────────────────────────────────────────────────────────
+    async function autoSave() {
+        const data = collectSettings();
+        const updated = await fetch('/api/settings', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(data),
+        }).then(r => r.json());
+        applySettings(updated);
+        showToast('Salvo!', 'success');
+    }
+    document.querySelectorAll('[data-setting]').forEach(el => {
+        el.addEventListener('change', autoSave);
+    });
+
+    // ── Reset ─────────────────────────────────────────────────────────────
+    const _resetModal = new bootstrap.Modal(document.getElementById('resetSettingsModal'));
+    document.getElementById('settingsResetBtn').addEventListener('click', () => _resetModal.show());
+    document.getElementById('confirmResetBtn').addEventListener('click', async () => {
+        _resetModal.hide();
+        const defaults = await fetch('/api/settings/reset', { method: 'POST' }).then(r => r.json());
+        applySettings(defaults);
+        showToast('Configurações resetadas.', 'warning');
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    applySettings(window.__settings || {});
+})();
+</script>
 {% endblock %}

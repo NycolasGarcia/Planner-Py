@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Date
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -19,5 +19,7 @@ class Note(Base):
     order = Column(Integer, nullable=False)
 
     is_pinned = Column(Boolean, nullable=True)
+
+    folder_id = Column(Integer, ForeignKey("note_folders.id", ondelete="SET NULL"), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

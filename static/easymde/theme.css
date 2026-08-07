@@ -1,0 +1,158 @@
+/* EasyMDE — integração de layout (flex) e tema (Bootstrap dark/light) para as Notas */
+
+/* Layout: preencher a altura do #noteEditor (flex-grow-1) */
+#noteEditorWrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#noteEditorWrap .EasyMDEContainer {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+}
+
+/* :not(.sided--no-fullscreen) pra não brigar com o próprio EasyMDE: ele
+   alterna essa classe pra virar flex-row no modo lado-a-lado, e um seletor
+   com #id bateria essa regra por especificidade se não tivesse esse escopo. */
+#noteEditorWrap .EasyMDEContainer:not(.sided--no-fullscreen) {
+    display: flex;
+    flex-direction: column;
+}
+
+#noteEditorWrap .editor-toolbar,
+#noteEditorWrap .editor-statusbar {
+    flex: 0 0 auto;
+}
+
+/* height:auto (não 100%) — com o container acima virando flex-column, quem
+   define a altura de CodeMirror/preview é o flex:1 1 auto, sobrando espaço
+   de verdade pra toolbar e status bar em vez de estourar o container. */
+#noteEditorWrap .EasyMDEContainer .CodeMirror,
+#noteEditorWrap .EasyMDEContainer .editor-preview,
+#noteEditorWrap .EasyMDEContainer .editor-preview-side {
+    height: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+#noteEditorWrap .EasyMDEContainer .CodeMirror-scroll {
+    min-height: 0;
+}
+
+/* O EasyMDE usa o "name" de cada botão (ex: "table") como classe CSS do <button>.
+   Isso colide com classes globais do Bootstrap — .table define width:100%,
+   inflando o botão de tabela e quebrando a toolbar em várias linhas. */
+#noteEditorWrap .editor-toolbar button {
+    width: auto;
+}
+
+/* Tema: reaproveita as variáveis do Bootstrap, que já trocam sozinhas com data-bs-theme */
+#noteEditorWrap .EasyMDEContainer,
+#noteEditorWrap .CodeMirror,
+#noteEditorWrap .editor-preview,
+#noteEditorWrap .editor-preview-side {
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+#noteEditorWrap .CodeMirror {
+    border-color: var(--bs-border-color);
+}
+
+#noteEditorWrap .editor-toolbar {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+}
+
+#noteEditorWrap .editor-toolbar button {
+    color: var(--bs-body-color);
+}
+
+#noteEditorWrap .editor-toolbar button:hover,
+#noteEditorWrap .editor-toolbar button.active {
+    background: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
+}
+
+#noteEditorWrap .editor-toolbar i.separator {
+    border-left-color: var(--bs-border-color);
+    border-right-color: var(--bs-border-color);
+}
+
+#noteEditorWrap .CodeMirror-cursor {
+    border-left-color: var(--bs-body-color);
+}
+
+#noteEditorWrap .CodeMirror-selected,
+#noteEditorWrap .CodeMirror-line::selection,
+#noteEditorWrap .CodeMirror-line > span::selection,
+#noteEditorWrap .CodeMirror-line > span > span::selection {
+    background: var(--bs-primary-bg-subtle);
+}
+
+#noteEditorWrap .editor-preview pre,
+#noteEditorWrap .editor-preview-side pre {
+    background: var(--bs-tertiary-bg);
+}
+
+#noteEditorWrap .editor-preview table td,
+#noteEditorWrap .editor-preview table th,
+#noteEditorWrap .editor-preview-side table td,
+#noteEditorWrap .editor-preview-side table th {
+    border-color: var(--bs-border-color);
+}
+
+/* Settings > Notas: tamanho/fonte do preview — variáveis setadas via JS no
+   load; sem override configurado, os var() caem no valor herdado normal. */
+#noteEditorWrap .editor-preview,
+#noteEditorWrap .editor-preview-side {
+    font-size: var(--notes-preview-font-size, inherit);
+    font-family: var(--notes-preview-font-family, inherit);
+}
+
+/* Tokens de sintaxe no modo edição — cores default do EasyMDE são pensadas pra fundo claro */
+[data-bs-theme="dark"] #noteEditorWrap .cm-s-easymde .cm-comment {
+    background: rgba(255, 255, 255, .1);
+}
+
+[data-bs-theme="dark"] #noteEditorWrap .cm-s-easymde .cm-string {
+    color: #9cdcfe;
+}
+
+[data-bs-theme="dark"] #noteEditorWrap .cm-s-easymde .cm-tag {
+    color: #7fd88f;
+}
+
+[data-bs-theme="dark"] #noteEditorWrap .cm-s-easymde .cm-attribute {
+    color: #c9a0f5;
+}
+
+[data-bs-theme="dark"] #noteEditorWrap .cm-s-easymde .cm-link,
+[data-bs-theme="dark"] #noteEditorWrap .cm-s-easymde .cm-url,
+[data-bs-theme="dark"] #noteEditorWrap .cm-s-easymde .cm-quote {
+    color: var(--bs-secondary-color);
+}
+
+/* Barra de status: contador de palavras/linhas + posição do cursor.
+   O EasyMDE só preenche os números (sem rótulo) — os rótulos em
+   português são adicionados aqui via ::before. */
+#noteEditorWrap .editor-statusbar {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-secondary-color);
+}
+
+#noteEditorWrap .editor-statusbar .words::before {
+    content: 'Palavras: ';
+}
+
+#noteEditorWrap .editor-statusbar .lines::before {
+    content: 'Linhas: ';
+}
+
+#noteEditorWrap .editor-statusbar .cursor::before {
+    content: 'Ln ';
+}

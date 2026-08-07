@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html data-bs-theme="dark">
+<html data-bs-theme="{{ 'light' if settings_dict['theme.mode'] == 'light' else 'dark' }}">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,8 @@
         {% block head %}{% endblock %}
     </head>
     <body class="d-flex flex-column vh-100">
+
+        <script>window.__settings = {{ settings_dict|tojson }};</script>
 
         {% include 'common/header.html' %}
 
@@ -37,5 +39,25 @@
     <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ url_for('static', filename='aos/aos.js') }}"></script>
     <script>AOS.init({ once: true, duration: 300 });</script>
+    <script>
+        // Pywebview é um mini-browser: um <a href> externo navegaria a própria
+        // janela do app pra fora dele. Abre no navegador padrão do sistema
+        // em vez disso — sem isso o app "sai" sem nem tentar salvar antes.
+        function openExternal(url) {
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.open_external) {
+                window.pywebview.api.open_external(url);
+            } else {
+                window.open(url, '_blank');
+            }
+        }
+        document.addEventListener('click', (e) => {
+            const a = e.target.closest('a[href]');
+            if (!a) return;
+            const href = a.getAttribute('href');
+            if (!href || !/^https?:\/\//i.test(href)) return;
+            e.preventDefault();
+            openExternal(href);
+        });
+    </script>
     {% block scripts %}{% endblock %}
 </html>
