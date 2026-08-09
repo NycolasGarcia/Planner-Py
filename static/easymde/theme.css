@@ -28,10 +28,15 @@
 }
 
 /* height:auto (não 100%) — com o container acima virando flex-column, quem
-   define a altura de CodeMirror/preview é o flex:1 1 auto, sobrando espaço
-   de verdade pra toolbar e status bar em vez de estourar o container. */
+   define a altura de CodeMirror/preview lado-a-lado é o flex:1 1 auto,
+   sobrando espaço de verdade pra toolbar e status bar em vez de estourar
+   o container.
+   .editor-preview-full (toggle de preview) fica de fora de propósito: ela
+   não é item de flex (é position:absolute, overlay sobre o .CodeMirror,
+   que é position:relative) — herdar flex:1 1 auto não tem efeito nela, mas
+   height:auto sim, e quebra o height:100% que a própria lib depende pra
+   virar altura fixa + scroll. */
 #noteEditorWrap .EasyMDEContainer .CodeMirror,
-#noteEditorWrap .EasyMDEContainer .editor-preview,
 #noteEditorWrap .EasyMDEContainer .editor-preview-side {
     height: auto;
     flex: 1 1 auto;

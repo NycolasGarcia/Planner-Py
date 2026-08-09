@@ -127,24 +127,22 @@
                 </button>
                 <input type="hidden" id="bulkIconValue">
             </div>
-            <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary w-100 dropdown-toggle" type="button"
-                        data-bs-toggle="dropdown" title="Mover notas selecionadas pra pasta">
-                    <i class="bi bi-folder2"></i> Mover pra pasta
-                </button>
-                <ul class="dropdown-menu" id="bulkFolderMenu" style="min-width: 180px;"></ul>
-            </div>
             <div class="d-grid gap-1" style="grid-template-columns: 1fr 1fr;">
                 <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-info w-100 dropdown-toggle" type="button"
-                            data-bs-toggle="dropdown">
-                        <i class="bi bi-download"></i> Baixar
+                    <button class="btn btn-sm btn-outline-secondary w-100 dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" title="Mover notas selecionadas pra pasta">
+                        <i class="bi bi-folder2"></i> Pasta
                     </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#" id="bulkDownloadMd">Markdown (.md)</a></li>
-                        <li><a class="dropdown-item" href="#" id="bulkDownloadTxt">Texto (.txt)</a></li>
-                    </ul>
+                    <ul class="dropdown-menu" id="bulkFolderMenu" style="min-width: 180px;"></ul>
                 </div>
+                <button class="btn btn-sm btn-outline-success" id="bulkPinBtn">
+                    <i class="bi bi-pin"></i> Fixar
+                </button>
+            </div>
+            <div class="d-grid gap-1" style="grid-template-columns: 1fr 1fr;">
+                <button class="btn btn-sm btn-outline-info" id="bulkDownloadBtn">
+                    <i class="bi bi-download"></i> Baixar
+                </button>
                 <button class="btn btn-sm btn-outline-danger" id="bulkDeleteBtn">
                     <i class="bi bi-trash"></i> Excluir
                 </button>
@@ -257,16 +255,10 @@
                             id="noteSaveBtn" title="Salvar nota">
                         <i class="bi bi-floppy"></i>
                     </button>
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-info" type="button"
-                                data-bs-toggle="dropdown" title="Baixar nota">
-                            <i class="bi bi-download"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#" id="noteDownloadMd">Markdown (.md)</a></li>
-                            <li><a class="dropdown-item" href="#" id="noteDownloadTxt">Texto (.txt)</a></li>
-                        </ul>
-                    </div>
+                    <button class="btn btn-sm btn-outline-info" type="button"
+                            id="noteDownloadBtn" title="Baixar nota">
+                        <i class="bi bi-download"></i>
+                    </button>
                     <button class="btn btn-sm btn-outline-danger" type="button"
                             id="noteDeleteBtn" title="Excluir nota">
                         <i class="bi bi-trash"></i>
@@ -519,6 +511,20 @@
         });
     }
 
+    function sortFolders(folders) {
+        return [...folders].sort((a, b) => {
+            if (sortBy === 'alpha') {
+                const cmp = a.name.localeCompare(b.name);
+                return sortDir === 'asc' ? cmp : -cmp;
+            }
+            if (sortBy === 'color') {
+                return (COLOR_ORDER[a.color] ?? 99) - (COLOR_ORDER[b.color] ?? 99);
+            }
+            const cmp = (a.order ?? 0) - (b.order ?? 0);
+            return sortDir === 'asc' ? cmp : -cmp;
+        });
+    }
+
     // ── Auto-save ─────────────────────────────────────────────────────────
     function markDirty() { isDirty = true; }
 
@@ -532,6 +538,7 @@
         selectedIds.clear();
         document.getElementById('noteSelectBtn').querySelector('i').className = 'bi bi-x-lg';
         document.getElementById('bulkActions').classList.replace('d-none', 'd-flex');
+        updateBulkPinButton();
         loadNotes();
     }
 
@@ -570,6 +577,7 @@
                         el.classList.add('active');
                         el.querySelector('i').className = 'bi-check-circle-fill flex-shrink-0';
                     }
+                    updateBulkPinButton();
                 } else {
                     await saveIfDirty();
                     const note = await fetch('/api/notes/' + id).then(r => r.json());
@@ -658,9 +666,7 @@
         }
 
         function renderGroup(folderIdSet, looseNotes) {
-            let html = allFolders
-                .filter(f => folderIdSet.has(f.id))
-                .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            let html = sortFolders(allFolders.filter(f => folderIdSet.has(f.id)))
                 .map(folder => {
                     const { visible, notes, open } = folderVisibleAndNotes(folder);
                     return visible ? folderBlockHtml(folder, notes, open) : '';
@@ -744,7 +750,7 @@
                     body:    JSON.stringify({ ids, folder_id }),
                 });
                 showToast(folder_id ? `${ids.length} nota(s) movida(s)!` : `${ids.length} nota(s) removida(s) da pasta!`, 'info');
-                exitSelectMode();
+                await loadNotes();
             });
         });
     }
@@ -924,18 +930,20 @@
         openDeleteModal('Excluir esta nota?', deleteNote);
     });
 
-    async function downloadNote(format) {
+    async function downloadNote() {
         await saveIfDirty();
         if (!currentNoteId) return;
+        // Sem escolha de formato na UI de propósito — o próprio diálogo nativo
+        // de salvar já oferece Markdown/Texto como filtro, quem decide a
+        // extensão é o explorador de arquivos do usuário, não o app.
         const data = await fetch('/api/notes/' + currentNoteId + '/export', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ format }),
+            body:    JSON.stringify({}),
         }).then(r => r.json());
         if (!data.cancelled) showToast('Download concluído!', 'info');
     }
-    document.getElementById('noteDownloadMd').addEventListener('click', (e) => { e.preventDefault(); downloadNote('md'); });
-    document.getElementById('noteDownloadTxt').addEventListener('click', (e) => { e.preventDefault(); downloadNote('txt'); });
+    document.getElementById('noteDownloadBtn').addEventListener('click', downloadNote);
 
     document.getElementById('noteSelectBtn').addEventListener('click', () => {
         if (selectMode) exitSelectMode(); else enterSelectMode();
@@ -947,19 +955,43 @@
         openDeleteModal(`Excluir ${ids.length} nota(s)?`, () => doBulkDelete(ids));
     });
 
-    async function bulkDownload(format) {
+    async function bulkDownload() {
         const ids = [...selectedIds];
         if (!ids.length) return;
         await fetch('/api/notes/export-bulk', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ ids, format }),
+            body:    JSON.stringify({ ids }),
         });
         showToast(ids.length + ' nota(s) baixada(s)!', 'info');
-        exitSelectMode();
     }
-    document.getElementById('bulkDownloadMd').addEventListener('click', (e) => { e.preventDefault(); bulkDownload('md'); });
-    document.getElementById('bulkDownloadTxt').addEventListener('click', (e) => { e.preventDefault(); bulkDownload('txt'); });
+    document.getElementById('bulkDownloadBtn').addEventListener('click', bulkDownload);
+
+    function selectedAllPinned() {
+        const ids = [...selectedIds];
+        return ids.length > 0 && ids.every(id => allNotes.find(n => n.id === id)?.is_pinned);
+    }
+
+    function updateBulkPinButton() {
+        const btn = document.getElementById('bulkPinBtn');
+        const unpin = selectedAllPinned();
+        btn.querySelector('i').className = unpin ? 'bi bi-pin-fill' : 'bi bi-pin';
+        btn.lastChild.textContent = unpin ? ' Desafixar' : ' Fixar';
+    }
+
+    document.getElementById('bulkPinBtn').addEventListener('click', async () => {
+        const ids = [...selectedIds];
+        if (!ids.length) return;
+        const is_pinned = !selectedAllPinned();
+        await fetch('/api/notes/bulk-update', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ ids, is_pinned }),
+        });
+        showToast(is_pinned ? `${ids.length} nota(s) fixada(s)!` : `${ids.length} nota(s) desafixada(s)!`, 'info');
+        await loadNotes();
+        updateBulkPinButton();
+    });
 
     document.getElementById('notePinBtn').addEventListener('click', async () => {
         await saveIfDirty();
