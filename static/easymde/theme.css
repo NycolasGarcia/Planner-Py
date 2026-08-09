@@ -47,6 +47,67 @@
     min-height: 0;
 }
 
+/* Toolbar embaixo (perto do teclado virtual) em vez de em cima — Settings >
+   Notas > "Posição da toolbar" decide QUANDO essa classe é aplicada
+   (sempre / nunca / só abaixo de lg via matchMedia), o CSS aqui só reage
+   a ela, sem depender de media query diretamente. */
+#noteEditorWrap.toolbar-bottom .EasyMDEContainer .CodeMirror,
+#noteEditorWrap.toolbar-bottom .EasyMDEContainer .editor-preview-side {
+    order: 1;
+}
+/* Toolbar gruda direto no CodeMirror (mesma ordem que no desktop: editor
+   + toolbar formam UMA caixa só, com borda). O contador de palavras
+   nunca teve borda/fundo próprio nem no desktop — sempre foi um texto
+   solto abaixo da caixa, não parte dela. Botando ele NO MEIO (entre
+   CodeMirror e toolbar) é o que quebrava a integração: sobra pra depois
+   da toolbar, igual no desktop. */
+#noteEditorWrap.toolbar-bottom .editor-toolbar {
+    order: 2;
+    /* A lib desenha a toolbar assumindo topo (borda/raio em cima) —
+       embaixo, inverte pro canto certo. */
+    border-top: 0;
+    border-bottom: 1px solid var(--bs-border-color);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+#noteEditorWrap.toolbar-bottom .editor-statusbar {
+    order: 3;
+}
+/* O CodeMirror também assume que é o ÚLTIMO elemento da caixa (só
+   arredonda embaixo, .CodeMirror{border-bottom-left/right-radius:4px}
+   do próprio EasyMDE) — como agora ele é o PRIMEIRO (toolbar foi pro
+   final), inverte o arredondamento também, senão sobra uma "quina"
+   dupla no meio e a toolbar parece flutuar solta em vez de grudada. */
+#noteEditorWrap.toolbar-bottom .CodeMirror {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+/* Tela cheia: a lib fixa a toolbar no topo do viewport — embaixo dela,
+   o fixed também tem que virar bottom pra continuar colada no teclado. */
+#noteEditorWrap.toolbar-bottom .editor-toolbar.fullscreen {
+    top: auto;
+    bottom: 0;
+}
+
+/* "Lado a lado" some abaixo de lg — sempre por LARGURA de tela, não pela
+   posição da toolbar: a lib força fullscreen junto (sideBySideFullscreen
+   continua ligado de propósito, funciona bem no desktop) e usa
+   position:fixed com metade da LARGURA em cada painel via !important —
+   não dá pra fazer isso virar topo/baixo de forma limpa numa tela estreita,
+   com toolbar em cima ou embaixo tanto faz. Mais vale um modo só (preview)
+   funcionando bem do que dois pela metade. O botão recebe a classe do
+   próprio "name" configurado no toolbar (mesmo mecanismo já documentado
+   abaixo pro botão de tabela). */
+@media (max-width: 991.98px) {
+    #noteEditorWrap .editor-toolbar button.side-by-side {
+        display: none;
+    }
+}
+
 /* O EasyMDE usa o "name" de cada botão (ex: "table") como classe CSS do <button>.
    Isso colide com classes globais do Bootstrap — .table define width:100%,
    inflando o botão de tabela e quebrando a toolbar em várias linhas. */

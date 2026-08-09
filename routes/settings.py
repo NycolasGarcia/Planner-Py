@@ -16,6 +16,7 @@ DEFAULT_SETTINGS = {
     'notes.default_open_mode':    'edit',
     'notes.default_sort':         'order-asc',
     'notes.render_accent':        'secondary',
+    'notes.toolbar_position':     'auto',
 }
 
 

@@ -14,18 +14,6 @@
 
 {% block content %}
 
-<!-- Toast container (canto superior esquerdo) -->
-<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
-    <div id="noteToast" class="toast align-items-center text-bg-success border-0"
-         role="alert" data-bs-delay="2000" data-bs-autohide="true">
-        <div class="d-flex">
-            <div class="toast-body" id="noteToastBody"></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto"
-                    data-bs-dismiss="toast"></button>
-        </div>
-    </div>
-</div>
-
 <!-- Modal de confirmação de exclusão -->
 <div class="modal fade" id="deleteNoteModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -44,7 +32,7 @@
 
 <!-- Modal de pasta (criar/editar) -->
 <div class="modal fade" id="folderModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-centered modal-sm">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="folderModalTitle">Nova pasta</h5>
@@ -83,10 +71,10 @@
     </div>
 </div>
 
-<div class="d-flex h-100 gap-3">
+<div class="row g-3 h-100" id="notesRoot">
 
     <!-- SIDEBAR DAS NOTAS -->
-    <section class="d-flex flex-column p-3 border-end bg-body-secondary" style="width: 300px; min-height: 0; flex-shrink: 0;">
+    <section id="notesListPane" class="col-12 col-lg-4 col-xl-3 h-100 d-flex d-lg-flex flex-column p-3 border-end bg-body-secondary" style="min-height: 0;">
 
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -108,15 +96,12 @@
         <div id="bulkActions" class="d-none flex-column gap-1 mb-2">
             <div class="d-grid gap-1" style="grid-template-columns: 1fr 1fr;">
                 <!-- Bulk color picker -->
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-primary w-100" type="button"
-                            data-bs-toggle="dropdown" title="Aplicar cor em massa">
-                        <i class="bi bi-palette"></i> Cor
-                    </button>
-                    <ul class="dropdown-menu p-2" style="min-width: unset;">
-                        <div class="d-flex flex-wrap gap-1" style="width: 80px;" id="bulkColorSwatches"></div>
-                    </ul>
-                </div>
+                <button class="btn btn-sm btn-outline-primary w-100" type="button"
+                        data-bs-toggle="modal" data-bs-target="#colorPickerModal" data-target-input="#bulkColorValue"
+                        title="Aplicar cor em massa">
+                    <i class="bi bi-palette"></i> Cor
+                </button>
+                <input type="hidden" id="bulkColorValue">
                 <!-- Bulk icon picker -->
                 <button class="btn btn-sm btn-outline-warning" type="button"
                         data-bs-toggle="modal"
@@ -128,13 +113,12 @@
                 <input type="hidden" id="bulkIconValue">
             </div>
             <div class="d-grid gap-1" style="grid-template-columns: 1fr 1fr;">
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary w-100 dropdown-toggle" type="button"
-                            data-bs-toggle="dropdown" title="Mover notas selecionadas pra pasta">
-                        <i class="bi bi-folder2"></i> Pasta
-                    </button>
-                    <ul class="dropdown-menu" id="bulkFolderMenu" style="min-width: 180px;"></ul>
-                </div>
+                <button class="btn btn-sm btn-outline-secondary w-100" type="button"
+                        data-bs-toggle="modal" data-bs-target="#folderPickerModal" data-target-input="#bulkFolderValue"
+                        title="Mover notas selecionadas pra pasta">
+                    <i class="bi bi-folder2"></i> Pasta
+                </button>
+                <input type="hidden" id="bulkFolderValue">
                 <button class="btn btn-sm btn-outline-success" id="bulkPinBtn">
                     <i class="bi bi-pin"></i> Fixar
                 </button>
@@ -190,8 +174,11 @@
         </div>
     </section>
 
-    <!-- ÁREA DA NOTA -->
-    <section class="d-flex flex-column flex-grow-1 p-3" style="min-height: 0; overflow: hidden; scrollbar-gutter: stable;">
+    <!-- ÁREA DA NOTA: escondida por padrão no mobile (lista aparece sozinha
+         primeiro), sempre visível a partir de lg — ver showMobileEditor()/
+         showMobileList() no script. -->
+    <section id="noteEditorPane" class="col-12 col-lg-8 col-xl-9 h-100 d-none d-lg-flex flex-column p-3"
+             style="min-height: 0; overflow: hidden; scrollbar-gutter: stable;">
 
         <!-- Empty state -->
         <div id="noteEmptyState" class="d-flex flex-column align-items-center justify-content-center flex-grow-1 text-muted">
@@ -205,6 +192,13 @@
             <!-- Header da nota -->
             <div class="d-flex align-items-center gap-2 mb-3 flex-shrink-0">
 
+                <!-- Voltar pra lista: só existe algo pra "voltar" no mobile,
+                     onde as duas colunas não ficam lado a lado. -->
+                <button class="btn btn-sm btn-outline-secondary flex-shrink-0 d-lg-none" type="button"
+                        id="noteBackBtn" title="Voltar pra lista">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+
                 <!-- Vínculos -->
                 <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button"
                         id="noteLinkBtn" title="Vincular a outro objeto" disabled>
@@ -212,25 +206,20 @@
                 </button>
 
                 <!-- Seletor de cor -->
-                <div class="dropdown flex-shrink-0">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" id="noteColorBtn"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                        <span class="rounded-circle d-inline-block bg-primary" id="noteColorDot"
-                              style="width:14px;height:14px;"></span>
-                    </button>
-                    <ul class="dropdown-menu p-2" style="min-width: unset;">
-                        <div class="d-flex flex-wrap gap-1" style="width: 80px;" id="noteColorSwatches"></div>
-                    </ul>
-                </div>
+                <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button" id="noteColorBtn"
+                        data-bs-toggle="modal" data-bs-target="#colorPickerModal" data-target-input="#noteColorValue">
+                    <span class="rounded-circle d-inline-block bg-primary" id="noteColorDot"
+                          style="width:14px;height:14px;"></span>
+                </button>
+                <input type="hidden" id="noteColorValue">
 
                 <!-- Pasta da nota -->
-                <div class="dropdown flex-shrink-0">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" id="noteFolderBtn"
-                            data-bs-toggle="dropdown" title="Mover para pasta">
-                        <i class="bi bi-folder"></i>
-                    </button>
-                    <ul class="dropdown-menu" id="noteFolderMenu" style="min-width: 180px;"></ul>
-                </div>
+                <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button" id="noteFolderBtn"
+                        data-bs-toggle="modal" data-bs-target="#folderPickerModal" data-target-input="#noteFolderValue"
+                        title="Mover para pasta">
+                    <i class="bi bi-folder"></i>
+                </button>
+                <input type="hidden" id="noteFolderValue">
 
                 <!-- Botão de ícone -->
                 <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button"
@@ -451,15 +440,17 @@
     });
     easyMDE.codemirror.on('change', markDirty);
 
-    // ── Toast ─────────────────────────────────────────────────────────────
-    function showToast(msg, type = 'success') {
-        const el = document.getElementById('noteToast');
-        el.className = `toast align-items-center text-bg-${type} border-0`;
-        document.getElementById('noteToastBody').textContent = msg;
-        bootstrap.Toast.getOrCreateInstance(el).show();
+    // ── Feedback rápido sem toast ─────────────────────────────────────────
+    // Só usado onde a ação não deixa nenhum outro rastro visível (salvar,
+    // baixar) — pisca o ícone do próprio botão clicado, sem popup/posição.
+    function flashConfirm(iconEl) {
+        const original = iconEl.className;
+        iconEl.className = 'bi bi-check-lg text-success';
+        setTimeout(() => { iconEl.className = original; }, 900);
     }
 
-    // ── Color swatches ────────────────────────────────────────────────────
+    // ── Color swatches (só a cor da própria pasta, dentro do folderModal —
+    // nota/bulk usam o #colorPickerModal compartilhado, ver mais abaixo) ──
     function buildColorSwatches(containerId, onClick) {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -472,10 +463,7 @@
             btn.title = color;
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
                 onClick(color);
-                const trigger = container.closest('.dropdown')?.querySelector('[data-bs-toggle="dropdown"]');
-                if (trigger) bootstrap.Dropdown.getInstance(trigger)?.hide();
             });
             container.appendChild(btn);
         });
@@ -702,58 +690,34 @@
         renderSidebar();
     }
 
-    function folderMenuItemsHtml() {
-        const items = ['<li><a class="dropdown-item" href="#" data-note-folder="">Sem pasta</a></li>'];
+    // ── Folder picker modal (compartilhado por nota única e bulk) ─────────
+    function folderPickerItemsHtml() {
+        const items = ['<button type="button" class="list-group-item list-group-item-action" data-note-folder="">Sem pasta</button>'];
         allFolders.forEach(f => {
             const color = COLORS.includes(f.color) ? f.color : 'secondary';
-            items.push(`<li><a class="dropdown-item d-flex align-items-center gap-2" href="#" data-note-folder="${f.id}">
+            items.push(`<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2" data-note-folder="${f.id}">
                             <span class="rounded-circle d-inline-block bg-${color}" style="width:10px;height:10px;"></span>
                             ${escHtml(f.name)}
-                        </a></li>`);
+                        </button>`);
         });
         return items.join('');
     }
 
-    function renderNoteFolderMenu() {
-        const menu = document.getElementById('noteFolderMenu');
-        menu.innerHTML = folderMenuItemsHtml();
-        menu.querySelectorAll('[data-note-folder]').forEach(a => {
-            a.addEventListener('click', async (e) => {
-                e.preventDefault();
-                const val = a.dataset.noteFolder;
-                const folder_id = val ? parseInt(val) : null;
-                if (!currentNoteId) return;
-                await fetch('/api/notes/' + currentNoteId, {
-                    method:  'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ folder_id }),
-                });
-                showToast(folder_id ? 'Nota movida!' : 'Nota removida da pasta!', 'info');
-                await loadNotes();
+    document.getElementById('folderPickerModal').addEventListener('show.bs.modal', (e) => {
+        const trigger = e.relatedTarget;
+        const targetInput = trigger ? document.querySelector(trigger.dataset.targetInput) : null;
+        const list = document.getElementById('folderPickerList');
+        list.innerHTML = folderPickerItemsHtml();
+        list.querySelectorAll('[data-note-folder]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (targetInput) {
+                    targetInput.value = btn.dataset.noteFolder;
+                    targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                bootstrap.Modal.getInstance(document.getElementById('folderPickerModal'))?.hide();
             });
         });
-    }
-
-    function renderBulkFolderMenu() {
-        const menu = document.getElementById('bulkFolderMenu');
-        menu.innerHTML = folderMenuItemsHtml();
-        menu.querySelectorAll('[data-note-folder]').forEach(a => {
-            a.addEventListener('click', async (e) => {
-                e.preventDefault();
-                const ids = [...selectedIds];
-                if (!ids.length) return;
-                const val = a.dataset.noteFolder;
-                const folder_id = val ? parseInt(val) : null;
-                await fetch('/api/notes/bulk-update', {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ ids, folder_id }),
-                });
-                showToast(folder_id ? `${ids.length} nota(s) movida(s)!` : `${ids.length} nota(s) removida(s) da pasta!`, 'info');
-                await loadNotes();
-            });
-        });
-    }
+    });
 
     let _seenFolderIds = new Set();
 
@@ -769,8 +733,6 @@
                 if (openByDefault) expandedFolderIds.add(f.id);
             }
         });
-        renderNoteFolderMenu();
-        renderBulkFolderMenu();
         renderSidebar();
     }
 
@@ -797,6 +759,20 @@
         _folderModal.show();
     }
 
+    // ── Mestre-detalhe no mobile ─────────────────────────────────────────
+    // Abaixo de lg só um painel por vez fica visível — d-lg-flex garante que,
+    // a partir de lg, os dois painéis ficam sempre visíveis independente do
+    // que essas funções setam (é como o Bootstrap documenta `d-none d-lg-block`).
+    function showMobileEditor() {
+        document.getElementById('notesListPane').classList.replace('d-flex', 'd-none');
+        document.getElementById('noteEditorPane').classList.replace('d-none', 'd-flex');
+    }
+
+    function showMobileList() {
+        document.getElementById('noteEditorPane').classList.replace('d-flex', 'd-none');
+        document.getElementById('notesListPane').classList.replace('d-none', 'd-flex');
+    }
+
     // ── Editor ────────────────────────────────────────────────────────────
     function openNote(note) {
         currentNoteId = note.id;
@@ -814,6 +790,7 @@
 
         document.getElementById('noteEmptyState').classList.add('d-none');
         document.getElementById('noteEditor').classList.remove('d-none');
+        showMobileEditor();
         easyMDE.codemirror.refresh();
 
         const wantPreview = SETTINGS['notes.default_open_mode'] === 'preview';
@@ -858,7 +835,7 @@
                 }).then(r => r.json());
                 currentNoteId = data.id;
             }
-            showToast(isNew ? 'Nota criada!' : 'Nota salva!', isNew ? 'primary' : 'success');
+            flashConfirm(document.querySelector('#noteSaveBtn i'));
             await loadNotes();
         } finally {
             _saving = false;
@@ -881,7 +858,7 @@
         isDirty = false;
         document.getElementById('noteEditor').classList.add('d-none');
         document.getElementById('noteEmptyState').classList.remove('d-none');
-        showToast('Nota excluída!', 'danger');
+        showMobileList();
         await loadNotes();
     }
 
@@ -892,8 +869,8 @@
             isDirty = false;
             document.getElementById('noteEditor').classList.add('d-none');
             document.getElementById('noteEmptyState').classList.remove('d-none');
+            showMobileList();
         }
-        showToast(ids.length + ' nota(s) excluída(s)!', 'danger');
         exitSelectMode();
     }
 
@@ -915,6 +892,7 @@
 
         document.getElementById('noteEmptyState').classList.add('d-none');
         document.getElementById('noteEditor').classList.remove('d-none');
+        showMobileEditor();
         easyMDE.codemirror.refresh();
         document.getElementById('noteTitleInput').focus();
     });
@@ -941,12 +919,17 @@
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({}),
         }).then(r => r.json());
-        if (!data.cancelled) showToast('Download concluído!', 'info');
+        if (!data.cancelled) flashConfirm(document.querySelector('#noteDownloadBtn i'));
     }
     document.getElementById('noteDownloadBtn').addEventListener('click', downloadNote);
 
     document.getElementById('noteSelectBtn').addEventListener('click', () => {
         if (selectMode) exitSelectMode(); else enterSelectMode();
+    });
+
+    document.getElementById('noteBackBtn').addEventListener('click', async () => {
+        await saveIfDirty();
+        showMobileList();
     });
 
     document.getElementById('bulkDeleteBtn').addEventListener('click', () => {
@@ -963,7 +946,7 @@
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ ids }),
         });
-        showToast(ids.length + ' nota(s) baixada(s)!', 'info');
+        flashConfirm(document.querySelector('#bulkDownloadBtn i'));
     }
     document.getElementById('bulkDownloadBtn').addEventListener('click', bulkDownload);
 
@@ -988,7 +971,6 @@
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ ids, is_pinned }),
         });
-        showToast(is_pinned ? `${ids.length} nota(s) fixada(s)!` : `${ids.length} nota(s) desafixada(s)!`, 'info');
         await loadNotes();
         updateBulkPinButton();
     });
@@ -1003,7 +985,6 @@
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify({ is_pinned: isPinned }),
             });
-            showToast(isPinned ? 'Nota fixada!' : 'Nota desafixada!', 'info');
             await loadNotes();
         }
     });
@@ -1034,33 +1015,54 @@
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ ids, icon: this.value }),
         });
-        showToast(`Ícone aplicado em ${ids.length} nota(s)!`, 'info');
         await loadNotes();
     });
 
-    buildColorSwatches('noteColorSwatches', async (color) => {
-        currentColor = color;
-        applyColorDot(color);
+    document.getElementById('noteColorValue').addEventListener('change', async function () {
+        currentColor = this.value;
+        applyColorDot(currentColor);
         refreshPreviewIfActive();
         if (currentNoteId) {
             await fetch('/api/notes/' + currentNoteId, {
                 method:  'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ color }),
+                body:    JSON.stringify({ color: currentColor }),
             });
             await loadNotes();
         }
     });
 
-    buildColorSwatches('bulkColorSwatches', async (color) => {
+    document.getElementById('bulkColorValue').addEventListener('change', async function () {
         const ids = [...selectedIds];
         if (!ids.length) return;
         await fetch('/api/notes/bulk-update', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ ids, color }),
+            body:    JSON.stringify({ ids, color: this.value }),
         });
-        showToast(`Cor aplicada em ${ids.length} nota(s)!`, 'info');
+        await loadNotes();
+    });
+
+    document.getElementById('noteFolderValue').addEventListener('change', async function () {
+        if (!currentNoteId) return;
+        const folder_id = this.value ? parseInt(this.value) : null;
+        await fetch('/api/notes/' + currentNoteId, {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ folder_id }),
+        });
+        await loadNotes();
+    });
+
+    document.getElementById('bulkFolderValue').addEventListener('change', async function () {
+        const ids = [...selectedIds];
+        if (!ids.length) return;
+        const folder_id = this.value ? parseInt(this.value) : null;
+        await fetch('/api/notes/bulk-update', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ ids, folder_id }),
+        });
         await loadNotes();
     });
 
@@ -1099,7 +1101,6 @@
             });
         }
         _folderModal.hide();
-        showToast(editingFolderId ? 'Pasta atualizada!' : 'Pasta criada!', 'success');
         await loadFolders();
     });
 
@@ -1109,7 +1110,6 @@
         openDeleteModal('Excluir esta pasta? As notas dentro dela não serão apagadas.', async () => {
             await fetch('/api/note-folders/' + id, { method: 'DELETE' });
             expandedFolderIds.delete(id);
-            showToast('Pasta excluída!', 'danger');
             await loadFolders();
             await loadNotes();
         });
@@ -1160,7 +1160,7 @@
     });
 
     // ── File drag & drop import ───────────────────────────────────────────
-    const dropZone = document.querySelector('.d-flex.h-100.gap-3');
+    const dropZone = document.getElementById('notesRoot');
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
     dropZone.addEventListener('drop', async (e) => {
         e.preventDefault();
@@ -1177,7 +1177,6 @@
                 const note = await res.json();
                 await loadNotes();
                 openNote(note);
-                showToast(`"${title}" importada!`, 'primary');
             }
         }
     });
@@ -1202,6 +1201,19 @@
     }
     if (previewFontFamily && previewFontFamily !== 'default') {
         document.getElementById('noteEditorWrap').style.setProperty('--notes-preview-font-family', previewFontFamily);
+    }
+
+    // 'top'/'bottom' força a classe pra sempre; 'auto' segue a largura da
+    // tela ao vivo (matchMedia reage a resize/rotação, não só no load).
+    const toolbarPosition = SETTINGS['notes.toolbar_position'] || 'auto';
+    const noteEditorWrapEl = document.getElementById('noteEditorWrap');
+    if (toolbarPosition === 'bottom') {
+        noteEditorWrapEl.classList.add('toolbar-bottom');
+    } else if (toolbarPosition === 'auto') {
+        const toolbarMq = window.matchMedia('(max-width: 991.98px)');
+        const syncToolbarPosition = () => noteEditorWrapEl.classList.toggle('toolbar-bottom', toolbarMq.matches);
+        syncToolbarPosition();
+        toolbarMq.addEventListener('change', syncToolbarPosition);
     }
 
     loadFolders();

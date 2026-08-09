@@ -19,17 +19,6 @@
 
 {% block content %}
 
-<!-- Toast -->
-<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
-    <div id="settingsToast" class="toast align-items-center text-bg-success border-0"
-         role="alert" data-bs-delay="2000" data-bs-autohide="true">
-        <div class="d-flex">
-            <div class="toast-body" id="settingsToastBody"></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    </div>
-</div>
-
 <!-- Modal de confirmação de reset -->
 <div class="modal fade" id="resetSettingsModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -45,12 +34,13 @@
     </div>
 </div>
 
-<div class="d-flex h-100 gap-3">
+<div class="d-flex flex-column flex-lg-row h-100 gap-3">
 
-    <!-- SUB-NAV -->
-    <section class="d-flex flex-column p-2 border-end bg-body-secondary" style="width: 190px; flex-shrink: 0;">
-        <h1 class="display-6 fw-semibold mb-3 px-1" style="font-size: 1.5rem;">Configurações</h1>
-        <ul class="nav nav-pills flex-column gap-1">
+    <!-- SUB-NAV: coluna fixa a partir de lg; abaixo disso vira tira
+         horizontal rolável no topo do conteúdo. -->
+    <section class="d-flex flex-column p-2 border-end bg-body-secondary flex-lg-shrink-0">
+        <h1 class="display-6 fw-semibold mb-3 px-1 d-none d-lg-block" style="font-size: 1.5rem;">Configurações</h1>
+        <ul class="nav nav-pills flex-row flex-lg-column flex-nowrap flex-lg-wrap overflow-auto gap-1">
             {% set sections = [
                 ("customizacao", "Customização", "bi-sliders"),
                 ("eventos", "Eventos", "bi-calendar-event"),
@@ -58,7 +48,8 @@
                 ("tarefas", "Tarefas", "bi-check2-square"),
                 ("notas", "Notas", "bi-journal-text"),
                 ("foco", "Foco", "bi-clock-history"),
-                ("rank", "Ranking", "bi-grid")
+                ("rank", "Ranking", "bi-grid"),
+                ("info", "Info", "bi-info-circle")
             ] %}
             {% for id, label, icon in sections %}
             <li class="nav-item">
@@ -298,6 +289,15 @@
                 </div>
 
                 <div class="col-md-6">
+                    <label class="form-label">Posição da toolbar</label>
+                    <select class="form-select" data-setting="notes.toolbar_position">
+                        <option value="auto">Automática (topo no desktop, embaixo no mobile)</option>
+                        <option value="top">Sempre no topo</option>
+                        <option value="bottom">Sempre embaixo</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
                     <label class="form-label">Cor de destaque do render</label>
                     <select class="form-select" data-setting="notes.render_accent">
                         <option value="secondary">Secundária (padrão atual)</option>
@@ -382,6 +382,22 @@
             </div>
         </div>
 
+        <!-- INFO -->
+        <div class="settings-section d-none" data-section="info">
+            <h2 class="d-flex align-items-center gap-2"><i class="bi bi-info-circle"></i> Info</h2>
+            <hr>
+
+            <p>
+                Por
+                <a href="https://dev-nycolas-garcia.vercel.app" class="text-decoration-none"
+                   target="_blank" rel="noopener noreferrer">Nycolas Garcia</a>
+            </p>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    data-bs-toggle="modal" data-bs-target="#changelogModal">
+                v0.0.1.stable — ver novidades
+            </button>
+        </div>
+
     </section>
 </div>
 
@@ -390,11 +406,11 @@
 {% block scripts %}
 <script>
 (function () {
-    function showToast(msg, type = 'success') {
-        const el = document.getElementById('settingsToast');
-        el.className = `toast align-items-center text-bg-${type} border-0`;
-        document.getElementById('settingsToastBody').textContent = msg;
-        bootstrap.Toast.getOrCreateInstance(el).show();
+    // Sem toast — pisca uma borda de sucesso no próprio campo alterado,
+    // feedback rápido sem precisar posicionar/empilhar nada na tela.
+    function flashConfirm(el) {
+        el.classList.add('border-success');
+        setTimeout(() => el.classList.remove('border-success'), 700);
     }
 
     // ── Tabs ──────────────────────────────────────────────────────────────
@@ -433,7 +449,7 @@
     }
 
     // ── Auto-save ─────────────────────────────────────────────────────────
-    async function autoSave() {
+    async function autoSave(el) {
         const data = collectSettings();
         const updated = await fetch('/api/settings', {
             method:  'POST',
@@ -441,10 +457,10 @@
             body:    JSON.stringify(data),
         }).then(r => r.json());
         applySettings(updated);
-        showToast('Salvo!', 'success');
+        if (el) flashConfirm(el);
     }
     document.querySelectorAll('[data-setting]').forEach(el => {
-        el.addEventListener('change', autoSave);
+        el.addEventListener('change', (e) => autoSave(e.target));
     });
 
     // ── Reset ─────────────────────────────────────────────────────────────
@@ -454,7 +470,6 @@
         _resetModal.hide();
         const defaults = await fetch('/api/settings/reset', { method: 'POST' }).then(r => r.json());
         applySettings(defaults);
-        showToast('Configurações resetadas.', 'warning');
     });
 
     // ── Init ──────────────────────────────────────────────────────────────

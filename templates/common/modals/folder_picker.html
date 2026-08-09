@@ -1,0 +1,20 @@
+<!-- Modal Folder Picker -->
+<!-- Usage: data-bs-toggle="modal" data-bs-target="#folderPickerModal" + data-target-input="#myFolderField" -->
+<!-- Casca genérica só — quem popula #folderPickerList é notes.html, único
+     lugar que conhece a lista de pastas atual. -->
+<div class="modal fade" id="folderPickerModal" tabindex="-1" aria-labelledby="folderPickerLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="folderPickerLabel">Mover para pasta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+
+            <div class="modal-body p-0">
+                <div class="list-group list-group-flush" id="folderPickerList"></div>
+            </div>
+
+        </div>
+    </div>
+</div>

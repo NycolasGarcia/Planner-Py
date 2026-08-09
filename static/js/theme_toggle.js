@@ -3,9 +3,8 @@
 // com suporte a "Sistema" (segue prefers-color-scheme, reage ao vivo).
 
 (function() {
-    const htmlElement  = document.documentElement;
-    const toggleButton = document.getElementById('theme_toggle');
-    const media        = window.matchMedia('(prefers-color-scheme: dark)');
+    const htmlElement   = document.documentElement;
+    const media         = window.matchMedia('(prefers-color-scheme: dark)');
 
     const savedMode    = localStorage.getItem('theme'); // 'light' | 'dark' | null
     const settingsMode = (window.__settings && window.__settings['theme.mode']) || 'dark';
@@ -43,9 +42,15 @@
         applyTheme(isDark);
     }
 
-    if (toggleButton) {
-        toggleButton.addEventListener('click', () => setTheme(!dark_mode));
-    }
+    // Duas instâncias no DOM (header desktop + drawer mobile) — a do drawer
+    // (aside.html) só é parseada DEPOIS deste <script> (incluído ainda
+    // dentro de header.html), então busca os botões só depois do DOM
+    // completo, senão essa instância fica sem listener nenhum.
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => setTheme(!dark_mode));
+        });
+    });
 
     window.dark_mode = dark_mode;
     window.setTheme = setTheme;

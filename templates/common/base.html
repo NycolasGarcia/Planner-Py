@@ -18,9 +18,20 @@
         <!-- CONTAINER PRINCIPAL -->
         <div class="d-flex flex-grow-1 overflow-hidden">
 
-            <!-- SIDEBAR (fixa) -->
-            <aside class="d-flex flex-column flex-shrink-0 border-end">
-                {% include 'common/aside.html' %}
+            <!-- SIDEBAR: permanente a partir de lg, drawer com backdrop abaixo disso -->
+            <!-- --bs-offcanvas-width em vw (não px fixo): o padrão do Bootstrap
+                 (400px) é mais largo que muita tela de celular, cobrindo 100%
+                 do viewport sem sobrar backdrop visível pra fechar tocando fora. -->
+            <aside class="offcanvas-lg offcanvas-start border-end" tabindex="-1"
+                   id="appAside" aria-labelledby="appAsideLabel" style="--bs-offcanvas-width: 80vw;">
+                <div class="offcanvas-header d-lg-none">
+                    <h5 class="offcanvas-title" id="appAsideLabel">planner py</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
+                            data-bs-target="#appAside" aria-label="Fechar"></button>
+                </div>
+                <div class="offcanvas-body d-flex flex-column p-2">
+                    {% include 'common/aside.html' %}
+                </div>
             </aside>
 
             <!-- MAIN (único com scroll) -->
@@ -30,11 +41,11 @@
 
         </div>
 
-    {% include 'common/footer.html' %}
-
         {% include 'common/modals/search_bar.html' %}
-        {% include 'common/modals/new_event.html' %}
         {% include 'common/modals/icon_picker.html' %}
+        {% include 'common/modals/color_picker.html' %}
+        {% include 'common/modals/folder_picker.html' %}
+        {% include 'common/modals/changelog.html' %}
     </body>
     <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ url_for('static', filename='aos/aos.js') }}"></script>

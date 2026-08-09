@@ -1,0 +1,42 @@
+<!-- Modal Color Picker -->
+<!-- Usage: data-bs-toggle="modal" data-bs-target="#colorPickerModal" + data-target-input="#myColorField" -->
+<div class="modal fade" id="colorPickerModal" tabindex="-1" aria-labelledby="colorPickerLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="colorPickerLabel">Escolher cor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+
+            <div class="modal-body d-flex flex-wrap gap-2 justify-content-center">
+                {% for color in ['secondary', 'info', 'primary', 'success', 'warning', 'danger'] %}
+                <button type="button" class="btn btn-{{ color }} rounded-circle p-3" data-color="{{ color }}" title="{{ color }}"></button>
+                {% endfor %}
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    let targetInput = null;
+    const modal = document.getElementById('colorPickerModal');
+
+    modal.addEventListener('show.bs.modal', (e) => {
+        const trigger = e.relatedTarget;
+        targetInput = trigger ? document.querySelector(trigger.dataset.targetInput) : null;
+    });
+
+    modal.querySelectorAll('[data-color]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (targetInput) {
+                targetInput.value = btn.dataset.color;
+                targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            bootstrap.Modal.getInstance(modal)?.hide();
+        });
+    });
+})();
+</script>
