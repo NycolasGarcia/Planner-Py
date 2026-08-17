@@ -10,10 +10,9 @@
         outline: 3px solid var(--bs-emphasis-color);
         outline-offset: 2px;
     }
-    .settings-tab.active {
-        background-color: var(--bs-primary);
-        color: #fff;
-    }
+    /* .settings-tab.active vive em base.html agora — precisa da mesma
+       especificidade que .nav-pills .nav-link.active do Bootstrap usa,
+       que uma regra só com 2 classes aqui não alcançava. */
 </style>
 {% endblock %}
 
@@ -29,6 +28,22 @@
                     <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button class="btn btn-sm btn-danger" id="confirmResetBtn">Resetar</button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: visualizar Lixeira (pra quem mantém a Lixeira invisível na
+     sidebar de Notas mas eventualmente precisa recuperar algo de lá) -->
+<div class="modal fade" id="trashViewerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-trash"></i> Lixeira</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="list-group list-group-flush" id="trashViewerList"></div>
             </div>
         </div>
     </div>
@@ -95,21 +110,36 @@
                         <option value="focus">Foco</option>
                         <option value="ranks">Rank</option>
                     </select>
+                    <small class="text-muted">Só a tela que abre quando o app inicia — clicar em "Início" na sidebar sempre volta pro Dashboard. Vale a partir da próxima abertura do app.</small>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Tamanho Padrão</label>
-                    <div class="d-flex gap-2">
-                        <input type="number" class="form-control" placeholder="Largura" data-setting="customizacao.largura">
-                        <input type="number" class="form-control" placeholder="Altura" data-setting="customizacao.altura">
+                    <label class="form-label">Proporção de abertura</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="orientacao" id="orient_h" value="horizontal" data-setting="customizacao.orientacao">
+                        <label class="btn btn-outline-secondary" for="orient_h"><i class="bi bi-aspect-ratio"></i> Horizontal</label>
+
+                        <input type="radio" class="btn-check" name="orientacao" id="orient_v" value="vertical" data-setting="customizacao.orientacao">
+                        <label class="btn btn-outline-secondary" for="orient_v"><i class="bi bi-aspect-ratio-fill"></i> Vertical</label>
                     </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Resolução padrão</label>
+                    <select class="form-select" data-setting="customizacao.resolucao">
+                        <option value="1280x720">1280 × 720</option>
+                        <option value="1600x900">1600 × 900</option>
+                        <option value="1920x1080">1920 × 1080</option>
+                        <option value="2560x1440">2560 × 1440</option>
+                    </select>
+                    <small class="text-muted">Sempre 16:9 — a orientação acima inverte largura/altura. Vale a partir da próxima abertura do app.</small>
                 </div>
 
                 <div class="col-md-6">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <div class="fw-semibold">Redimensionável</div>
-                            <small class="text-muted">Permite alterar o tamanho da janela</small>
+                            <small class="text-muted">Permite alterar o tamanho da janela. Vale a partir da próxima abertura do app.</small>
                         </div>
                         <input type="checkbox" class="form-check-input" data-setting="customizacao.redimensionavel">
                     </div>
@@ -152,7 +182,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Cor Principal</label>
                     <div class="d-flex gap-2">
-                        {% for color in ["primary", "success", "danger", "warning", "info"] %}
+                        {% for color in ["primary", "secondary", "success", "danger", "warning", "info"] %}
                         <input type="radio" class="btn-check" name="color" id="c_{{ color }}" value="{{ color }}" data-setting="theme.primary_color">
                         <label class="btn btn-{{ color }}" for="c_{{ color }}"></label>
                         {% endfor %}
@@ -160,17 +190,13 @@
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Fonte</label>
+                    <label class="form-label">Fonte do app</label>
                     <select class="form-select" data-setting="customizacao.fonte">
-                        <option value="a">Fonte A</option>
-                        <option value="b">Fonte B</option>
-                        <option value="c">Fonte C</option>
+                        <option value="default">Padrão do sistema</option>
+                        <option value="serif">Serifada</option>
+                        <option value="monospace">Monoespaçada</option>
                     </select>
-                </div>
-
-                <div class="col-md-6">
-                    <label class="form-label">Tamanho da Fonte</label>
-                    <input type="number" class="form-control" data-setting="customizacao.tamanho_fonte">
+                    <small class="text-muted">Vale pro app inteiro — o textarea da nota tem sua própria fonte, em Notas, que sobrescreve essa.</small>
                 </div>
 
             </div>
@@ -276,6 +302,8 @@
                         <option value="order-desc">Criação ↓</option>
                         <option value="alpha-asc">A → Z</option>
                         <option value="alpha-desc">Z → A</option>
+                        <option value="updated-desc">Última modificação (mais recente)</option>
+                        <option value="updated-asc">Última modificação (mais antiga)</option>
                         <option value="color">Por cor</option>
                     </select>
                 </div>
@@ -320,6 +348,35 @@
                     <label class="form-label">Tamanho da fonte do preview</label>
                     <input type="number" class="form-control" min="10" max="32"
                            data-setting="notes.preview_font_size">
+                </div>
+
+                <div class="col-12"><hr></div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Visibilidade da lixeira</label>
+                    <select class="form-select" data-setting="notes.trash_visibility">
+                        <option value="never">Nunca visível</option>
+                        <option value="if-has-items">Visível apenas se houver algum excluído</option>
+                        <option value="always">Sempre visível</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Dias na lixeira</label>
+                    <select class="form-select" data-setting="notes.trash_retention_days">
+                        <option value="none">Nenhum — exclui permanentemente</option>
+                        <option value="7">7 dias</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="viewTrashBtn">
+                        <i class="bi bi-trash"></i> Visualizar lixeira
+                    </button>
+                    <small class="text-muted d-block mt-1">
+                        Mesmo com a lixeira invisível na sidebar de Notas, dá pra recuperar uma nota
+                        excluída por aqui enquanto ela ainda não passou da retenção configurada.
+                    </small>
                 </div>
 
             </div>
@@ -457,6 +514,8 @@
             body:    JSON.stringify(data),
         }).then(r => r.json());
         applySettings(updated);
+        window.__settings = updated;
+        window.__applyTheme?.(updated);
         if (el) flashConfirm(el);
     }
     document.querySelectorAll('[data-setting]').forEach(el => {
@@ -470,6 +529,55 @@
         _resetModal.hide();
         const defaults = await fetch('/api/settings/reset', { method: 'POST' }).then(r => r.json());
         applySettings(defaults);
+    });
+
+    // ── Visualizar lixeira ───────────────────────────────────────────────
+    // Reaproveita as APIs de Notes: busca as pastas pra achar a Lixeira
+    // (is_system) e filtra as notas que estão nela — sem endpoint dedicado.
+    function escHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        }[c]));
+    }
+
+    const _trashModal = new bootstrap.Modal(document.getElementById('trashViewerModal'));
+
+    async function loadTrashViewer() {
+        const list = document.getElementById('trashViewerList');
+        list.innerHTML = '<span class="list-group-item text-muted small">Carregando...</span>';
+        const [folders, notes] = await Promise.all([
+            fetch('/api/note-folders').then(r => r.json()),
+            fetch('/api/notes').then(r => r.json()),
+        ]);
+        const lixeira = folders.find(f => f.is_system);
+        const trashed = lixeira ? notes.filter(n => n.folder_id === lixeira.id) : [];
+        if (!trashed.length) {
+            list.innerHTML = '<span class="list-group-item text-muted small">Lixeira vazia</span>';
+            return;
+        }
+        list.innerHTML = trashed.map(n => `
+            <div class="list-group-item d-flex align-items-center justify-content-between gap-2">
+                <span class="text-truncate">${escHtml(n.title)}</span>
+                <button type="button" class="btn btn-sm btn-outline-success flex-shrink-0" data-restore="${n.id}">
+                    <i class="bi bi-arrow-counterclockwise"></i> Trazer de volta
+                </button>
+            </div>
+        `).join('');
+        list.querySelectorAll('[data-restore]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                await fetch('/api/notes/' + btn.dataset.restore, {
+                    method:  'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ folder_id: null }),
+                });
+                loadTrashViewer();
+            });
+        });
+    }
+
+    document.getElementById('viewTrashBtn').addEventListener('click', () => {
+        _trashModal.show();
+        loadTrashViewer();
     });
 
     // ── Init ──────────────────────────────────────────────────────────────

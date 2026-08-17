@@ -18,4 +18,8 @@ class NoteFolder(Base):
 
     is_pinned = Column(Boolean, nullable=True)
 
+    # Marca a pasta especial "Lixeira" — protegida contra edição/exclusão pelo
+    # usuário e escondida do seletor "mover para pasta" (só chega lá via delete).
+    is_system = Column(Boolean, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

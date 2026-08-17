@@ -93,17 +93,25 @@
     bottom: 0;
 }
 
-/* "Lado a lado" some abaixo de lg — sempre por LARGURA de tela, não pela
-   posição da toolbar: a lib força fullscreen junto (sideBySideFullscreen
-   continua ligado de propósito, funciona bem no desktop) e usa
-   position:fixed com metade da LARGURA em cada painel via !important —
-   não dá pra fazer isso virar topo/baixo de forma limpa numa tela estreita,
-   com toolbar em cima ou embaixo tanto faz. Mais vale um modo só (preview)
-   funcionando bem do que dois pela metade. O botão recebe a classe do
-   próprio "name" configurado no toolbar (mesmo mecanismo já documentado
-   abaixo pro botão de tabela). */
+/* Botões que não fazem sentido/atrapalham numa tela estreita: lado a lado
+   (força fullscreen com metade da largura via !important — não dá pra virar
+   topo/baixo numa tela mobile, e "um modo só (preview) funcionando bem" já
+   resolve), imagem/link/tabela (ações mais raras, cada uma tira espaço que
+   falta muito numa toolbar apertada). Marcados com noMobile:true no config
+   do toolbar (opção nativa do EasyMDE, que adiciona a classe .no-mobile).
+   O CSS que a própria lib empacota mira um <i> filho do botão — essa versão
+   não usa mais essa estrutura (o ícone é o próprio <button class="bi
+   bi-... no-mobile">, sem <i> dentro), então a regra da lib nunca bate.
+   Essa aqui garante o esconder de verdade, no mesmo breakpoint (lg) que o
+   resto do app usa — não no 700px hardcoded que a lib usa por padrão. */
 @media (max-width: 991.98px) {
-    #noteEditorWrap .editor-toolbar button.side-by-side {
+    #noteEditorWrap .editor-toolbar button.no-mobile {
+        display: none;
+    }
+    /* Divisórias ('|' no config do toolbar) viram <i class="separator">
+       (esse elemento É um <i> de verdade, diferente dos botões) — sem
+       sentido deixar sobrando entre botões que já sumiram. */
+    #noteEditorWrap .editor-toolbar i.separator {
         display: none;
     }
 }
@@ -156,7 +164,23 @@
 #noteEditorWrap .CodeMirror-line::selection,
 #noteEditorWrap .CodeMirror-line > span::selection,
 #noteEditorWrap .CodeMirror-line > span > span::selection {
-    background: var(--bs-primary-bg-subtle);
+    background: var(--app-accent-bg-subtle);
+}
+
+/* Preview não tinha NENHUMA regra de ::selection própria (caía no default
+   do navegador, quase invisível em fundo escuro) — e nenhum CSS do app seta
+   user-select em lugar nenhum, então não achei a causa de cópia bloqueada
+   numa auditoria estática. WebView embutido (PyQt6/Qt WebEngine) às vezes
+   tem um default mais restritivo que um Chrome desktop normal — forçando
+   user-select:text aqui cobre esse caso independente da causa exata. */
+#noteEditorWrap .editor-preview,
+#noteEditorWrap .editor-preview-side {
+    -webkit-user-select: text;
+    user-select: text;
+}
+#noteEditorWrap .editor-preview ::selection,
+#noteEditorWrap .editor-preview-side ::selection {
+    background: var(--app-accent-bg-subtle);
 }
 
 #noteEditorWrap .editor-preview pre,
@@ -171,8 +195,11 @@
     border-color: var(--bs-border-color);
 }
 
-/* Settings > Notas: tamanho/fonte do preview — variáveis setadas via JS no
-   load; sem override configurado, os var() caem no valor herdado normal. */
+/* Settings > Notas: tamanho/fonte do editor — variáveis setadas via JS no
+   load; sem override configurado, os var() caem no valor herdado normal.
+   Precisa valer tanto pro modo edição (.CodeMirror) quanto preview — a
+   fonte escolhida é da nota, não só de como ela é renderizada. */
+#noteEditorWrap .CodeMirror,
 #noteEditorWrap .editor-preview,
 #noteEditorWrap .editor-preview-side {
     font-size: var(--notes-preview-font-size, inherit);

@@ -1,12 +1,15 @@
 import os
 import webview
 
+from datetime import datetime, timedelta
+
 from flask import Blueprint, render_template, request, jsonify, current_app
 from sqlalchemy import select, func
 
 from db.database import SessionLocal
 from models.note import Note
 from models.note_folder import NoteFolder
+from models.settings import Setting
 
 notes_bp = Blueprint('notes', __name__)
 
@@ -22,6 +25,8 @@ def _serialize(note):
         'is_pinned':  note.is_pinned,
         'folder_id':  note.folder_id,
         'created_at': note.created_at.isoformat() if note.created_at else None,
+        'updated_at': note.updated_at.isoformat() if note.updated_at else None,
+        'deleted_at': note.deleted_at.isoformat() if note.deleted_at else None,
     }
 
 
@@ -33,8 +38,50 @@ def _serialize_folder(folder):
         'icon':       folder.icon,
         'order':      folder.order,
         'is_pinned':  folder.is_pinned,
+        'is_system':  bool(folder.is_system),
         'created_at': folder.created_at.isoformat() if folder.created_at else None,
     }
+
+
+def _get_lixeira(db):
+    return db.execute(select(NoteFolder).where(NoteFolder.is_system == True)).scalars().first()  # noqa: E712
+
+
+def _trash_retention_days(db):
+    # 'none' = sem retenção, exclusão é sempre permanente na hora.
+    # Qualquer outro valor (ou ausência de setting) cai no default de 7 dias.
+    row = db.query(Setting).filter(Setting.key == 'notes.trash_retention_days').one_or_none()
+    value = row.value if row else None
+    if value == 'none':
+        return None
+    try:
+        return int(value) if value else 7
+    except (TypeError, ValueError):
+        return 7
+
+
+def _purge_expired_trash(db):
+    lixeira = _get_lixeira(db)
+    if not lixeira:
+        return
+    retention = _trash_retention_days(db)
+    if retention is None:
+        # Retenção "nenhum": qualquer coisa que já esteja na Lixeira não
+        # deveria ter sido deixada pra trás (delete_note já faz hard-delete
+        # direto nesse modo) — mas cobre o caso de ter mudado o setting
+        # depois de já existir lixo acumulado.
+        db.execute(Note.__table__.delete().where(Note.folder_id == lixeira.id))
+        db.commit()
+        return
+    cutoff = datetime.utcnow() - timedelta(days=retention)
+    db.execute(
+        Note.__table__.delete().where(
+            Note.folder_id == lixeira.id,
+            Note.deleted_at.isnot(None),
+            Note.deleted_at < cutoff,
+        )
+    )
+    db.commit()
 
 
 @notes_bp.route('/notes')
@@ -45,6 +92,7 @@ def notes():
 @notes_bp.route('/api/notes', methods=['GET'])
 def list_notes():
     with SessionLocal() as db:
+        _purge_expired_trash(db)
         rows = db.execute(
             select(Note).order_by(Note.is_pinned.desc(), Note.order.asc())
         ).scalars().all()
@@ -58,15 +106,18 @@ def create_note():
     if not title:
         return jsonify({'error': 'title is required'}), 422
     with SessionLocal() as db:
+        now = datetime.utcnow()
         max_order = db.execute(select(func.max(Note.order))).scalar() or 0
         note = Note(
             title=title,
             text=data.get('text'),
-            color=data.get('color'),
+            color=data.get('color') or None,
             icon=data.get('icon'),
             order=max_order + 1,
             is_pinned=bool(data.get('is_pinned', False)),
             folder_id=data.get('folder_id'),
+            created_at=now,
+            updated_at=now,
         )
         db.add(note)
         db.commit()
@@ -90,15 +141,19 @@ def update_note(note_id):
         note = db.get(Note, note_id)
         if not note:
             return jsonify({'error': 'not found'}), 404
+        lixeira = _get_lixeira(db)
+        content_changed = False
         if 'title' in data:
             title = (data['title'] or '').strip()
             if not title:
                 return jsonify({'error': 'title is required'}), 422
             note.title = title
+            content_changed = True
         if 'text' in data:
             note.text = data['text']
+            content_changed = True
         if 'color' in data:
-            note.color = data['color']
+            note.color = data['color'] or None
         if 'icon' in data:
             note.icon = data['icon']
         if 'is_pinned' in data:
@@ -106,7 +161,18 @@ def update_note(note_id):
         if 'order' in data:
             note.order = int(data['order'])
         if 'folder_id' in data:
-            note.folder_id = data['folder_id']
+            new_folder_id = data['folder_id']
+            # Ir pra Lixeira só acontece via DELETE (é o que carimba
+            # deleted_at) — PUT genérico não pode simular isso.
+            if lixeira and new_folder_id == lixeira.id:
+                return jsonify({'error': 'cannot move to Lixeira directly, use delete'}), 422
+            note.folder_id = new_folder_id
+            # Mover pra qualquer outra pasta (inclusive "sem pasta") é a
+            # forma de restaurar uma nota que estava na Lixeira.
+            if note.deleted_at is not None:
+                note.deleted_at = None
+        if content_changed:
+            note.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(note)
         return jsonify(_serialize(note))
@@ -118,7 +184,14 @@ def delete_note(note_id):
         note = db.get(Note, note_id)
         if not note:
             return jsonify({'error': 'not found'}), 404
-        db.delete(note)
+        lixeira = _get_lixeira(db)
+        already_trashed = bool(lixeira and note.folder_id == lixeira.id)
+        retention = _trash_retention_days(db)
+        if already_trashed or retention is None or not lixeira:
+            db.delete(note)
+        else:
+            note.folder_id = lixeira.id
+            note.deleted_at = datetime.utcnow()
         db.commit()
         return '', 204
 
@@ -140,7 +213,7 @@ def create_note_folder():
         max_order = db.execute(select(func.max(NoteFolder.order))).scalar() or 0
         folder = NoteFolder(
             name=name,
-            color=data.get('color'),
+            color=data.get('color') or None,
             icon=data.get('icon'),
             order=max_order + 1,
             is_pinned=bool(data.get('is_pinned', False)),
@@ -158,13 +231,15 @@ def update_note_folder(folder_id):
         folder = db.get(NoteFolder, folder_id)
         if not folder:
             return jsonify({'error': 'not found'}), 404
+        if folder.is_system:
+            return jsonify({'error': 'Lixeira cannot be edited'}), 422
         if 'name' in data:
             name = (data['name'] or '').strip()
             if not name:
                 return jsonify({'error': 'name is required'}), 422
             folder.name = name
         if 'color' in data:
-            folder.color = data['color']
+            folder.color = data['color'] or None
         if 'icon' in data:
             folder.icon = data['icon']
         if 'order' in data:
@@ -182,6 +257,8 @@ def delete_note_folder(folder_id):
         folder = db.get(NoteFolder, folder_id)
         if not folder:
             return jsonify({'error': 'not found'}), 404
+        if folder.is_system:
+            return jsonify({'error': 'Lixeira cannot be deleted'}), 422
         # SQLite não aplica ON DELETE SET NULL sem PRAGMA foreign_keys=ON —
         # desvincula as notas explicitamente antes de apagar a pasta.
         db.execute(
@@ -234,16 +311,21 @@ def bulk_update_notes():
     if not any(k in data for k in allowed):
         return jsonify({'error': 'no fields to update'}), 422
     with SessionLocal() as db:
+        lixeira = _get_lixeira(db)
+        if 'folder_id' in data and lixeira and data['folder_id'] == lixeira.id:
+            return jsonify({'error': 'cannot move to Lixeira directly, use delete'}), 422
         rows = db.execute(select(Note).where(Note.id.in_(ids))).scalars().all()
         for note in rows:
             if 'color' in data:
-                note.color = data['color']
+                note.color = data['color'] or None
             if 'icon' in data:
                 note.icon = data['icon']
             if 'is_pinned' in data:
                 note.is_pinned = bool(data['is_pinned'])
             if 'folder_id' in data:
                 note.folder_id = data['folder_id']
+                if note.deleted_at is not None:
+                    note.deleted_at = None
         db.commit()
     return jsonify({'updated': len(rows)}), 200
 
@@ -284,3 +366,60 @@ def list_icons():
         if f.endswith('.svg')
     )
     return jsonify(names)
+
+
+def _snippet(text, q, radius=40):
+    idx = text.lower().find(q.lower())
+    if idx == -1:
+        return text[:radius * 2]
+    start = max(0, idx - radius)
+    end = min(len(text), idx + len(q) + radius)
+    snippet = text[start:end]
+    return ('…' if start > 0 else '') + snippet + ('…' if end < len(text) else '')
+
+
+@notes_bp.route('/api/search')
+def search():
+    # Escopo atual: só Notes (busca por título, pasta e trecho no corpo).
+    # Formato pensado pra crescer — cada módulo futuro (Tasks, Events,
+    # Projects...) entra como uma chave nova ao lado de "notes".
+    q = (request.args.get('q') or '').strip()
+    if not q:
+        return jsonify({'notes': {'title': [], 'folder': [], 'content': []}})
+
+    with SessionLocal() as db:
+        lixeira = _get_lixeira(db)
+        rows = db.execute(select(Note)).scalars().all()
+        folders_by_id = {f.id: f for f in db.execute(select(NoteFolder)).scalars().all()}
+
+        ql = q.lower()
+        title_hits, folder_hits, content_hits = [], [], []
+        for n in rows:
+            # folder_id é NULL pras notas soltas — "!= lixeira.id" no SQL
+            # descartaria elas também (NULL != x é NULL, não TRUE). Filtra
+            # aqui em Python, onde a comparação direta funciona como esperado.
+            if lixeira and n.folder_id == lixeira.id:
+                continue
+            folder = folders_by_id.get(n.folder_id)
+            base = {
+                'id':          n.id,
+                'title':       n.title,
+                'icon':        n.icon,
+                'color':       n.color,
+                'folder_id':   n.folder_id,
+                'folder_name': folder.name if folder else None,
+            }
+            if n.title and ql in n.title.lower():
+                title_hits.append(base)
+            if folder and ql in folder.name.lower():
+                folder_hits.append(base)
+            if n.text and ql in n.text.lower():
+                content_hits.append({**base, 'snippet': _snippet(n.text, q)})
+
+        return jsonify({
+            'notes': {
+                'title':   title_hits,
+                'folder':  folder_hits,
+                'content': content_hits,
+            }
+        })

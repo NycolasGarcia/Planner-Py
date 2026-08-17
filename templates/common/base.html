@@ -7,6 +7,121 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-icons-1.13.1/bootstrap-icons.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='aos/aos.css') }}">
         <title>{% block title %}Planner App{% endblock %}</title>
+        {% set _accent = settings_dict['theme.primary_color'] if settings_dict['theme.primary_color'] in ['primary', 'secondary', 'success', 'danger', 'warning', 'info'] else 'primary' %}
+        {% set _app_fonts = {
+            'serif':     'Georgia, "Times New Roman", serif',
+            'monospace': 'Consolas, "SFMono-Regular", "Courier New", monospace',
+        } %}
+        <style>
+            /* "Cor Principal" NÃO reescreve --bs-primary — primary no Bootstrap
+               também é uma cor literal e estável da paleta do color picker
+               (notas/pastas coloridas de azul de propósito usam essa mesma
+               variável). Isso já foi tentado e quebrou: toda nota "azul"
+               virava a cor do sistema, e o próprio swatch "primary" do
+               picker passava a mostrar a cor errada. Em vez disso, um
+               namespace novo e independente — --app-accent* — que nada do
+               Bootstrap lê implicitamente. "accent" funciona como uma 7ª
+               cor "virtual" (nunca gravada no banco como string — nota/
+               pasta sem cor value é NULL, e esse NULL cai aqui na renderização).
+               Sempre definido (mesmo no default 'primary' = azul de fábrica),
+               pra sidebar/botão Novo/títulos WIP terem algo pra herdar. */
+            :root {
+                --app-accent: var(--bs-{{ _accent }});
+                --app-accent-rgb: var(--bs-{{ _accent }}-rgb);
+                --app-accent-text-emphasis: var(--bs-{{ _accent }}-text-emphasis);
+                --app-accent-bg-subtle: var(--bs-{{ _accent }}-bg-subtle);
+                --app-accent-border-subtle: var(--bs-{{ _accent }}-border-subtle);
+                /* Usada pela utility .focus-ring do Bootstrap (não pelos
+                   :focus hardcoded abaixo — esses precisam de override
+                   próprio, ver comentário mais adiante). */
+                --bs-focus-ring-color: rgba(var(--app-accent-rgb), .25);
+            }
+            .text-accent { color: rgba(var(--app-accent-rgb), 1) !important; }
+            .bg-accent { background-color: rgba(var(--app-accent-rgb), 1) !important; }
+            .bg-accent-subtle { background-color: var(--app-accent-bg-subtle) !important; }
+            .border-accent { border-color: rgba(var(--app-accent-rgb), 1) !important; }
+            .border-accent-subtle { border-color: var(--app-accent-border-subtle) !important; }
+            .btn-accent {
+                --bs-btn-color: #fff;
+                --bs-btn-bg: var(--app-accent);
+                --bs-btn-border-color: var(--app-accent);
+                --bs-btn-hover-color: #fff;
+                --bs-btn-hover-bg: color-mix(in srgb, var(--app-accent) 85%, black);
+                --bs-btn-hover-border-color: color-mix(in srgb, var(--app-accent) 80%, black);
+                --bs-btn-active-color: #fff;
+                --bs-btn-active-bg: color-mix(in srgb, var(--app-accent) 80%, black);
+                --bs-btn-active-border-color: color-mix(in srgb, var(--app-accent) 75%, black);
+                --bs-btn-disabled-color: #fff;
+                --bs-btn-disabled-bg: var(--app-accent);
+                --bs-btn-disabled-border-color: var(--app-accent);
+                --bs-btn-focus-shadow-rgb: var(--app-accent-rgb);
+            }
+            .btn-outline-accent {
+                --bs-btn-color: var(--app-accent);
+                --bs-btn-border-color: var(--app-accent);
+                --bs-btn-hover-color: #fff;
+                --bs-btn-hover-bg: var(--app-accent);
+                --bs-btn-hover-border-color: var(--app-accent);
+                --bs-btn-active-color: #fff;
+                --bs-btn-active-bg: var(--app-accent);
+                --bs-btn-active-border-color: var(--app-accent);
+                --bs-btn-disabled-color: var(--app-accent);
+                --bs-btn-disabled-border-color: var(--app-accent);
+                --bs-btn-focus-shadow-rgb: var(--app-accent-rgb);
+            }
+            /* Destaque da página/aba ativa — sidebar E abas de Settings (as
+               duas são instâncias de .nav-pills separadas). Escopado nos
+               dois lugares específicos, nunca um .nav-pills genérico, pra
+               não vazar pra um futuro que represente dado do usuário.
+               settings.html tinha uma regra só sua pra isso, mas
+               .nav-pills .nav-link.active do Bootstrap tem MAIS classes
+               (logo mais especificidade) e sempre ganhava dela — por isso
+               aqui usa o mesmo número de classes que o Bootstrap usa. */
+            #appAside .nav-pills .nav-link.active,
+            #appAside .nav-pills .show > .nav-link,
+            .nav-pills .nav-link.settings-tab.active,
+            .nav-pills .show > .nav-link.settings-tab {
+                background-color: var(--app-accent);
+                color: #fff;
+            }
+            /* Links de NAVEGAÇÃO do próprio app (sidebar, abas de Settings)
+               herdam --bs-link-color por padrão — mesma variável de link
+               genérico do <a> (URLs digitadas, sempre azul de propósito).
+               Escopado só nesses dois lugares pra não confundir os dois:
+               nav do app segue accent, URL de verdade continua azul. */
+            #appAside .nav-link,
+            .settings-tab {
+                --bs-nav-link-color: var(--app-accent);
+                --bs-nav-link-hover-color: var(--app-accent);
+            }
+            /* Bootstrap queima #0d6efd direto em vários estados de foco/
+               seleção — não passam por --bs-primary nem por nenhuma
+               variável (mesmo padrão do .nav-pills/.form-check-input).
+               Precisa de override direto em cada regra. */
+            .form-check-input:checked,
+            .form-check-input[type="checkbox"]:indeterminate {
+                background-color: var(--app-accent);
+                border-color: var(--app-accent);
+            }
+            .form-check-input:focus,
+            .form-control:focus,
+            .form-select:focus {
+                border-color: color-mix(in srgb, var(--app-accent) 50%, white);
+                box-shadow: 0 0 0 .25rem rgba(var(--app-accent-rgb), .25);
+            }
+            .nav-link:focus-visible {
+                box-shadow: 0 0 0 .25rem rgba(var(--app-accent-rgb), .25);
+            }
+            {% if settings_dict['customizacao.fonte'] in _app_fonts %}
+            /* Fonte geral do app — a nota tem a própria (Settings > Notas),
+               que sobrescreve isso só dentro do editor/preview. Também
+               reaplicada via JS (window.__applyTheme) pra refletir na hora
+               quando o usuário muda o setting sem sair da página. */
+            body {
+                font-family: {{ _app_fonts[settings_dict['customizacao.fonte']] }};
+            }
+            {% endif %}
+        </style>
         {% block head %}{% endblock %}
     </head>
     <body class="d-flex flex-column vh-100">
@@ -69,6 +184,31 @@
             e.preventDefault();
             openExternal(href);
         });
+
+        // Aplica Cor Principal + Fonte do app via CSS var/estilo inline —
+        // maior especificidade que qualquer stylesheet, então sobrescreve o
+        // <style> renderizado no <head> sem precisar recarregar a página.
+        // O <head> já acerta a primeira pintura (evita flash); isso aqui é
+        // só pra reagir na hora quando o setting muda SEM navegar (Settings
+        // chama de novo depois do autoSave — ver settings.html).
+        window.__applyTheme = function (settings) {
+            const accentAllowed = ['primary', 'secondary', 'success', 'danger', 'warning', 'info'];
+            const accent = accentAllowed.includes(settings['theme.primary_color'])
+                ? settings['theme.primary_color'] : 'primary';
+            const root = document.documentElement.style;
+            root.setProperty('--app-accent', `var(--bs-${accent})`);
+            root.setProperty('--app-accent-rgb', `var(--bs-${accent}-rgb)`);
+            root.setProperty('--app-accent-text-emphasis', `var(--bs-${accent}-text-emphasis)`);
+            root.setProperty('--app-accent-bg-subtle', `var(--bs-${accent}-bg-subtle)`);
+            root.setProperty('--app-accent-border-subtle', `var(--bs-${accent}-border-subtle)`);
+
+            const fonts = {
+                serif:     'Georgia, "Times New Roman", serif',
+                monospace: 'Consolas, "SFMono-Regular", "Courier New", monospace',
+            };
+            document.body.style.fontFamily = fonts[settings['customizacao.fonte']] || '';
+        };
+        window.__applyTheme(window.__settings);
     </script>
     {% block scripts %}{% endblock %}
 </html>

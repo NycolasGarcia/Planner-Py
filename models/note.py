@@ -23,3 +23,8 @@ class Note(Base):
     folder_id = Column(Integer, ForeignKey("note_folders.id", ondelete="SET NULL"), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=True)
+
+    # Preenchido quando a nota vai pra Lixeira (pasta de sistema) — controla
+    # a contagem de retenção antes da exclusão permanente automática.
+    deleted_at = Column(DateTime, nullable=True)

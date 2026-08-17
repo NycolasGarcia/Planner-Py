@@ -40,20 +40,21 @@
             </div>
             <div class="modal-body d-flex flex-column gap-3">
                 <div class="d-flex gap-2">
-                    <button class="btn btn-outline-secondary flex-shrink-0" type="button" disabled>
-                        <span class="rounded-circle d-inline-block bg-secondary" id="folderColorDot"
+                    <!-- Sem data-bs-toggle declarativo de propósito — igual
+                         o folderIconTrigger, precisa do fix manual de
+                         empilhamento (ver bloco de modal-dentro-de-modal). -->
+                    <button class="btn btn-outline-secondary flex-shrink-0" type="button" id="folderColorBtn"
+                            data-target-input="#folderColorValue" title="Escolher cor">
+                        <span class="rounded-circle d-inline-block bg-accent" id="folderColorDot"
                               style="width:14px;height:14px;"></span>
                     </button>
+                    <input type="hidden" id="folderColorValue">
                     <input type="text" class="form-control" placeholder="Nome da pasta" id="folderNameInput">
                     <button class="btn btn-outline-secondary flex-shrink-0" type="button"
                             id="folderIconTrigger" data-target-input="#folderIconValue" title="Escolher ícone">
                         <i class="bi bi-folder" id="folderIconPreview"></i>
                     </button>
                     <input type="hidden" id="folderIconValue">
-                </div>
-                <div>
-                    <label class="form-label mb-2 small text-secondary">Cor</label>
-                    <div class="d-flex flex-wrap gap-1" id="folderColorSwatches"></div>
                 </div>
             </div>
             <div class="modal-footer d-flex justify-content-between">
@@ -80,7 +81,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1 class="display-6 fw-semibold mb-4">Notas</h1>
             <div class="d-flex gap-1">
-                <button class="btn btn-sm bg-primary-subtle" id="newNoteBtn">Novo</button>
+                <button class="btn btn-sm bg-accent-subtle" id="newNoteBtn">Novo</button>
                 <button class="btn btn-sm btn-outline-secondary" type="button" id="newFolderBtn" title="Nova pasta">
                     <i class="bi bi-folder-plus"></i>
                 </button>
@@ -149,6 +150,8 @@
                     <li><a class="dropdown-item sort-opt" href="#" data-sort="order" data-dir="desc"><i class="bi bi-clock me-1"></i>Criação ↓</a></li>
                     <li><a class="dropdown-item sort-opt" href="#" data-sort="alpha" data-dir="asc"><i class="bi bi-sort-alpha-down me-1"></i>A → Z</a></li>
                     <li><a class="dropdown-item sort-opt" href="#" data-sort="alpha" data-dir="desc"><i class="bi bi-sort-alpha-up me-1"></i>Z → A</a></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="updated" data-dir="desc"><i class="bi bi-clock-history me-1"></i>Última modificação (mais recente)</a></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="updated" data-dir="asc"><i class="bi bi-clock-history me-1"></i>Última modificação (mais antiga)</a></li>
                     <li><a class="dropdown-item sort-opt" href="#" data-sort="color" data-dir="asc"><i class="bi bi-palette me-1"></i>Por cor</a></li>
                 </ul>
             </div>
@@ -171,6 +174,10 @@
                 <div class="mt-2" id="notesList"></div>
             </div>
 
+            <div id="lixeiraSection" class="d-none mt-3">
+                <div class="mt-2" id="lixeiraList"></div>
+            </div>
+
         </div>
     </section>
 
@@ -189,70 +196,78 @@
         <!-- Note editor -->
         <div id="noteEditor" class="d-none d-flex flex-column flex-grow-1" style="min-height: 0;">
 
-            <!-- Header da nota -->
-            <div class="d-flex align-items-center gap-2 mb-3 flex-shrink-0">
+            <!-- Header da nota: sempre 2 linhas fixas, em qualquer tamanho
+                 de tela — sem truque de order/wrap, mais simples e previsível. -->
+            <div class="flex-shrink-0 mb-3">
 
-                <!-- Voltar pra lista: só existe algo pra "voltar" no mobile,
-                     onde as duas colunas não ficam lado a lado. -->
-                <button class="btn btn-sm btn-outline-secondary flex-shrink-0 d-lg-none" type="button"
-                        id="noteBackBtn" title="Voltar pra lista">
-                    <i class="bi bi-arrow-left"></i>
-                </button>
-
-                <!-- Vínculos -->
-                <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button"
-                        id="noteLinkBtn" title="Vincular a outro objeto" disabled>
-                    <i class="bi bi-bezier2"></i>
-                </button>
-
-                <!-- Seletor de cor -->
-                <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button" id="noteColorBtn"
-                        data-bs-toggle="modal" data-bs-target="#colorPickerModal" data-target-input="#noteColorValue">
-                    <span class="rounded-circle d-inline-block bg-primary" id="noteColorDot"
-                          style="width:14px;height:14px;"></span>
-                </button>
-                <input type="hidden" id="noteColorValue">
-
-                <!-- Pasta da nota -->
-                <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button" id="noteFolderBtn"
-                        data-bs-toggle="modal" data-bs-target="#folderPickerModal" data-target-input="#noteFolderValue"
-                        title="Mover para pasta">
-                    <i class="bi bi-folder"></i>
-                </button>
-                <input type="hidden" id="noteFolderValue">
-
-                <!-- Botão de ícone -->
-                <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button"
-                        data-bs-toggle="modal" data-bs-target="#iconPickerModal"
-                        data-target-input="#noteIconValue" title="Escolher ícone">
-                    <i class="bi bi-tag" id="noteIconPreview"></i>
-                </button>
-                <input type="hidden" id="noteIconValue">
-
-                <!-- Título -->
-                <input type="text"
-                       class="form-control border-0 fw-bold flex-grow-1"
-                       placeholder="Título da nota" id="noteTitleInput">
-
-                <!-- Ações -->
-                <div class="d-flex gap-1 flex-shrink-0">
-                    <button class="btn btn-sm btn-outline-success" type="button"
-                            id="notePinBtn" title="Fixar nota">
-                        <i class="bi bi-pin"></i>
+                <!-- Linha 1: voltar (só existe pra "voltar" no mobile, onde
+                     as duas colunas não ficam lado a lado) + título. -->
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-secondary flex-shrink-0 d-lg-none" type="button"
+                            id="noteBackBtn" title="Voltar pra lista">
+                        <i class="bi bi-arrow-left"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-primary" type="button"
-                            id="noteSaveBtn" title="Salvar nota">
-                        <i class="bi bi-floppy"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-info" type="button"
-                            id="noteDownloadBtn" title="Baixar nota">
-                        <i class="bi bi-download"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" type="button"
-                            id="noteDeleteBtn" title="Excluir nota">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                    <input type="text"
+                           class="form-control border-0 fw-bold flex-grow-1"
+                           placeholder="Título da nota" id="noteTitleInput">
                 </div>
+
+                <!-- Linha 2: cor, ícone, pasta, vínculos, depois as ações. -->
+                <div class="d-flex align-items-center gap-2 mt-2">
+                    <!-- Seletor de cor -->
+                    <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button" id="noteColorBtn"
+                            data-bs-toggle="modal" data-bs-target="#colorPickerModal" data-target-input="#noteColorValue">
+                        <span class="rounded-circle d-inline-block bg-accent" id="noteColorDot"
+                              style="width:14px;height:14px;"></span>
+                    </button>
+                    <input type="hidden" id="noteColorValue">
+
+                    <!-- Botão de ícone -->
+                    <button class="btn btn-sm btn-outline-accent flex-shrink-0" type="button"
+                            data-bs-toggle="modal" data-bs-target="#iconPickerModal"
+                            data-target-input="#noteIconValue" title="Escolher ícone">
+                        <i class="bi bi-tag" id="noteIconPreview"></i>
+                    </button>
+                    <input type="hidden" id="noteIconValue">
+
+                    <!-- Pasta da nota -->
+                    <button class="btn btn-sm btn-outline-warning flex-shrink-0" type="button" id="noteFolderBtn"
+                            data-bs-toggle="modal" data-bs-target="#folderPickerModal" data-target-input="#noteFolderValue"
+                            title="Mover para pasta">
+                        <i class="bi bi-folder"></i>
+                    </button>
+                    <input type="hidden" id="noteFolderValue">
+
+                    <!-- Vínculos -->
+                    <button class="btn btn-sm btn-outline-info flex-shrink-0" type="button"
+                            id="noteLinkBtn" title="Vincular a outro objeto" disabled>
+                        <i class="bi bi-bezier2"></i>
+                    </button>
+
+                    <!-- Ações -->
+                    <div class="d-flex gap-1 flex-shrink-0">
+                        <button class="btn btn-sm btn-outline-success" type="button"
+                                id="notePinBtn" title="Fixar nota">
+                            <i class="bi bi-pin"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" type="button"
+                                id="noteSaveBtn" title="Salvar nota">
+                            <i class="bi bi-floppy"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-info" type="button"
+                                id="noteDownloadBtn" title="Baixar nota">
+                            <i class="bi bi-download"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" type="button"
+                                id="noteDeleteBtn" title="Excluir nota">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-2 flex-shrink-0">
+                <small class="text-muted" id="noteUpdatedTag"></small>
             </div>
 
             <!-- Conteúdo (EasyMDE monta a toolbar/preview em cima desta textarea) -->
@@ -272,12 +287,22 @@
 <script>
 (function () {
     // ── Constants ─────────────────────────────────────────────────────────
+    // "primary" aqui é sempre azul literal — uma das 6 cores fixas e
+    // estáveis da paleta, igual as outras 5. Nota/pasta sem cor nenhuma
+    // escolhida grava NULL no banco (não "primary"); pra fins de CSS, um
+    // valor null/vazio/desconhecido vira a 7ª cor "virtual" — accent —
+    // que segue a Cor Principal do sistema (Settings > Customização).
     const COLORS = ['secondary', 'info', 'primary', 'success', 'warning', 'danger'];
     const COLOR_ORDER = Object.fromEntries(COLORS.map((c, i) => [c, i]));
+    function colorOrAccent(c) { return COLORS.includes(c) ? c : 'accent'; }
+    // 'accent' não é --bs-accent (não existe) — é --app-accent, definida em
+    // base.html. As 6 cores literais continuam em --bs-<cor> normalmente.
+    function colorVar(c) { return c === 'accent' ? 'var(--app-accent)' : `var(--bs-${c})`; }
 
     // ── State ─────────────────────────────────────────────────────────────
-    let currentNoteId = null;
-    let currentColor  = 'primary';
+    let currentNoteId   = null;
+    let currentFolderId = null;
+    let currentColor  = null;
     let isPinned      = false;
     let selectMode    = false;
     let selectedIds   = new Set();
@@ -289,11 +314,12 @@
     let isDirty       = false;
     let _saving       = false;
     let allFolders          = [];
+    let lixeiraId           = null;
     let expandedFolderIds   = new Set();
     let editingFolderId     = null;
-    let folderColor         = 'secondary';
+    let folderColor         = null;
     let folderIsPinned      = false;
-    let _folderModalReopenAfterIcon = false;
+    let _folderModalReopenAfterChild = false;
 
     const SETTINGS = window.__settings || {};
 
@@ -303,8 +329,11 @@
 
     function postProcessPreview(container) {
         const accentMode = SETTINGS['notes.render_accent'] || 'secondary';
-        const accent = accentMode === 'primary' ? 'primary'
-            : accentMode === 'note' ? (COLORS.includes(currentColor) ? currentColor : 'secondary')
+        // accentMode 'primary' = "Cor Principal do sistema" no dropdown de
+        // Settings — é o pseudo-color accent, não o azul literal do
+        // Bootstrap (mesma distinção do resto do Patch C).
+        const accent = accentMode === 'primary' ? 'accent'
+            : accentMode === 'note' ? colorOrAccent(currentColor)
             : 'secondary';
 
         container.querySelectorAll('code.language-mermaid').forEach(code => {
@@ -336,9 +365,9 @@
                 // --bs-table-border-color só afeta a borda externa do <table>
                 // em si — as células internas não herdam border-color (essa
                 // propriedade não é herdável em CSS), tem que setar em cada uma.
-                t.style.setProperty('--bs-table-border-color', `var(--bs-${accent})`);
+                t.style.setProperty('--bs-table-border-color', colorVar(accent));
                 t.querySelectorAll('td, th').forEach(cell => {
-                    cell.style.borderColor = `var(--bs-${accent})`;
+                    cell.style.borderColor = colorVar(accent);
                 });
             }
         });
@@ -364,13 +393,13 @@
             cb.style.width = '1em';
             cb.style.height = '1em';
             cb.style.verticalAlign = 'middle';
-            cb.style.border = `2px solid var(--bs-${accent})`;
+            cb.style.border = `2px solid ${colorVar(accent)}`;
             cb.style.borderRadius = '0.25em';
             cb.style.backgroundRepeat = 'no-repeat';
             cb.style.backgroundPosition = 'center';
             cb.style.backgroundSize = '0.75em';
             if (cb.checked) {
-                cb.style.backgroundColor = `var(--bs-${accent})`;
+                cb.style.backgroundColor = colorVar(accent);
                 cb.style.backgroundImage = "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e\")";
             }
         });
@@ -402,19 +431,19 @@
             { name: 'italic', action: EasyMDE.toggleItalic, className: 'bi bi-type-italic', title: 'Itálico (Ctrl+I)' },
             { name: 'strikethrough', action: EasyMDE.toggleStrikethrough, className: 'bi bi-type-strikethrough', title: 'Tachado' },
             '|',
-            { name: 'code', action: EasyMDE.toggleCodeBlock, className: 'bi bi-code-slash', title: 'Código (Ctrl+Alt+C)' },
+            { name: 'code', action: EasyMDE.toggleCodeBlock, className: 'bi bi-code-slash', title: 'Código (Ctrl+Alt+C)', noMobile: true },
             { name: 'quote', action: EasyMDE.toggleBlockquote, className: 'bi bi-blockquote-left', title: "Citação (Ctrl+')" },
             { name: 'unordered-list', action: EasyMDE.toggleUnorderedList, className: 'bi bi-list-ul', title: 'Lista (Ctrl+L)' },
             { name: 'ordered-list', action: EasyMDE.toggleOrderedList, className: 'bi bi-list-ol', title: 'Lista numerada (Ctrl+Alt+L)' },
             { name: 'check-list', action: EasyMDE.toggleCheckList, className: 'bi bi-check2-square', title: 'Checklist (Shift+Ctrl+L)' },
             '|',
-            { name: 'link', action: EasyMDE.drawLink, className: 'bi bi-link-45deg', title: 'Link (Ctrl+K)' },
-            { name: 'image', action: EasyMDE.drawImage, className: 'bi bi-image', title: 'Imagem (Ctrl+Alt+I)' },
-            { name: 'table', action: EasyMDE.drawTable, className: 'bi bi-table', title: 'Tabela' },
+            { name: 'link', action: EasyMDE.drawLink, className: 'bi bi-link-45deg', title: 'Link (Ctrl+K)', noMobile: true },
+            { name: 'image', action: EasyMDE.drawImage, className: 'bi bi-image', title: 'Imagem (Ctrl+Alt+I)', noMobile: true },
+            { name: 'table', action: EasyMDE.drawTable, className: 'bi bi-table', title: 'Tabela', noMobile: true },
             { name: 'horizontal-rule', action: EasyMDE.drawHorizontalRule, className: 'bi bi-dash-lg', title: 'Linha horizontal' },
             '|',
             { name: 'preview', action: async (editor) => { await saveIfDirty(); EasyMDE.togglePreview(editor); }, className: 'bi bi-eye', title: 'Preview (Ctrl+P)', noDisable: true },
-            { name: 'side-by-side', action: async (editor) => { await saveIfDirty(); EasyMDE.toggleSideBySide(editor); }, className: 'bi bi-layout-split', title: 'Lado a lado (F9)', noDisable: true },
+            { name: 'side-by-side', action: async (editor) => { await saveIfDirty(); EasyMDE.toggleSideBySide(editor); }, className: 'bi bi-layout-split', title: 'Lado a lado (F9)', noDisable: true, noMobile: true },
             { name: 'fullscreen', action: EasyMDE.toggleFullScreen, className: 'bi bi-arrows-fullscreen', title: 'Tela cheia (F11)', noDisable: true },
         ],
         previewRender(plainText, previewEl) {
@@ -449,26 +478,6 @@
         setTimeout(() => { iconEl.className = original; }, 900);
     }
 
-    // ── Color swatches (só a cor da própria pasta, dentro do folderModal —
-    // nota/bulk usam o #colorPickerModal compartilhado, ver mais abaixo) ──
-    function buildColorSwatches(containerId, onClick) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        container.innerHTML = '';
-        COLORS.forEach(color => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = `btn btn-${color} rounded-circle p-0`;
-            btn.style.cssText = 'width:22px;height:22px;';
-            btn.title = color;
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                onClick(color);
-            });
-            container.appendChild(btn);
-        });
-    }
-
     // ── Utilities ─────────────────────────────────────────────────────────
     function escHtml(s) {
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -476,7 +485,7 @@
 
     function applyColorDot(color) {
         document.getElementById('noteColorDot').className =
-            `rounded-circle d-inline-block bg-${color}`;
+            `rounded-circle d-inline-block bg-${colorOrAccent(color)}`;
     }
 
     function applyPinIcon() {
@@ -491,6 +500,10 @@
                 const cmp = a.title.localeCompare(b.title);
                 return sortDir === 'asc' ? cmp : -cmp;
             }
+            if (sortBy === 'updated') {
+                const cmp = new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at);
+                return sortDir === 'asc' ? cmp : -cmp;
+            }
             if (sortBy === 'color') {
                 return (COLOR_ORDER[a.color] ?? 99) - (COLOR_ORDER[b.color] ?? 99);
             }
@@ -501,7 +514,9 @@
 
     function sortFolders(folders) {
         return [...folders].sort((a, b) => {
-            if (sortBy === 'alpha') {
+            // Pastas não têm "última modificação" própria — cai pro
+            // alfabético nesse modo, é o critério mais previsível disponível.
+            if (sortBy === 'alpha' || sortBy === 'updated') {
                 const cmp = a.name.localeCompare(b.name);
                 return sortDir === 'asc' ? cmp : -cmp;
             }
@@ -540,7 +555,7 @@
 
     // ── Sidebar ───────────────────────────────────────────────────────────
     function noteCardHtml(note) {
-        const color    = COLORS.includes(note.color) ? note.color : 'secondary';
+        const color    = colorOrAccent(note.color);
         const icon     = note.icon || 'bi-file-text';
         const selected = selectedIds.has(note.id);
         const leftIcon = selectMode ? (selected ? 'bi-check-circle-fill' : 'bi-circle') : escHtml(icon);
@@ -581,12 +596,22 @@
     }
 
     function folderBlockHtml(folder, notes, isOpen) {
-        const color   = COLORS.includes(folder.color) ? folder.color : 'secondary';
+        const color   = colorOrAccent(folder.color);
         const icon    = folder.icon || 'bi-folder';
         const chevron = isOpen ? 'bi-chevron-down' : 'bi-chevron-right';
         const notesHtml = isOpen
             ? `<div class="ps-3 mt-1">${notes.map(noteCardHtml).join('')}</div>`
             : '';
+        // Lixeira é protegida: sem lápis de edição (não pode renomear/reicone
+        // a pasta de sistema — só chega lá via "Excluir" numa nota).
+        // .btn-group > .btn do Bootstrap tem flex:1 1 auto por padrão — só
+        // "width" não bastava, o botão ainda CRESCIA pra ocupar sobra de
+        // espaço. flex:0 0 28px trava grow/shrink/basis de uma vez, via
+        // inline style (maior especificidade possível).
+        const editBtn = folder.is_system ? '' : `
+                        <button type="button" class="btn btn-${color}" data-folder-edit="${folder.id}" title="Editar pasta" style="flex: 0 0 28px;">
+                            <i class="bi bi-pencil-fill"></i>
+                        </button>`;
         return `<div class="mb-1">
                     <div class="btn-group btn-group-sm w-100">
                         <button type="button" class="btn btn-${color} d-flex align-items-center gap-1 flex-grow-1 text-start overflow-hidden"
@@ -594,10 +619,7 @@
                             <i class="${chevron} flex-shrink-0"></i>
                             <i class="${escHtml(icon)} flex-shrink-0"></i>
                             <span class="text-truncate">${escHtml(folder.name)}</span>
-                        </button>
-                        <button type="button" class="btn btn-${color} px-1 flex-shrink-0" data-folder-edit="${folder.id}" title="Editar pasta">
-                            <i class="bi bi-pencil-fill" style="font-size:.65rem;"></i>
-                        </button>
+                        </button>${editBtn}
                     </div>
                     ${notesHtml}
                 </div>`;
@@ -635,8 +657,12 @@
             }
         }
 
+        // Lixeira nunca entra no agrupamento normal (Fixadas/Outros) — tem
+        // seção própria, renderizada por último, condicionada ao setting.
+        const visibleFolders = allFolders.filter(f => !f.is_system);
+
         const pinnedFolderIds = new Set(
-            allFolders
+            visibleFolders
                 .filter(f => f.is_pinned || (notesByFolder.get(f.id) || []).some(n => n.is_pinned))
                 .map(f => f.id)
         );
@@ -654,7 +680,7 @@
         }
 
         function renderGroup(folderIdSet, looseNotes) {
-            let html = sortFolders(allFolders.filter(f => folderIdSet.has(f.id)))
+            let html = sortFolders(visibleFolders.filter(f => folderIdSet.has(f.id)))
                 .map(folder => {
                     const { visible, notes, open } = folderVisibleAndNotes(folder);
                     return visible ? folderBlockHtml(folder, notes, open) : '';
@@ -665,7 +691,7 @@
             return html;
         }
 
-        const otherFolderIds = new Set(allFolders.filter(f => !pinnedFolderIds.has(f.id)).map(f => f.id));
+        const otherFolderIds = new Set(visibleFolders.filter(f => !pinnedFolderIds.has(f.id)).map(f => f.id));
         const pinnedLoose = folderless.filter(n => n.is_pinned);
         const otherLoose  = folderless.filter(n => !n.is_pinned);
 
@@ -676,6 +702,22 @@
         document.getElementById('notesList').innerHTML  = othersHtml;
         document.getElementById('pinnedSection').classList.toggle('d-none', !pinnedHtml);
         document.getElementById('othersSection').classList.toggle('d-none', !othersHtml);
+
+        // ── Lixeira ──────────────────────────────────────────────────────
+        const lixeira = allFolders.find(f => f.is_system);
+        let lixeiraHtml = '';
+        if (lixeira) {
+            const trashNotes = sortNotes(notesByFolder.get(lixeira.id) || [])
+                .filter(n => noteMatchesQuery(n, q));
+            const visibility = SETTINGS['notes.trash_visibility'] || 'if-has-items';
+            const shouldShow = visibility === 'always'
+                || (visibility === 'if-has-items' && trashNotes.length > 0);
+            if (shouldShow) {
+                lixeiraHtml = folderBlockHtml(lixeira, trashNotes, expandedFolderIds.has(lixeira.id));
+            }
+        }
+        document.getElementById('lixeiraList').innerHTML = lixeiraHtml;
+        document.getElementById('lixeiraSection').classList.toggle('d-none', !lixeiraHtml);
 
         wireNoteCardClicks();
         wireFolderControls();
@@ -691,38 +733,56 @@
     }
 
     // ── Folder picker modal (compartilhado por nota única e bulk) ─────────
-    function folderPickerItemsHtml() {
-        const items = ['<button type="button" class="list-group-item list-group-item-action" data-note-folder="">Sem pasta</button>'];
-        allFolders.forEach(f => {
-            const color = COLORS.includes(f.color) ? f.color : 'secondary';
-            items.push(`<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2" data-note-folder="${f.id}">
-                            <span class="rounded-circle d-inline-block bg-${color}" style="width:10px;height:10px;"></span>
-                            ${escHtml(f.name)}
-                        </button>`);
-        });
-        return items.join('');
+    // Lixeira nunca é destino manual — só se chega lá via "Excluir". Ordenado
+    // A-Z pra achar rápido numa lista longa de pastas.
+    function folderPickerItemsHtml(query) {
+        const q = (query || '').trim().toLowerCase();
+        const items = [];
+        if (!q) {
+            items.push('<button type="button" class="list-group-item list-group-item-action" data-note-folder="">Sem pasta</button>');
+        }
+        allFolders
+            .filter(f => !f.is_system && (!q || f.name.toLowerCase().includes(q)))
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .forEach(f => {
+                const color = colorOrAccent(f.color);
+                items.push(`<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2" data-note-folder="${f.id}">
+                                <span class="rounded-circle d-inline-block bg-${color}" style="width:10px;height:10px;"></span>
+                                ${escHtml(f.name)}
+                            </button>`);
+            });
+        return items.join('') || '<span class="list-group-item text-muted small">Nenhuma pasta encontrada</span>';
     }
 
     document.getElementById('folderPickerModal').addEventListener('show.bs.modal', (e) => {
         const trigger = e.relatedTarget;
         const targetInput = trigger ? document.querySelector(trigger.dataset.targetInput) : null;
-        const list = document.getElementById('folderPickerList');
-        list.innerHTML = folderPickerItemsHtml();
-        list.querySelectorAll('[data-note-folder]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (targetInput) {
-                    targetInput.value = btn.dataset.noteFolder;
-                    targetInput.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-                bootstrap.Modal.getInstance(document.getElementById('folderPickerModal'))?.hide();
+        const list   = document.getElementById('folderPickerList');
+        const search = document.getElementById('folderPickerSearch');
+
+        function renderList() {
+            list.innerHTML = folderPickerItemsHtml(search.value);
+            list.querySelectorAll('[data-note-folder]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (targetInput) {
+                        targetInput.value = btn.dataset.noteFolder;
+                        targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    bootstrap.Modal.getInstance(document.getElementById('folderPickerModal'))?.hide();
+                });
             });
-        });
+        }
+
+        search.value = '';
+        renderList();
+        search.oninput = renderList;
     });
 
     let _seenFolderIds = new Set();
 
     async function loadFolders() {
         allFolders = await fetch('/api/note-folders').then(r => r.json());
+        lixeiraId  = allFolders.find(f => f.is_system)?.id ?? null;
         const openByDefault = SETTINGS['notes.folders_open_default'] === 'true';
         allFolders.forEach(f => {
             // Só decide o estado inicial (aberta/fechada) na primeira vez que
@@ -745,14 +805,15 @@
 
     function openFolderModal(folder) {
         editingFolderId = folder ? folder.id : null;
-        folderColor     = folder && COLORS.includes(folder.color) ? folder.color : 'secondary';
+        folderColor     = folder && COLORS.includes(folder.color) ? folder.color : null;
         folderIsPinned  = !!(folder && folder.is_pinned);
 
         document.getElementById('folderModalTitle').textContent      = folder ? 'Editar pasta' : 'Nova pasta';
         document.getElementById('folderNameInput').value              = folder ? folder.name : '';
         document.getElementById('folderIconValue').value              = folder ? (folder.icon || '') : '';
         document.getElementById('folderIconPreview').className       = (folder && folder.icon) || 'bi bi-folder';
-        document.getElementById('folderColorDot').className           = `rounded-circle d-inline-block bg-${folderColor}`;
+        document.getElementById('folderColorValue').value             = folderColor || '';
+        document.getElementById('folderColorDot').className           = `rounded-circle d-inline-block bg-${colorOrAccent(folderColor)}`;
         document.getElementById('folderDeleteBtn').classList.toggle('d-none', !folder);
         applyFolderPinIcon();
 
@@ -774,9 +835,23 @@
     }
 
     // ── Editor ────────────────────────────────────────────────────────────
+    // Backend manda isoformat() de datetime naive (UTC, sem sufixo) — sem
+    // apontar isso o Date() do JS interpretaria como horário local errado.
+    function formatUpdatedAt(iso) {
+        if (!iso) return '';
+        const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+        return 'Editado em ' + d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+
+    function updateNoteUpdatedTag(note) {
+        document.getElementById('noteUpdatedTag').textContent =
+            formatUpdatedAt(note && (note.updated_at || note.created_at));
+    }
+
     function openNote(note) {
-        currentNoteId = note.id;
-        currentColor  = COLORS.includes(note.color) ? note.color : 'primary';
+        currentNoteId   = note.id;
+        currentFolderId = note.folder_id ?? null;
+        currentColor  = COLORS.includes(note.color) ? note.color : null;
         isPinned      = !!note.is_pinned;
         isDirty       = false;
 
@@ -784,6 +859,7 @@
         easyMDE.value(note.text || '');
         document.getElementById('noteIconValue').value       = note.icon  || '';
         document.getElementById('noteIconPreview').className = note.icon  || 'bi bi-tag';
+        updateNoteUpdatedTag(note);
 
         applyColorDot(currentColor);
         applyPinIcon();
@@ -812,17 +888,18 @@
         isDirty = false;
         try {
             const isNew = !currentNoteId;
+            let saved;
             if (currentNoteId) {
-                await fetch('/api/notes/' + currentNoteId, {
+                saved = await fetch('/api/notes/' + currentNoteId, {
                     method:  'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title,
                         text: easyMDE.value(),
                     }),
-                });
+                }).then(r => r.json());
             } else {
-                const data = await fetch('/api/notes', {
+                saved = await fetch('/api/notes', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -833,8 +910,9 @@
                         is_pinned: isPinned,
                     }),
                 }).then(r => r.json());
-                currentNoteId = data.id;
+                currentNoteId = saved.id;
             }
+            updateNoteUpdatedTag(saved);
             flashConfirm(document.querySelector('#noteSaveBtn i'));
             await loadNotes();
         } finally {
@@ -878,8 +956,9 @@
 
     document.getElementById('newNoteBtn').addEventListener('click', async () => {
         await saveIfDirty();
-        currentNoteId = null;
-        currentColor  = 'primary';
+        currentNoteId   = null;
+        currentFolderId = null;
+        currentColor  = null;
         isPinned      = false;
         isDirty       = false;
 
@@ -887,6 +966,7 @@
         easyMDE.value('');
         document.getElementById('noteIconValue').value       = '';
         document.getElementById('noteIconPreview').className = 'bi bi-tag';
+        updateNoteUpdatedTag(null);
         applyColorDot(currentColor);
         applyPinIcon();
 
@@ -904,8 +984,18 @@
         if (pendingDelete) { pendingDelete(); pendingDelete = null; }
     });
 
+    // Permanente quando a nota já está na Lixeira (2º delete) ou quando a
+    // retenção está configurada como "nenhum" (Lixeira efetivamente off).
+    function isPermanentDelete(folderId) {
+        return folderId === lixeiraId || SETTINGS['notes.trash_retention_days'] === 'none';
+    }
+
     document.getElementById('noteDeleteBtn').addEventListener('click', () => {
-        openDeleteModal('Excluir esta nota?', deleteNote);
+        const permanent = isPermanentDelete(currentFolderId);
+        openDeleteModal(
+            permanent ? 'Excluir permanentemente esta nota? Essa ação não pode ser desfeita.' : 'Mover esta nota para a Lixeira?',
+            deleteNote
+        );
     });
 
     async function downloadNote() {
@@ -935,7 +1025,11 @@
     document.getElementById('bulkDeleteBtn').addEventListener('click', () => {
         const ids = [...selectedIds];
         if (!ids.length) return;
-        openDeleteModal(`Excluir ${ids.length} nota(s)?`, () => doBulkDelete(ids));
+        const permanent = ids.every(id => isPermanentDelete(allNotes.find(n => n.id === id)?.folder_id));
+        openDeleteModal(
+            permanent ? `Excluir ${ids.length} nota(s) permanentemente? Essa ação não pode ser desfeita.` : `Mover ${ids.length} nota(s) para a Lixeira?`,
+            () => doBulkDelete(ids)
+        );
     });
 
     async function bulkDownload() {
@@ -1019,7 +1113,7 @@
     });
 
     document.getElementById('noteColorValue').addEventListener('change', async function () {
-        currentColor = this.value;
+        currentColor = this.value || null;
         applyColorDot(currentColor);
         refreshPreviewIfActive();
         if (currentNoteId) {
@@ -1038,7 +1132,7 @@
         await fetch('/api/notes/bulk-update', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ ids, color: this.value }),
+            body:    JSON.stringify({ ids, color: this.value || null }),
         });
         await loadNotes();
     });
@@ -1051,6 +1145,7 @@
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ folder_id }),
         });
+        currentFolderId = folder_id;
         await loadNotes();
     });
 
@@ -1066,9 +1161,9 @@
         await loadNotes();
     });
 
-    buildColorSwatches('folderColorSwatches', (color) => {
-        folderColor = color;
-        document.getElementById('folderColorDot').className = `rounded-circle d-inline-block bg-${color}`;
+    document.getElementById('folderColorValue').addEventListener('change', function () {
+        folderColor = this.value || null;
+        document.getElementById('folderColorDot').className = `rounded-circle d-inline-block bg-${colorOrAccent(folderColor)}`;
     });
 
     document.getElementById('newFolderBtn').addEventListener('click', () => openFolderModal(null));
@@ -1116,21 +1211,31 @@
     });
 
     // Bootstrap 5 não suporta modal-dentro-de-modal via data-bs-toggle
-    // declarativo — abrir o icon picker por cima do folderModal fecharia os
-    // dois ao confirmar. Aqui a troca é manual: esconde o folderModal antes,
-    // reabre depois que o icon picker fechar (só se foi essa a origem).
-    document.getElementById('folderIconTrigger').addEventListener('click', () => {
-        _folderModalReopenAfterIcon = true;
+    // declarativo — abrir um modal filho por cima do folderModal quebraria
+    // os dois ao confirmar. Troca manual: esconde o folderModal antes, abre
+    // o filho (passando o trigger como relatedTarget, pro filho achar
+    // data-target-input igual faria via data-bs-toggle normal), e reabre o
+    // folderModal quando o filho fechar — só se foi essa a origem. Usado
+    // tanto pelo icon picker quanto pelo color picker da pasta.
+    function openChildOverFolderModal(childModalEl, triggerEl) {
+        _folderModalReopenAfterChild = true;
         _folderModal.hide();
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('iconPickerModal'))
-            .show(document.getElementById('folderIconTrigger'));
-    });
-    document.getElementById('iconPickerModal').addEventListener('hidden.bs.modal', () => {
-        if (_folderModalReopenAfterIcon) {
-            _folderModalReopenAfterIcon = false;
+        bootstrap.Modal.getOrCreateInstance(childModalEl).show(triggerEl);
+    }
+    function reopenFolderModalIfPending() {
+        if (_folderModalReopenAfterChild) {
+            _folderModalReopenAfterChild = false;
             _folderModal.show();
         }
+    }
+    document.getElementById('folderIconTrigger').addEventListener('click', () => {
+        openChildOverFolderModal(document.getElementById('iconPickerModal'), document.getElementById('folderIconTrigger'));
     });
+    document.getElementById('folderColorBtn').addEventListener('click', () => {
+        openChildOverFolderModal(document.getElementById('colorPickerModal'), document.getElementById('folderColorBtn'));
+    });
+    document.getElementById('iconPickerModal').addEventListener('hidden.bs.modal', reopenFolderModalIfPending);
+    document.getElementById('colorPickerModal').addEventListener('hidden.bs.modal', reopenFolderModalIfPending);
 
     document.getElementById('noteSearch').addEventListener('input', applyFilter);
 
@@ -1171,7 +1276,7 @@
             const res   = await fetch('/api/notes', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ title, text, color: 'secondary' }),
+                body:    JSON.stringify({ title, text }),
             });
             if (res.ok) {
                 const note = await res.json();
@@ -1216,8 +1321,24 @@
         toolbarMq.addEventListener('change', syncToolbarPosition);
     }
 
+    // ── Abertura via busca global (search_bar.html chama isso quando já
+    // está em /notes; senão navega pra /notes?open=<id> e cai no fallback
+    // abaixo) ────────────────────────────────────────────────────────────
+    async function openNoteById(id) {
+        await saveIfDirty();
+        const note = await fetch('/api/notes/' + id).then(r => r.ok ? r.json() : null);
+        if (!note) return;
+        if (note.folder_id) expandedFolderIds.add(note.folder_id);
+        openNote(note);
+        renderSidebar();
+    }
+    window.__notesPage = { openNoteById };
+
     loadFolders();
-    loadNotes();
+    loadNotes().then(() => {
+        const openId = new URLSearchParams(window.location.search).get('open');
+        if (openId) openNoteById(parseInt(openId));
+    });
 })();
 </script>
 {% endblock %}

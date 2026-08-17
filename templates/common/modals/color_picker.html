@@ -13,6 +13,15 @@
                 {% for color in ['secondary', 'info', 'primary', 'success', 'warning', 'danger'] %}
                 <button type="button" class="btn btn-{{ color }} rounded-circle p-3" data-color="{{ color }}" title="{{ color }}"></button>
                 {% endfor %}
+                <!-- "Sem cor": segue a Cor Principal do sistema dinamicamente
+                     (grava null, nunca a string "accent" ou "primary"). O
+                     botão em si fica vazio, igual aos outros 6 (conteúdo
+                     dentro dele desalinhava/aumentava o tamanho) — a tag
+                     "Padrão" vai num wrapper à parte, sem afetar o botão. -->
+                <div class="d-flex flex-column align-items-center gap-1">
+                    <button type="button" class="btn btn-accent rounded-circle p-3" data-color="" title="Padrão (cor do sistema)"></button>
+                    <small class="text-muted" style="font-size: .65rem;">Padrão</small>
+                </div>
             </div>
 
         </div>

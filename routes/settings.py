@@ -10,6 +10,11 @@ settings_bp = Blueprint('settings', __name__)
 DEFAULT_SETTINGS = {
     'theme.mode':                 'dark',
     'theme.primary_color':        'primary',
+    'customizacao.tela_inicial':    'index',
+    'customizacao.resolucao':       '1280x720',
+    'customizacao.orientacao':      'horizontal',
+    'customizacao.redimensionavel': 'true',
+    'customizacao.fonte':           'default',
     'notes.folders_open_default': 'false',
     'notes.preview_font_size':    '16',
     'notes.preview_font_family':  'default',
@@ -17,6 +22,8 @@ DEFAULT_SETTINGS = {
     'notes.default_sort':         'order-asc',
     'notes.render_accent':        'secondary',
     'notes.toolbar_position':     'auto',
+    'notes.trash_visibility':     'if-has-items',
+    'notes.trash_retention_days': '7',
 }
 
 
