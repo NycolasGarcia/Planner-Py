@@ -35,6 +35,12 @@
                    :focus hardcoded abaixo — esses precisam de override
                    próprio, ver comentário mais adiante). */
                 --bs-focus-ring-color: rgba(var(--app-accent-rgb), .25);
+                /* accent-color é a propriedade padrão do CSS pra tingir
+                   controles nativos (checkbox/radio/range) — defensivo:
+                   os controles já são estilizados via classes próprias
+                   abaixo, mas isso garante que nenhum controle nativo não
+                   coberto fique preso num ring/tint que não seja o accent. */
+                accent-color: var(--app-accent);
             }
             .text-accent { color: rgba(var(--app-accent-rgb), 1) !important; }
             .bg-accent { background-color: rgba(var(--app-accent-rgb), 1) !important; }
@@ -111,6 +117,15 @@
             }
             .nav-link:focus-visible {
                 box-shadow: 0 0 0 .25rem rgba(var(--app-accent-rgb), .25);
+            }
+            /* .btn-check (radios/checkboxes estilizados como grupo de botões —
+               Tema, Proporção, etc.) não é um .form-check-input, tem seu
+               próprio anel de foco padrão do Bootstrap (--bs-btn-focus-box-
+               shadow, cor herdada da classe outline do <label>, nunca o
+               accent). Sobrescreve direto, igual ao resto dos estados de
+               foco acima. */
+            .btn-check:focus-visible + .btn {
+                box-shadow: 0 0 0 .25rem rgba(var(--app-accent-rgb), .25) !important;
             }
             {% if settings_dict['customizacao.fonte'] in _app_fonts %}
             /* Fonte geral do app — a nota tem a própria (Settings > Notas),

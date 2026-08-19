@@ -24,6 +24,19 @@ DEFAULT_SETTINGS = {
     'notes.toolbar_position':     'auto',
     'notes.trash_visibility':     'if-has-items',
     'notes.trash_retention_days': '7',
+    'eventos.formato_data':          'dmy',
+    'eventos.formato_hora':          '24h',  # '24h' | 'ampm'
+    'eventos.ano_completo':          'true',
+    'eventos.primeiro_dia_semana':   'sun',  # default real do FullCalendar sem override (locale pt-br não seta week.dow)
+    'eventos.nav_position':       'auto',
+    'eventos.painel_inicial':     'calendar',
+    'eventos.ressaltar_seg':      'false',
+    'eventos.ressaltar_ter':      'false',
+    'eventos.ressaltar_qua':      'false',
+    'eventos.ressaltar_qui':      'false',
+    'eventos.ressaltar_sex':      'false',
+    'eventos.ressaltar_sab':      'false',
+    'eventos.ressaltar_dom':      'false',
 }
 
 

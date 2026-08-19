@@ -1,89 +1,788 @@
 {% extends "common/base.html" %}
 
-{% block title %}Eventos{% endblock %}
+{% block title %}Eventos - Planner App{% endblock %}
+
+{% block head %}
+<script src="{{ url_for('static', filename='fullcalendar/fullcalendar.min.js') }}"></script>
+<script src="{{ url_for('static', filename='fullcalendar/fullcalendar-locale-pt-br.min.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='fullcalendar/theme.css') }}">
+{% endblock %}
 
 {% block content %}
 
-<div class="container-fluid vh-100">
-    <h1 class="display-6 fw-semibold mb-4">Calendário e Agenda</h1>
-    <div class="row g-3 h-100">
-
-        <!-- CALENDÁRIO (3/4) -->
-        <div class="col-lg-9 h-100">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-2 h-90 d-flex">
-
-                    <table class="table table-bordered text-start align-items-start mb-0 h-100 w-100">
-                        
-                        <thead>
-                            <tr>
-                                <th class="bg-primary-subtle">Domingo</th>
-                                <th class="bg-body-secondary">Segunda</th>
-                                <th class="bg-body-secondary">Terça</th>
-                                <th class="bg-body-secondary">Quarta</th>
-                                <th class="bg-body-secondary">Quinta</th>
-                                <th class="bg-body-secondary">Sexta</th>
-                                <th class="bg-primary-subtle">Sábado</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {% set days_in_month = range(1, 32) %}
-
-                            {% for row in range(5) %}
-                            <tr>
-                                {% for col in range(7) %}
-
-                                    {% set idx = row * 7 + col %}
-
-                                    {% if idx < days_in_month|length %}
-                                        {% set day = days_in_month[idx] %}
-                                        {% set is_weekend = col == 0 or col == 6 %}
-                                        {% set is_28 = day == 28 %}
-
-                                        <td class="
-                                            {% if is_28 %}
-                                                bg-primary text-white fw-bold
-                                            {% elif is_weekend %}
-                                                bg-primary-subtle
-                                            {% else %}
-                                                bg-body-secondary
-                                            {% endif %}
-                                        ">
-                                            {{ "%02d" % day }}
-                                        </td>
-
-                                    {% else %}
-                                        <td class="bg-body-secondary"></td>
-                                    {% endif %}
-
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-
-                    </table>
-
+<!-- Modal de confirmação de exclusão -->
+<div class="modal fade" id="deleteEventModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <p class="mb-3">Excluir este evento?</p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-sm btn-danger" id="confirmDeleteEventBtn">Excluir</button>
                 </div>
             </div>
         </div>
+    </div>
+</div>
 
-        <!-- AGENDA (1/4) -->
-        <div class="col-lg-3 h-100">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-2 h-100 overflow-auto">
+<div class="d-flex flex-column h-100" id="eventsRoot">
 
-                    {% for h in range(24) %}
-                        <div class="small py-2 border-bottom">
-                            {{ "%02d:00" % h }}
-                        </div>
-                    {% endfor %}
+    <!-- Navegação mobile: só existe abaixo de lg (desktop mostra os 3
+         painéis ao mesmo tempo, não precisa de seletor). Posição (topo/
+         embaixo) decidida via Settings > Eventos, igual a posição da
+         toolbar do EasyMDE em Notes. -->
+    <div class="d-lg-none d-flex justify-content-center gap-2 py-2 border-bottom flex-shrink-0" id="eventMobileNav">
+        <button type="button" class="btn btn-sm" data-pane="form" title="Novo evento">
+            <i class="bi bi-plus-square"></i>
+        </button>
+        <button type="button" class="btn btn-sm" data-pane="calendar" title="Calendário">
+            <i class="bi bi-calendar3"></i>
+        </button>
+        <button type="button" class="btn btn-sm" data-pane="agenda" title="Agenda">
+            <i class="bi bi-card-list"></i>
+        </button>
+    </div>
 
+    <div class="row g-0 flex-grow-1" style="min-height: 0;">
+
+        <!-- FORM (esquerda) -->
+        <section class="col-12 col-lg-3 h-100 d-none d-lg-flex flex-column p-2 border-end bg-body-secondary"
+                 id="eventFormPane" style="min-height: 0; overflow-y: auto;">
+
+            <!-- Header: título estático (nunca troca "Novo"/"Editar" —
+                 mesmo padrão do header de Notas) + botão Novo. -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h1 class="display-6 fw-semibold mb-0" style="font-size: 1.5rem;">Evento</h1>
+                <button type="button" class="btn btn-sm bg-accent-subtle" id="eventNewBtn" title="Novo evento">Novo</button>
+            </div>
+
+            <input type="text" class="form-control form-control-sm mb-2" placeholder="Nome do evento" id="eventNameInput">
+
+            <!-- Botões: cor, ícone (accent), link (info, ainda não vincula
+                 nada de verdade — Notes tem o mesmo botão no mesmo estado,
+                 falta a API de Tarefas existir pro picker fazer sentido),
+                 depois as ações (salvar/deletar) agrupadas à direita. -->
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0" id="eventColorBtn"
+                        data-bs-toggle="modal" data-bs-target="#colorPickerModal" data-target-input="#eventColorValue"
+                        title="Escolher cor">
+                    <span class="rounded-circle d-inline-block bg-accent" id="eventColorDot" style="width:14px;height:14px;"></span>
+                </button>
+                <input type="hidden" id="eventColorValue">
+
+                <button type="button" class="btn btn-sm btn-outline-accent flex-shrink-0" id="eventIconTrigger"
+                        data-bs-toggle="modal" data-bs-target="#iconPickerModal" data-target-input="#eventIconValue"
+                        title="Escolher ícone">
+                    <i class="bi bi-calendar-event" id="eventIconPreview"></i>
+                </button>
+                <input type="hidden" id="eventIconValue">
+
+                <button type="button" class="btn btn-sm btn-outline-info flex-shrink-0" id="eventLinkBtn"
+                        title="Vincular a outro objeto" disabled>
+                    <i class="bi bi-bezier2"></i>
+                </button>
+
+                <div class="d-flex gap-1 flex-shrink-0 ms-auto">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="eventSaveBtn" title="Salvar evento">
+                        <i class="bi bi-floppy"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="eventDeleteBtn" title="Excluir evento" disabled>
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
             </div>
-        </div>
+
+            <!-- Data início / Data fim — "fim" é o fim da SÉRIE recorrente
+                 (recurrence_end), só relevante com Recorrência ligada, mas
+                 fica aqui em cima como campo de primeira classe (não mais
+                 escondido dentro do bloco condicional de recorrência). -->
+            <!-- input nativo type=date/time sempre mostra no formato do
+                 navegador/SO — não dá pra reformatar por JS. Os <div>
+                 abaixo são só um preview de texto no formato configurado
+                 em Settings > Eventos, ao lado do valor "cru" do input. -->
+            <!-- Empilhado (não lado a lado): input nativo type=date tem uma
+                 largura mínima prática que não cabe dividida em 2 colunas
+                 numa sidebar de col-lg-3 — ficava espremido em telas 720p. -->
+            <div class="mb-1">
+                <label class="form-label small text-secondary mb-1">Data início</label>
+                <input type="date" class="form-control form-control-sm" id="eventDateStart">
+            </div>
+            <div class="mb-1">
+                <label class="form-label small text-secondary mb-1">Data fim</label>
+                <input type="date" class="form-control form-control-sm" id="eventRecurrenceEnd" disabled>
+            </div>
+            <div class="small text-muted mb-2" id="eventDateLabel"></div>
+
+            <div class="d-flex gap-2 mb-1">
+                <div class="flex-grow-1">
+                    <label class="form-label small text-secondary mb-1">Hora início</label>
+                    <input type="time" class="form-control form-control-sm" id="eventTimeStart">
+                </div>
+                <div class="flex-grow-1">
+                    <label class="form-label small text-secondary mb-1">Hora fim</label>
+                    <input type="time" class="form-control form-control-sm" id="eventTimeEnd">
+                </div>
+            </div>
+            <div class="small text-muted mb-2" id="eventTimeLabel"></div>
+
+            <!-- Recorrência -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-semibold small">Recorrência</span>
+                <input type="checkbox" class="form-check-input" id="eventRecurrenceToggle">
+            </div>
+
+            <div id="eventRecurrenceFields" class="d-none mb-2">
+                <div class="mb-2">
+                    <select class="form-select form-select-sm" id="eventRecurrenceType">
+                        <option value="weekdays">Dias da semana</option>
+                        <option value="monthday">Dia do mês</option>
+                        <option value="interval">Intervalo</option>
+                        <option value="yearday">Anual</option>
+                    </select>
+                </div>
+
+                <!-- weekdays: 7 dias, o de date_start vem travado marcado
+                     (uma regra semanal precisa disparar no próprio dia em
+                     que foi criada) — trava aplicada via JS (applyWeekdayLock). -->
+                <div class="mb-2 d-none" id="eventFieldsWeekdays">
+                    <!-- div flex simples, não .btn-group: .btn-group força
+                         flex:1 1 auto nos botões (cresce/encolhe pra
+                         preencher a linha), o que espremia/cortava os 7
+                         rótulos numa sidebar estreita em vez de quebrar
+                         linha direito. Mesmo esquema da grade de monthday. -->
+                    <div class="d-flex flex-wrap gap-1">
+                        {% for label in ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"] %}
+                        <input type="checkbox" class="btn-check" id="eventWeekday{{ loop.index0 }}">
+                        <label class="btn btn-sm btn-outline-accent" for="eventWeekday{{ loop.index0 }}" style="flex: 0 0 auto;">{{ label }}</label>
+                        {% endfor %}
+                    </div>
+                    <small class="text-muted d-block mt-1">O dia da data de início fica sempre marcado</small>
+                </div>
+
+                <!-- monthday: grade de 1-31, mesmo esquema de trava do dia
+                     de date_start (dia-do-mês da data de início). -->
+                <div class="mb-2 d-none" id="eventFieldsMonthday">
+                    <div class="d-flex flex-wrap gap-1" id="eventMonthdayGrid">
+                        {% for d in range(1, 32) %}
+                        <input type="checkbox" class="btn-check" id="eventMonthday{{ d }}">
+                        <label class="btn btn-sm btn-outline-accent" for="eventMonthday{{ d }}" style="flex: 0 0 2.4em; padding-left: 0; padding-right: 0;">{{ d }}</label>
+                        {% endfor %}
+                    </div>
+                    <small class="text-muted d-block mt-1">Meses sem o dia marcado (ex: 31 em abril) não geram ocorrência — o dia da data de início fica sempre marcado</small>
+                </div>
+
+                <!-- interval: a cada N dias -->
+                <div class="mb-2 d-none" id="eventFieldsInterval">
+                    <label class="form-label small text-secondary mb-1">A cada quantos dias</label>
+                    <input type="number" class="form-control form-control-sm" id="eventInterval" min="1">
+                </div>
+
+                <!-- yearday: sem campo extra, deriva de eventDateStart -->
+                <div class="mb-2 d-none" id="eventFieldsYearday">
+                    <small class="text-muted">Repete todo ano no mês/dia da data de início</small>
+                </div>
+            </div>
+
+            <!-- Duração: evento/ocorrência abrangendo mais de um dia — a
+                 mesma faixa horária (Início/Fim acima) se repete em cada
+                 um dos dias, não é um bloco contínuo sem interrupção.
+                 Combinada com Recorrência, trava a seleção de dias da
+                 semana/mês num único anchor (ver applyWeekdayLock/
+                 applyMonthdayLock) pra não gerar blocos sobrepostos. -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-semibold small">Duração</span>
+                <input type="checkbox" class="form-check-input" id="eventDurationToggle">
+            </div>
+            <div id="eventDurationFields" class="d-none mb-2">
+                <label class="form-label small text-secondary mb-1">Dura quantos dias</label>
+                <input type="number" class="form-control form-control-sm" id="eventDurationDays" min="2" value="2">
+            </div>
+
+            <div class="mt-auto pt-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="eventCancelBtn">Cancelar</button>
+            </div>
+        </section>
+
+        <!-- CALENDÁRIO (meio) -->
+        <section class="col-12 col-lg-6 h-100 d-flex d-lg-flex flex-column p-3" id="eventCalendarPane" style="min-height: 0;">
+            <div id="eventCalendar" class="flex-grow-1" style="min-height: 0;"></div>
+        </section>
+
+        <!-- AGENDA (direita) -->
+        <section class="col-12 col-lg-3 h-100 d-none d-lg-flex flex-column p-3 border-start"
+                  id="eventAgendaPane" style="min-height: 0; overflow-y: auto;">
+            <!-- Input de data nativo em vez de um título estático — no
+                 mobile, é o jeito de trocar de data sem voltar pro
+                 calendário grande (abre o popup padrão do SO/navegador). -->
+            <input type="date" class="form-control form-control-sm mb-1 fw-semibold" id="eventAgendaDateInput">
+            <div class="small text-muted mb-2" id="eventAgendaDateLabel"></div>
+
+            <!-- Eventos sem horário (dia inteiro) — fora da grade de horas. -->
+            <div id="eventAgendaAllDayWrap" class="d-none mb-2">
+                <div class="small fw-semibold text-secondary mb-1">Dia inteiro</div>
+                <div id="eventAgendaAllDay" class="d-flex flex-column gap-1"></div>
+            </div>
+
+            <!-- Grade de horas (00h-23h), cada uma com sua própria linha
+                 divisória — visual antigo do mockup, agora populado de
+                 verdade a partir da hora de cada evento. -->
+            <div id="eventAgendaList">
+                {% for h in range(24) %}
+                <div class="d-flex gap-2 py-2 border-bottom">
+                    <div class="small text-muted flex-shrink-0" style="width: 3.2em;">{{ "%02d:00"|format(h) }}</div>
+                    <div class="flex-grow-1 d-flex flex-column gap-1" id="agendaHour{{ h }}"></div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
 
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const COLORS = ['secondary', 'info', 'primary', 'success', 'warning', 'danger'];
+    function colorOrAccent(c) { return COLORS.includes(c) ? c : 'accent'; }
+    function escHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        }[c]));
+    }
+
+    const SETTINGS = window.__settings || {};
+    let currentEventId = null; // null = evento novo; setado = editando
+    let _saving = false;
+
+    // Formatação de data/hora — Settings > Eventos. Só afeta texto
+    // renderizado à mão (inputs nativos type=date/time seguem o locale do
+    // navegador/SO, não dá pra reformatar por JS).
+    const WEEKDAY_NAMES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+
+    function formatTime(hhmm) {
+        if (!hhmm) return '';
+        if (SETTINGS['eventos.formato_hora'] === 'ampm') {
+            let [h, m] = hhmm.split(':').map(Number);
+            const suffix = h < 12 ? 'AM' : 'PM';
+            h = h % 12 || 12;
+            return `${h}:${String(m).padStart(2, '0')} ${suffix}`;
+        }
+        return hhmm;
+    }
+
+    function formatDateLabel(dateStr) {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const weekday = WEEKDAY_NAMES[new Date(y, m - 1, d).getDay()];
+        const yy = SETTINGS['eventos.ano_completo'] === 'false' ? String(y).slice(-2) : String(y);
+        const mm = String(m).padStart(2, '0');
+        const dd = String(d).padStart(2, '0');
+        const dateFmt = SETTINGS['eventos.formato_data'] === 'mdy' ? `${mm}/${dd}/${yy}`
+            : SETTINGS['eventos.formato_data'] === 'ymd' ? `${yy}/${mm}/${dd}`
+            : `${dd}/${mm}/${yy}`;
+        return `${weekday}, ${dateFmt}`;
+    }
+
+    // Preview de texto no formato configurado, ao lado dos inputs nativos
+    // do form (que não dá pra reformatar por JS — ver comentário no HTML).
+    function updateFormDateTimeLabels() {
+        const dateVal = document.getElementById('eventDateStart').value;
+        document.getElementById('eventDateLabel').textContent = dateVal ? formatDateLabel(dateVal) : '';
+        const startFmt = formatTime(document.getElementById('eventTimeStart').value);
+        const endFmt = formatTime(document.getElementById('eventTimeEnd').value);
+        document.getElementById('eventTimeLabel').textContent =
+            startFmt ? (endFmt ? `${startFmt} – ${endFmt}` : startFmt) : '';
+    }
+
+    // ── Navegação mobile (form/calendar/agenda) ─────────────────────────
+    let currentPane = 'calendar';
+    const PANES = ['form', 'calendar', 'agenda'];
+
+    function showPane(pane) {
+        currentPane = pane;
+        PANES.forEach(p => {
+            const el = document.getElementById(`event${p[0].toUpperCase()}${p.slice(1)}Pane`);
+            el.classList.toggle('d-none', p !== pane);
+            el.classList.toggle('d-flex', p === pane);
+        });
+        document.querySelectorAll('#eventMobileNav [data-pane]').forEach(btn => {
+            btn.classList.toggle('btn-accent', btn.dataset.pane === pane);
+            btn.classList.toggle('btn-outline-secondary', btn.dataset.pane !== pane);
+        });
+        // FullCalendar não recalcula o próprio tamanho sozinho quando o
+        // container estava display:none (d-none) e volta a aparecer — sem
+        // isso o calendário quebra visualmente e o clique para de bater
+        // com a célula certa depois de sair pra outro painel e voltar.
+        // requestAnimationFrame garante que o navegador já refez o layout
+        // (o d-none->d-flex acima) antes da lib medir o container.
+        if (pane === 'calendar') {
+            requestAnimationFrame(() => calendar.updateSize());
+        }
+    }
+
+    document.querySelectorAll('#eventMobileNav [data-pane]').forEach(btn => {
+        btn.addEventListener('click', () => showPane(btn.dataset.pane));
+    });
+
+    // Posição do seletor mobile — 'auto' segue a ORIENTAÇÃO DO DISPOSITIVO
+    // (paisagem/horizontal = em cima, retrato/vertical = embaixo), ao vivo
+    // via matchMedia (reage a rotação, não só no load) — mesma técnica já
+    // usada pra posição da toolbar do EasyMDE em Notes.
+    const navPosition = SETTINGS['eventos.nav_position'] || 'auto';
+    const mobileNavEl = document.getElementById('eventMobileNav');
+
+    function applyNavPosition(isBottom) {
+        mobileNavEl.classList.toggle('order-last', isBottom);
+        mobileNavEl.classList.toggle('border-top', isBottom);
+        mobileNavEl.classList.toggle('border-bottom', !isBottom);
+    }
+
+    if (navPosition === 'auto') {
+        const orientationMq = window.matchMedia('(orientation: landscape)');
+        const syncNavPosition = () => applyNavPosition(!orientationMq.matches);
+        syncNavPosition();
+        orientationMq.addEventListener('change', syncNavPosition);
+    } else {
+        applyNavPosition(navPosition === 'bottom');
+    }
+
+    // Chamada de verdade fica lá embaixo, depois do calendário existir —
+    // showPane('calendar') tenta usar `calendar.updateSize()`, e "calendar"
+    // só é declarado mais adiante nesse mesmo escopo (const/let não
+    // toleram referência antes da própria declaração).
+
+    // ── Recorrência: mostra/esconde campos por tipo ─────────────────────
+    const recurrenceToggle = document.getElementById('eventRecurrenceToggle');
+    const recurrenceFields = document.getElementById('eventRecurrenceFields');
+    const recurrenceType   = document.getElementById('eventRecurrenceType');
+    const recurrenceEnd    = document.getElementById('eventRecurrenceEnd');
+    const durationToggle   = document.getElementById('eventDurationToggle');
+    const durationFields   = document.getElementById('eventDurationFields');
+    const durationDays     = document.getElementById('eventDurationDays');
+
+    const TYPE_FIELDS = {
+        weekdays: 'eventFieldsWeekdays',
+        monthday: 'eventFieldsMonthday',
+        interval: 'eventFieldsInterval',
+        yearday:  'eventFieldsYearday',
+    };
+
+    function syncRecurrenceTypeFields() {
+        const active = TYPE_FIELDS[recurrenceType.value];
+        Object.values(TYPE_FIELDS).forEach(id => {
+            document.getElementById(id).classList.toggle('d-none', id !== active);
+        });
+    }
+
+    // "Data fim" (recurrence_end) só faz sentido com Recorrência ligada —
+    // vazio = sem término (nullable direto, sem checkbox intermediário).
+    function syncRecurrenceEndField() {
+        recurrenceEnd.disabled = !recurrenceToggle.checked;
+        if (!recurrenceToggle.checked) recurrenceEnd.value = '';
+    }
+
+    // Trava de consistência (decidida junto com o usuário): numa recorrência
+    // semanal, o dia da semana da data de início SEMPRE fica marcado e
+    // travado (não dá pra criar uma regra cujo próprio dia de início não
+    // dispara). Com Duração ativa (>1 dia), os DEMAIS dias ficam desabilitados
+    // também — múltiplos anchors + duração multi-dia geram blocos
+    // sobrepostos entre si (anchor de segunda com duração 3 cobre até
+    // quarta, colidindo com o anchor de quarta).
+    function applyWeekdayLock() {
+        const dateVal = document.getElementById('eventDateStart').value;
+        if (!dateVal) return;
+        const [y, m, d] = dateVal.split('-').map(Number);
+        const jsDay = new Date(y, m - 1, d).getDay(); // 0=dom...6=sáb
+        const anchorIndex = (jsDay + 6) % 7; // 0=seg...6=dom (convenção do app)
+        const durationActive = durationToggle.checked;
+        for (let i = 0; i < 7; i++) {
+            const cb = document.getElementById(`eventWeekday${i}`);
+            if (i === anchorIndex) {
+                cb.checked = true;
+                cb.disabled = true;
+            } else {
+                cb.disabled = durationActive;
+            }
+        }
+    }
+
+    function applyMonthdayLock() {
+        const dateVal = document.getElementById('eventDateStart').value;
+        if (!dateVal) return;
+        const anchorDay = parseInt(dateVal.split('-')[2], 10);
+        const durationActive = durationToggle.checked;
+        for (let d = 1; d <= 31; d++) {
+            const cb = document.getElementById(`eventMonthday${d}`);
+            if (d === anchorDay) {
+                cb.checked = true;
+                cb.disabled = true;
+            } else {
+                cb.disabled = durationActive;
+            }
+        }
+    }
+
+    function applyRecurrenceLocks() {
+        applyWeekdayLock();
+        applyMonthdayLock();
+    }
+
+    recurrenceToggle.addEventListener('change', () => {
+        recurrenceFields.classList.toggle('d-none', !recurrenceToggle.checked);
+        if (recurrenceToggle.checked) { syncRecurrenceTypeFields(); applyRecurrenceLocks(); }
+        syncRecurrenceEndField();
+    });
+    recurrenceType.addEventListener('change', () => { syncRecurrenceTypeFields(); applyRecurrenceLocks(); });
+    syncRecurrenceEndField();
+
+    durationToggle.addEventListener('change', () => {
+        durationFields.classList.toggle('d-none', !durationToggle.checked);
+        applyRecurrenceLocks();
+    });
+
+    // ── Ícone / cor (mesmos pickers compartilhados do Notes) ────────────
+    document.getElementById('eventIconValue').addEventListener('change', function () {
+        if (this.value) document.getElementById('eventIconPreview').className = this.value;
+    });
+    document.getElementById('eventColorValue').addEventListener('change', function () {
+        const color = this.value || null;
+        document.getElementById('eventColorDot').className =
+            `rounded-circle d-inline-block bg-${colorOrAccent(color)}`;
+    });
+
+    // ── Form: novo evento / editar / cancelar ────────────────────────────
+    function resetForm(dateStr) {
+        currentEventId = null;
+        document.getElementById('eventDeleteBtn').disabled = true;
+        document.getElementById('eventNameInput').value = '';
+        document.getElementById('eventIconValue').value = '';
+        document.getElementById('eventIconPreview').className = 'bi bi-calendar-event';
+        document.getElementById('eventColorValue').value = '';
+        document.getElementById('eventColorDot').className = 'rounded-circle d-inline-block bg-accent';
+        document.getElementById('eventDateStart').value = dateStr || '';
+        document.getElementById('eventTimeStart').value = '';
+        document.getElementById('eventTimeEnd').value = '';
+        document.getElementById('eventInterval').value = '';
+        for (let i = 0; i < 7; i++) document.getElementById(`eventWeekday${i}`).checked = false;
+        for (let d = 1; d <= 31; d++) document.getElementById(`eventMonthday${d}`).checked = false;
+        recurrenceToggle.checked = false;
+        recurrenceFields.classList.add('d-none');
+        recurrenceType.value = 'weekdays';
+        durationToggle.checked = false;
+        durationFields.classList.add('d-none');
+        durationDays.value = '2';
+        syncRecurrenceEndField();
+        syncRecurrenceTypeFields();
+        applyRecurrenceLocks();
+        updateFormDateTimeLabels();
+    }
+
+    // Selecionar um evento (clique no calendário ou na agenda) carrega os
+    // dados dele no form pra edição livre — não existe um "modo edição"
+    // separado, é sempre o mesmo form, só com dados preenchidos ou não.
+    function loadEventIntoForm(event) {
+        currentEventId = event.id;
+        document.getElementById('eventDeleteBtn').disabled = false;
+        document.getElementById('eventNameInput').value = event.name || '';
+        document.getElementById('eventIconValue').value = event.icon || '';
+        document.getElementById('eventIconPreview').className = event.icon || 'bi bi-calendar-event';
+        document.getElementById('eventColorValue').value = event.color || '';
+        document.getElementById('eventColorDot').className =
+            `rounded-circle d-inline-block bg-${colorOrAccent(event.color)}`;
+        document.getElementById('eventDateStart').value = event.date_start || '';
+        document.getElementById('eventTimeStart').value = event.time_start ? event.time_start.slice(0, 5) : '';
+        document.getElementById('eventTimeEnd').value = event.time_end ? event.time_end.slice(0, 5) : '';
+        document.getElementById('eventInterval').value = event.recurrence_interval || '';
+        for (let i = 0; i < 7; i++) {
+            document.getElementById(`eventWeekday${i}`).checked = (event.recurrence_weekdays || []).includes(i);
+        }
+        for (let d = 1; d <= 31; d++) {
+            document.getElementById(`eventMonthday${d}`).checked = (event.recurrence_monthdays || []).includes(d);
+        }
+        recurrenceToggle.checked = event.recurrence_enabled;
+        recurrenceFields.classList.toggle('d-none', !event.recurrence_enabled);
+        recurrenceType.value = event.recurrence_type || 'weekdays';
+        recurrenceEnd.value = event.recurrence_end || '';
+        durationToggle.checked = !!(event.duration_days && event.duration_days > 1);
+        durationFields.classList.toggle('d-none', !durationToggle.checked);
+        durationDays.value = event.duration_days || 2;
+        syncRecurrenceEndField();
+        syncRecurrenceTypeFields();
+        applyRecurrenceLocks();
+        updateFormDateTimeLabels();
+        showPane('form');
+    }
+
+    async function openEventForEdit(eventId) {
+        const event = await fetch(`/api/events/${eventId}`).then(r => r.ok ? r.json() : null);
+        if (event) loadEventIntoForm(event);
+    }
+
+    document.getElementById('eventCancelBtn').addEventListener('click', () => {
+        resetForm(focusedDate);
+        showPane('calendar');
+    });
+
+    // Diferente de "Cancelar": fica no form (não volta pro calendário) —
+    // o ponto é já deixar pronto pra criar o próximo evento.
+    document.getElementById('eventNewBtn').addEventListener('click', () => {
+        resetForm(focusedDate);
+        showPane('form');
+    });
+
+    function collectFormData() {
+        const weekdays = [];
+        for (let i = 0; i < 7; i++) {
+            if (document.getElementById(`eventWeekday${i}`).checked) weekdays.push(i);
+        }
+        const monthdays = [];
+        for (let d = 1; d <= 31; d++) {
+            if (document.getElementById(`eventMonthday${d}`).checked) monthdays.push(d);
+        }
+        return {
+            name:       document.getElementById('eventNameInput').value.trim(),
+            icon:       document.getElementById('eventIconValue').value || null,
+            color:      document.getElementById('eventColorValue').value || null,
+            date_start: document.getElementById('eventDateStart').value,
+            time_start: document.getElementById('eventTimeStart').value || null,
+            time_end:   document.getElementById('eventTimeEnd').value || null,
+            duration_days: durationToggle.checked ? (parseInt(durationDays.value) || null) : null,
+            recurrence_enabled:  recurrenceToggle.checked,
+            recurrence_type:     recurrenceToggle.checked ? recurrenceType.value : null,
+            recurrence_end:      recurrenceToggle.checked ? (recurrenceEnd.value || null) : null,
+            recurrence_interval: recurrenceType.value === 'interval'
+                ? (parseInt(document.getElementById('eventInterval').value) || null) : null,
+            recurrence_weekdays:  recurrenceType.value === 'weekdays' ? weekdays : [],
+            recurrence_monthdays: recurrenceType.value === 'monthday' ? monthdays : [],
+        };
+    }
+
+    async function saveEvent() {
+        const payload = collectFormData();
+        // Guarda mínima pra não criar linha no banco com um form pela
+        // metade — auto-save só passa a valer depois que os dois campos
+        // obrigatórios existem (igual ao botão Salvar de antes).
+        if (!payload.name || !payload.date_start) return;
+        if (_saving) return;
+        _saving = true;
+
+        const url = currentEventId ? `/api/events/${currentEventId}` : '/api/events';
+        const method = currentEventId ? 'PUT' : 'POST';
+        try {
+            const saved = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }).then(r => r.json());
+
+            loadEventIntoForm(saved);
+            calendar.refetchEvents();
+            // Se o evento foi salvo numa data diferente da que estava em foco
+            // (ex: criado a partir do botão "Novo" numa data diferente), a
+            // data salva vira a nova data em foco — as 3 continuam iguais.
+            setFocusedDate(saved.date_start, { syncForm: false });
+        } finally {
+            _saving = false;
+        }
+    }
+    document.getElementById('eventSaveBtn').addEventListener('click', saveEvent);
+
+    const deleteEventModal = new bootstrap.Modal(document.getElementById('deleteEventModal'));
+    document.getElementById('eventDeleteBtn').addEventListener('click', () => deleteEventModal.show());
+    document.getElementById('confirmDeleteEventBtn').addEventListener('click', async () => {
+        deleteEventModal.hide();
+        if (!currentEventId) return;
+        await fetch(`/api/events/${currentEventId}`, { method: 'DELETE' });
+        resetForm(focusedDate);
+        calendar.refetchEvents();
+        renderAgenda(focusedDate);
+        showPane('calendar');
+    });
+
+    // ── Calendário (FullCalendar) ────────────────────────────────────────
+    let focusedDate = new Date().toISOString().slice(0, 10);
+
+    // Date object do FullCalendar é local, não UTC — toISOString() daria
+    // o dia errado perto da virada por causa do fuso. Monta a string na
+    // mão a partir dos componentes locais.
+    function localDateStr(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    function agendaChip(e) {
+        const color = colorOrAccent(e.color);
+        const time = formatTime(e.time_start ? e.time_start.slice(0, 5) : '');
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = `btn btn-outline-${color} btn-sm text-start d-flex align-items-center gap-2 w-100`;
+        el.innerHTML = `<i class="${escHtml(e.icon || 'bi-calendar-event')} flex-shrink-0"></i>
+                         <span class="flex-grow-1 text-truncate">${escHtml(e.name)}</span>
+                         ${time ? `<span class="small text-muted flex-shrink-0">${time}</span>` : ''}`;
+        el.addEventListener('click', () => openEventForEdit(e.id));
+        return el;
+    }
+
+    async function renderAgenda(dateStr) {
+        focusedDate = dateStr;
+        document.getElementById('eventAgendaDateInput').value = dateStr;
+        document.getElementById('eventAgendaDateLabel').textContent = formatDateLabel(dateStr);
+
+        for (let h = 0; h < 24; h++) document.getElementById(`agendaHour${h}`).innerHTML = '';
+        const allDayWrap = document.getElementById('eventAgendaAllDayWrap');
+        const allDayEl = document.getElementById('eventAgendaAllDay');
+        allDayEl.innerHTML = '';
+        allDayWrap.classList.add('d-none');
+
+        const events = await fetch(`/api/events/by-date?date=${dateStr}`).then(r => r.json());
+        events.forEach(e => {
+            if (e.time_start) {
+                const hour = parseInt(e.time_start.slice(0, 2), 10);
+                document.getElementById(`agendaHour${hour}`).appendChild(agendaChip(e));
+            } else {
+                allDayWrap.classList.remove('d-none');
+                allDayEl.appendChild(agendaChip(e));
+            }
+        });
+    }
+
+    // Data em foco: form, agenda e o destaque do calendário são a MESMA
+    // data (threeway) — mudar em qualquer um dos 3 propaga pros outros 2.
+    // moveCalendar/syncForm existem só pra evitar escrita redundante em
+    // quem já é a própria origem da mudança.
+    function setFocusedDate(dateStr, { moveCalendar = true, syncForm = true } = {}) {
+        if (!dateStr) return;
+        renderAgenda(dateStr); // já seta focusedDate + input da agenda + busca a lista
+        if (syncForm) document.getElementById('eventDateStart').value = dateStr;
+        if (moveCalendar) calendar.gotoDate(dateStr);
+        calendar.render(); // reaplica dayCellClassNames com o focusedDate novo
+    }
+
+    // Ressaltar dias — Settings > Eventos, um checkbox por dia da semana.
+    // date.getDay(): 0=domingo...6=sábado — índice direto nesse array.
+    const WEEKDAY_KEYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+    const highlightedWeekdays = new Set(
+        WEEKDAY_KEYS
+            .map((key, idx) => SETTINGS[`eventos.ressaltar_${key}`] === 'true' ? idx : null)
+            .filter(idx => idx !== null)
+    );
+
+    const calendarEl = document.getElementById('eventCalendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        locale: 'pt-br',
+        initialView: 'dayGridMonth',
+        // Botão "today" embutido do FullCalendar só navega a view (calendar.
+        // today()) — não sabe nada do form/agenda/highlight daqui. Troca por
+        // um customButton com o mesmo nome/posição, mas que passa pelo
+        // setFocusedDate (threeway) — clicável em qualquer mês, sempre volta
+        // pro dia de hoje nos 3 painéis de uma vez.
+        customButtons: {
+            todayFocus: {
+                text: 'Hoje',
+                click: () => setFocusedDate(localDateStr(new Date())),
+            },
+        },
+        headerToolbar: { left: 'prev,next todayFocus', center: 'title', right: '' },
+        height: '100%',
+        editable: false,
+        selectable: false,
+        firstDay: SETTINGS['eventos.primeiro_dia_semana'] === 'mon' ? 1 : 0,
+        eventTimeFormat: { hour: 'numeric', minute: '2-digit', hour12: SETTINGS['eventos.formato_hora'] === 'ampm' },
+        events: '/api/events', // FullCalendar acrescenta start/end sozinho ao buscar
+        dayCellClassNames(arg) {
+            const classes = [];
+            // Ressaltar dias (Settings) usa accent-text-emphasis — nunca
+            // compete pelo mesmo tom do destaque de data marcada abaixo.
+            if (highlightedWeekdays.has(arg.date.getDay())) classes.push('fc-day-highlighted');
+            // O destaque de "hoje" do FullCalendar foi desligado (theme.css)
+            // — no lugar, destaca a data em foco (form/agenda/calendário
+            // sempre a mesma data, threeway).
+            if (localDateStr(arg.date) === focusedDate) classes.push('fc-day-focused');
+            return classes;
+        },
+        eventClassNames(arg) {
+            return [`evt-${colorOrAccent(arg.event.extendedProps.color)}`];
+        },
+        dateClick(info) {
+            resetForm(info.dateStr);
+            setFocusedDate(info.dateStr, { moveCalendar: false, syncForm: false });
+            showPane('agenda');
+        },
+        eventClick(info) {
+            openEventForEdit(info.event.extendedProps.event_id);
+        },
+    });
+    calendar.render();
+
+    // Trocar a data direto pelo input da agenda (sem precisar voltar pro
+    // calendário, principalmente útil no mobile) também navega o mês do
+    // calendário junto, pra ficar consistente com o clique-na-data.
+    document.getElementById('eventAgendaDateInput').addEventListener('change', function () {
+        setFocusedDate(this.value, { syncForm: true, moveCalendar: true });
+    });
+
+    // A data do form também é a data em foco — mudar aqui já reflete na
+    // agenda e no calendário, igual aos outros dois sentidos. Também
+    // reaplica a trava de dia-da-semana/dia-do-mês (o anchor segue a data).
+    document.getElementById('eventDateStart').addEventListener('change', function () {
+        setFocusedDate(this.value, { syncForm: false, moveCalendar: true });
+        applyRecurrenceLocks();
+    });
+
+    // Preview de texto (formato configurado) ao lado dos inputs nativos —
+    // 'input' pra atualizar junto da digitação/scrub, não só no blur.
+    document.getElementById('eventDateStart').addEventListener('input', updateFormDateTimeLabels);
+    document.getElementById('eventTimeStart').addEventListener('input', updateFormDateTimeLabels);
+    document.getElementById('eventTimeEnd').addEventListener('input', updateFormDateTimeLabels);
+
+    // Scroll do mouse/trackpad no calendário troca de mês — cooldown pra
+    // não passar vários meses de uma vez só num gesto de trackpad (que
+    // dispara dezenas de eventos wheel pequenos em sequência).
+    let wheelCooldown = false;
+    calendarEl.addEventListener('wheel', (e) => {
+        if (Math.abs(e.deltaY) < 8) return;
+        e.preventDefault();
+        if (wheelCooldown) return;
+        wheelCooldown = true;
+        if (e.deltaY > 0) calendar.next(); else calendar.prev();
+        setTimeout(() => { wheelCooldown = false; }, 400);
+    }, { passive: false });
+
+    // Auto-save (igual Notes): qualquer mudança de verdade salva na hora.
+    // 'change' já resolve sozinho a distinção clique-vs-digitação — em
+    // controles de clique (picker/checkbox/radio/date/time) dispara na
+    // hora; em campos de texto/número só dispara ao sair do campo, não a
+    // cada tecla. Registrado por último de propósito (fim do script),
+    // depois de qualquer outro listener 'change' desses mesmos campos
+    // (locks, sync de painéis) — assim o payload coletado já reflete o
+    // estado final, não um instantâneo no meio de outros efeitos colaterais.
+    const AUTOSAVE_FIELDS = [
+        'eventNameInput', 'eventColorValue', 'eventIconValue',
+        'eventDateStart', 'eventTimeStart', 'eventTimeEnd',
+        'eventRecurrenceToggle', 'eventRecurrenceType', 'eventInterval', 'eventRecurrenceEnd',
+        'eventDurationToggle', 'eventDurationDays',
+    ];
+    for (let i = 0; i < 7; i++) AUTOSAVE_FIELDS.push(`eventWeekday${i}`);
+    for (let d = 1; d <= 31; d++) AUTOSAVE_FIELDS.push(`eventMonthday${d}`);
+    AUTOSAVE_FIELDS.forEach(id => {
+        document.getElementById(id).addEventListener('change', () => saveEvent());
+    });
+
+    resetForm(focusedDate);
+    setFocusedDate(focusedDate, { moveCalendar: false, syncForm: false });
+
+    showPane(['form', 'calendar', 'agenda'].includes(SETTINGS['eventos.painel_inicial'])
+        ? SETTINGS['eventos.painel_inicial'] : 'calendar');
+
+    // Abertura via busca global (search_bar.html chama isso quando já está
+    // em /events; senão navega pra /events?open=<id> e cai no fallback
+    // abaixo) — mesmo padrão do window.__notesPage em Notes.
+    window.__eventsPage = { openEventById: openEventForEdit };
+    const openId = new URLSearchParams(window.location.search).get('open');
+    if (openId) openEventForEdit(parseInt(openId));
+})();
+</script>
 {% endblock %}

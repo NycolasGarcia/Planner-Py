@@ -1,7 +1,7 @@
 import os
 import webview
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from flask import Blueprint, render_template, request, jsonify, current_app
 from sqlalchemy import select, func
@@ -10,6 +10,8 @@ from db.database import SessionLocal
 from models.note import Note
 from models.note_folder import NoteFolder
 from models.settings import Setting
+from models.event import Event
+from routes.events import _expand_occurrences
 
 notes_bp = Blueprint('notes', __name__)
 
@@ -378,14 +380,23 @@ def _snippet(text, q, radius=40):
     return ('…' if start > 0 else '') + snippet + ('…' if end < len(text) else '')
 
 
+_MONTH_NAMES = [
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+]
+
+
 @notes_bp.route('/api/search')
 def search():
-    # Escopo atual: só Notes (busca por título, pasta e trecho no corpo).
-    # Formato pensado pra crescer — cada módulo futuro (Tasks, Events,
-    # Projects...) entra como uma chave nova ao lado de "notes".
+    # Escopo: Notes (título/pasta/trecho) + Events (nome/mês/dia). Formato
+    # pensado pra crescer — cada módulo futuro (Tasks, Projects...) entra
+    # como uma chave nova ao lado de "notes"/"events".
     q = (request.args.get('q') or '').strip()
     if not q:
-        return jsonify({'notes': {'title': [], 'folder': [], 'content': []}})
+        return jsonify({
+            'notes':  {'title': [], 'folder': [], 'content': []},
+            'events': {'name': [], 'month': [], 'day': []},
+        })
 
     with SessionLocal() as db:
         lixeira = _get_lixeira(db)
@@ -416,10 +427,47 @@ def search():
             if n.text and ql in n.text.lower():
                 content_hits.append({**base, 'snippet': _snippet(n.text, q)})
 
+        # Mês/dia: "agosto" tem que achar um evento recorrente que começou em
+        # abril mas continua até agosto — mas só ESSE ano (usuário foi
+        # explícito: "agosto" nunca deveria trazer um evento de 2032).
+        # Reaproveita o mesmo motor de recorrência do calendário
+        # (_expand_occurrences), só que limitado ao ano corrente em vez de
+        # rodar pra sempre — evento não-recorrente cai no caso simples
+        # (só a própria date_start dentro da janela).
+        today = date.today()
+        year_start = date(today.year, 1, 1)
+        year_end = date(today.year, 12, 31)
+        month_idx = next((i for i, name in enumerate(_MONTH_NAMES, start=1) if name.startswith(ql)), None)
+        target_day = int(q) if q.isdigit() and 1 <= int(q) <= 31 else None
+
+        events = db.execute(select(Event)).scalars().all()
+        name_hits, month_hits, day_hits = [], [], []
+        for e in events:
+            base = {
+                'id':         e.id,
+                'name':       e.name,
+                'icon':       e.icon,
+                'color':      e.color,
+                'date_start': e.date_start.isoformat(),
+            }
+            if e.name and ql in e.name.lower():
+                name_hits.append(base)
+            if month_idx or target_day:
+                occurrences = _expand_occurrences(e, year_start, year_end)
+                if month_idx and any(o.month == month_idx for o in occurrences):
+                    month_hits.append(base)
+                if target_day and any(o.day == target_day for o in occurrences):
+                    day_hits.append(base)
+
         return jsonify({
             'notes': {
                 'title':   title_hits,
                 'folder':  folder_hits,
                 'content': content_hits,
-            }
+            },
+            'events': {
+                'name':  name_hits,
+                'month': month_hits,
+                'day':   day_hits,
+            },
         })

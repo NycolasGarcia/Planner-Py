@@ -1,0 +1,103 @@
+/* FullCalendar v6 — tema em cima do Bootstrap/accent do app.
+   FullCalendar define seus defaults em `:root` via <style> injetado pelo
+   próprio JS, DEPOIS que este arquivo já carregou — se a gente também
+   mirasse `:root`, a ordem de carregamento decidiria quem ganha (arriscado,
+   mesmo bug que já pegamos com o Bootstrap várias vezes nesse projeto).
+   Escopando em #eventCalendar (seletor de ID) a especificidade já garante
+   que a nossa sobrescrita ganha sempre, sem depender de ordem — as
+   variáveis custom property continuam cascateando pros elementos internos
+   normalmente, é só herança de CSS. */
+#eventCalendar {
+    --fc-page-bg-color: var(--bs-body-bg);
+    --fc-neutral-bg-color: var(--bs-tertiary-bg);
+    --fc-neutral-text-color: var(--bs-secondary-color);
+    --fc-border-color: var(--bs-border-color);
+
+    --fc-button-text-color: #fff;
+    --fc-button-bg-color: var(--app-accent);
+    --fc-button-border-color: var(--app-accent);
+    --fc-button-hover-bg-color: color-mix(in srgb, var(--app-accent) 85%, black);
+    --fc-button-hover-border-color: color-mix(in srgb, var(--app-accent) 80%, black);
+    --fc-button-active-bg-color: color-mix(in srgb, var(--app-accent) 80%, black);
+    --fc-button-active-border-color: color-mix(in srgb, var(--app-accent) 75%, black);
+
+    --fc-event-bg-color: var(--app-accent);
+    --fc-event-border-color: var(--app-accent);
+    --fc-event-text-color: #fff;
+
+    /* "Hoje" literal não é mais destacado — vira "data em foco" (mesma
+       data do form/agenda, ver #eventCalendar .fc-day-focused abaixo),
+       que por padrão já É hoje no carregamento inicial da página. */
+    --fc-today-bg-color: transparent;
+    --fc-highlight-color: var(--app-accent-bg-subtle);
+    --fc-now-indicator-color: var(--app-accent);
+
+    --fc-list-event-hover-bg-color: var(--bs-secondary-bg);
+    --fc-more-link-bg-color: var(--bs-secondary-bg);
+    --fc-more-link-text-color: var(--bs-body-color);
+    --fc-non-business-color: rgba(var(--bs-secondary-rgb), .08);
+
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+/* Texto/estrutura sem variável própria da lib — sobrescreve a classe
+   direto (nomes estáveis do FullCalendar v6, documentados). */
+#eventCalendar .fc-toolbar-title,
+#eventCalendar .fc-col-header-cell-cushion,
+#eventCalendar .fc-daygrid-day-number,
+#eventCalendar .fc-list-day-cushion,
+#eventCalendar .fc-list-day-text,
+#eventCalendar .fc-list-day-side-text {
+    color: var(--bs-body-color);
+}
+
+#eventCalendar .fc-list-empty {
+    background: var(--bs-body-bg);
+    color: var(--bs-secondary-color);
+}
+
+#eventCalendar .fc-scrollgrid,
+#eventCalendar table {
+    border-color: var(--bs-border-color);
+}
+
+/* Cor por evento — sem cor (null) já cai no default (--fc-event-bg-color
+   = --app-accent, setado acima). Cor da paleta fixa usa a classe direto
+   (mesmo esquema de nome que o resto do app: secondary/info/primary/
+   success/warning/danger), sempre a cor literal, nunca o accent. */
+#eventCalendar .fc-event.evt-secondary { background: var(--bs-secondary); border-color: var(--bs-secondary); }
+#eventCalendar .fc-event.evt-info      { background: var(--bs-info);      border-color: var(--bs-info); }
+#eventCalendar .fc-event.evt-primary   { background: var(--bs-primary);   border-color: var(--bs-primary); }
+#eventCalendar .fc-event.evt-success   { background: var(--bs-success);   border-color: var(--bs-success); }
+#eventCalendar .fc-event.evt-warning   { background: var(--bs-warning);   border-color: var(--bs-warning); }
+#eventCalendar .fc-event.evt-danger    { background: var(--bs-danger);    border-color: var(--bs-danger); }
+
+/* Ressaltar dias (Settings > Eventos) — dias da semana marcados pelo
+   usuário. Usa --app-accent-text-emphasis (não --app-accent-bg-subtle,
+   usado pela data em foco abaixo) pra nunca ficar visualmente idêntico
+   ao destaque de data em foco quando os dois caem no mesmo dia. */
+#eventCalendar .fc-daygrid-day.fc-day-highlighted {
+    background: color-mix(in srgb, var(--app-accent-text-emphasis) 8%, transparent);
+}
+#eventCalendar .fc-daygrid-day.fc-day-highlighted .fc-daygrid-day-number {
+    color: var(--app-accent-text-emphasis);
+    font-weight: 600;
+}
+
+/* Data em foco — mesma data do form e da agenda (threeway, ver JS). Regra
+   declarada DEPOIS de .fc-day-highlighted acima: numa data que seja as
+   duas coisas ao mesmo tempo, o "em foco" (seleção ativa) prevalece. */
+#eventCalendar .fc-daygrid-day.fc-day-focused {
+    background: var(--app-accent-bg-subtle);
+}
+
+/* Não usamos drag-and-drop de eventos (form cuida disso) — some o cursor
+   de "arrastável" e o handle de resize, pra não sugerir uma interação que
+   não existe. */
+#eventCalendar .fc-event {
+    cursor: pointer;
+}
+#eventCalendar .fc-event-resizer {
+    display: none;
+}

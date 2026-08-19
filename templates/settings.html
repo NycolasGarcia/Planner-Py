@@ -117,10 +117,10 @@
                     <label class="form-label">Proporção de abertura</label>
                     <div class="btn-group w-100" role="group">
                         <input type="radio" class="btn-check" name="orientacao" id="orient_h" value="horizontal" data-setting="customizacao.orientacao">
-                        <label class="btn btn-outline-secondary" for="orient_h"><i class="bi bi-aspect-ratio"></i> Horizontal</label>
+                        <label class="btn btn-outline-accent" for="orient_h"><i class="bi bi-aspect-ratio"></i> Horizontal</label>
 
                         <input type="radio" class="btn-check" name="orientacao" id="orient_v" value="vertical" data-setting="customizacao.orientacao">
-                        <label class="btn btn-outline-secondary" for="orient_v"><i class="bi bi-aspect-ratio-fill"></i> Vertical</label>
+                        <label class="btn btn-outline-accent" for="orient_v"><i class="bi bi-aspect-ratio-fill"></i> Vertical</label>
                     </div>
                 </div>
 
@@ -159,13 +159,13 @@
                     <label class="form-label d-block">Tema</label>
                     <div class="btn-group" role="group">
                         <input type="radio" class="btn-check" name="theme_mode" id="theme_light" value="light" data-setting="theme.mode">
-                        <label class="btn btn-outline-secondary" for="theme_light"><i class="bi bi-sun"></i> Claro</label>
+                        <label class="btn btn-outline-accent" for="theme_light"><i class="bi bi-sun"></i> Claro</label>
 
                         <input type="radio" class="btn-check" name="theme_mode" id="theme_dark" value="dark" data-setting="theme.mode">
-                        <label class="btn btn-outline-secondary" for="theme_dark"><i class="bi bi-moon"></i> Escuro</label>
+                        <label class="btn btn-outline-accent" for="theme_dark"><i class="bi bi-moon"></i> Escuro</label>
 
                         <input type="radio" class="btn-check" name="theme_mode" id="theme_system" value="system" data-setting="theme.mode">
-                        <label class="btn btn-outline-secondary" for="theme_system"><i class="bi bi-circle-half"></i> Sistema</label>
+                        <label class="btn btn-outline-accent" for="theme_system"><i class="bi bi-circle-half"></i> Sistema</label>
                     </div>
                 </div>
 
@@ -218,9 +218,15 @@
                     </select>
                 </div>
 
-                <div class="col-md-6 d-flex justify-content-between align-items-center">
-                    <span class="fw-semibold">Formato 24h</span>
-                    <input type="checkbox" class="form-check-input" data-setting="eventos.formato_24h">
+                <div class="col-md-6">
+                    <label class="form-label d-block">Formato de hora</label>
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="formato_hora" id="formato_hora_24h" value="24h" data-setting="eventos.formato_hora">
+                        <label class="btn btn-outline-accent" for="formato_hora_24h">24h</label>
+
+                        <input type="radio" class="btn-check" name="formato_hora" id="formato_hora_ampm" value="ampm" data-setting="eventos.formato_hora">
+                        <label class="btn btn-outline-accent" for="formato_hora_ampm">AM/PM</label>
+                    </div>
                 </div>
 
                 <div class="col-md-6 d-flex justify-content-between align-items-center">
@@ -237,15 +243,33 @@
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label">Ressaltar dias</label>
-                    <div class="d-flex flex-wrap gap-3">
+                    <label class="form-label d-block">Ressaltar dias</label>
+                    <div class="btn-group" role="group">
                         {% for d in ["seg","ter","qua","qui","sex","sab","dom"] %}
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" data-setting="eventos.ressaltar_{{ d }}">
-                                <label class="form-check-label">{{ d }}</label>
-                            </div>
+                            <input type="checkbox" class="btn-check" id="ressaltar_{{ d }}" data-setting="eventos.ressaltar_{{ d }}">
+                            <label class="btn btn-outline-accent" for="ressaltar_{{ d }}">{{ d }}</label>
                         {% endfor %}
                     </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Posição do seletor (mobile)</label>
+                    <select class="form-select" data-setting="eventos.nav_position">
+                        <option value="auto">Automática (cima na horizontal, embaixo na vertical)</option>
+                        <option value="bottom">Sempre embaixo</option>
+                        <option value="top">Sempre em cima</option>
+                    </select>
+                    <small class="text-muted">Alterna entre Form/Calendário/Agenda no mobile — no desktop os 3 já ficam visíveis juntos.</small>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Painel inicial (mobile)</label>
+                    <select class="form-select" data-setting="eventos.painel_inicial">
+                        <option value="calendar">Calendário</option>
+                        <option value="agenda">Agenda</option>
+                        <option value="form">Form</option>
+                    </select>
+                    <small class="text-muted">Qual dos 3 painéis aparece primeiro ao entrar em Eventos, no mobile.</small>
                 </div>
 
             </div>
@@ -444,14 +468,38 @@
             <h2 class="d-flex align-items-center gap-2"><i class="bi bi-info-circle"></i> Info</h2>
             <hr>
 
-            <p>
-                Por
-                <a href="https://dev-nycolas-garcia.vercel.app" class="text-decoration-none"
-                   target="_blank" rel="noopener noreferrer">Nycolas Garcia</a>
-            </p>
-            <button type="button" class="btn btn-sm btn-outline-secondary"
+            <div class="d-flex flex-column gap-2">
+                <div>
+                    <span class="text-secondary small">Criado por</span>
+                    <div>
+                        <a href="https://dev-nycolas-garcia.vercel.app" class="text-decoration-none"
+                           target="_blank" rel="noopener noreferrer">Nycolas Garcia</a>
+                    </div>
+                </div>
+                <div>
+                    <span class="text-secondary small">Repositório</span>
+                    <div>
+                        <a href="https://github.com/NycolasGarcia/Planner-Py" class="text-decoration-none"
+                           target="_blank" rel="noopener noreferrer">GitHub</a>
+                    </div>
+                </div>
+                <div>
+                    <span class="text-secondary small">Versão</span>
+                    <div>0.2.0</div>
+                </div>
+                <div>
+                    <span class="text-secondary small">Licença</span>
+                    <div>MIT</div>
+                </div>
+                <div>
+                    <span class="text-secondary small">Plataformas</span>
+                    <div>Windows · Linux</div>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-3"
                     data-bs-toggle="modal" data-bs-target="#changelogModal">
-                v0.0.1.stable — ver novidades
+                v0.2.0 — ver novidades
             </button>
         </div>
 

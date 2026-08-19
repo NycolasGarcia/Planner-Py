@@ -20,10 +20,10 @@
 
 <script>
 (function () {
-    // Escopo atual: só Notes (título / pasta / trecho no corpo). O endpoint
-    // /api/search já devolve o resultado por módulo ("notes: {...}") pra
-    // outros tipos (Tasks, Events, Projects...) entrarem depois sem quebrar
-    // o formato.
+    // Notes (título / pasta / trecho no corpo) + Events (nome / mês / dia).
+    // O endpoint /api/search devolve o resultado por módulo ("notes: {...}",
+    // "events: {...}") pra outros tipos (Tasks, Projects...) entrarem depois
+    // sem quebrar o formato.
     function escHtml(s) {
         return String(s ?? '').replace(/[&<>"']/g, c => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -47,6 +47,17 @@
                 </button>`;
     }
 
+    function eventRowHtml(event, extra) {
+        const icon = event.icon || 'bi-calendar-event';
+        return `<button type="button" class="list-group-item list-group-item-action d-flex align-items-start gap-2" data-open-event="${event.id}">
+                    <i class="${escHtml(icon)} mt-1 flex-shrink-0"></i>
+                    <span class="overflow-hidden">
+                        <span class="d-block text-truncate fw-semibold">${escHtml(event.name)}</span>
+                        <span class="d-block text-truncate small text-muted">${extra}</span>
+                    </span>
+                </button>`;
+    }
+
     function sectionHtml(label, items, renderItem) {
         if (!items.length) return '';
         return `<div class="mb-3">
@@ -57,25 +68,46 @@
                 </div>`;
     }
 
+    function formatEventDate(isoDate) {
+        const [y, m, d] = isoDate.split('-').map(Number);
+        return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+    }
+
     function render(data) {
         const notes = data.notes || { title: [], folder: [], content: [] };
+        const events = data.events || { name: [], month: [], day: [] };
         const html = [
             sectionHtml('Notas — Título', notes.title, n => noteRowHtml(n, n.folder_name || 'Sem pasta')),
             sectionHtml('Notas — Pasta', notes.folder, n => noteRowHtml(n, 'Pasta: ' + n.folder_name)),
             sectionHtml('Notas — Trecho', notes.content, n => noteRowHtml(n, escHtml(n.snippet))),
+            sectionHtml('Eventos — Nome', events.name, e => eventRowHtml(e, formatEventDate(e.date_start))),
+            sectionHtml('Eventos — Mês', events.month, e => eventRowHtml(e, formatEventDate(e.date_start))),
+            sectionHtml('Eventos — Dia', events.day, e => eventRowHtml(e, formatEventDate(e.date_start))),
         ].join('');
         results.innerHTML = html || '<p class="text-muted small mb-0">Nenhum resultado.</p>';
         results.querySelectorAll('[data-open-note]').forEach(btn => {
-            btn.addEventListener('click', () => openResult(parseInt(btn.dataset.openNote)));
+            btn.addEventListener('click', () => openNoteResult(parseInt(btn.dataset.openNote)));
+        });
+        results.querySelectorAll('[data-open-event]').forEach(btn => {
+            btn.addEventListener('click', () => openEventResult(parseInt(btn.dataset.openEvent)));
         });
     }
 
-    function openResult(noteId) {
+    function openNoteResult(noteId) {
         bootstrap.Modal.getInstance(modal)?.hide();
         if (window.__notesPage && typeof window.__notesPage.openNoteById === 'function') {
             window.__notesPage.openNoteById(noteId);
         } else {
             window.location.href = '/notes?open=' + noteId;
+        }
+    }
+
+    function openEventResult(eventId) {
+        bootstrap.Modal.getInstance(modal)?.hide();
+        if (window.__eventsPage && typeof window.__eventsPage.openEventById === 'function') {
+            window.__eventsPage.openEventById(eventId);
+        } else {
+            window.location.href = '/events?open=' + eventId;
         }
     }
 

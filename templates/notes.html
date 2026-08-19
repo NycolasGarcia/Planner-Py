@@ -464,10 +464,69 @@
                 }
             };
             waitVisible(60);
-            return previewEl.innerHTML || '';
+            // Retornar null (em vez do innerHTML) é o sinal que o próprio
+            // EasyMDE reconhece pra "eu mesmo cuidei do DOM, não mexe" — o
+            // código interno da lib faz `null!==i && (el.innerHTML=i)` nos
+            // 3 lugares que chamam previewRender. Retornar o innerHTML aqui
+            // fazia a lib REESCREVER o container por cima do que a gente
+            // acabou de montar: quando o container já estava visível (troca
+            // de nota com o preview já ativo, não abertura inicial), o
+            // caminho síncrono do waitVisible já tinha rodado o
+            // postProcessPreview/mermaid.run() (assíncrono) ANTES desse
+            // return — só que o `n.innerHTML=i` da lib reatribuía o
+            // container logo em seguida, destruindo o nó em que o mermaid
+            // ainda estava terminando de desenhar o SVG por baixo. Resultado:
+            // funcionava só na primeira nota (container ainda invisível ali,
+            // cai no ramo assíncrono do waitVisible, sem essa corrida) e
+            // quebrava em toda troca de nota depois (container já visível,
+            // caminho síncrono, corrida com a reatribuição da lib).
+            return null;
         },
     });
     easyMDE.codemirror.on('change', markDirty);
+
+    // Preview cheio (não side-by-side) tem 2 bugs cuja causa raiz é a MESMA
+    // observação: togglePreview() pode ser chamado de 3 lugares diferentes
+    // (clique na toolbar, atalho Ctrl+P interno do EasyMDE, ou o
+    // EasyMDE.togglePreview() disparado de dentro de openNote()) — só o
+    // primeiro passava pelo wrapper de `action` customizado da toolbar, os
+    // outros dois chamam a função da lib direto, sem chance de interceptar
+    // por ali. Só tem UM ponto confiável pra pegar "preview acabou de
+    // ativar" nos 3 casos: observar a própria classe CSS que o EasyMDE seta.
+    //
+    // O elemento que ganha "editor-preview-active" (confirmado inspecionando
+    // o DOM renderizado de verdade num navegador, não só lendo o código-fonte
+    // minificado do EasyMDE — a suposição inicial send.lastChild capturado
+    // uma única vez logo após `new EasyMDE(...)` estava errada, porque esse
+    // filho só é CRIADO sob demanda na primeira vez que o preview é ativado
+    // na sessão) é o último filho de .CodeMirror (getWrapperElement()),
+    // classe .editor-preview-full. Observando com subtree:true no wrapper
+    // inteiro em vez de capturar uma referência fixa, não importa quando
+    // esse filho é criado.
+    new MutationObserver((mutations) => {
+        for (const m of mutations) {
+            const el = m.target;
+            if (!(el.classList.contains('editor-preview-active') && el.classList.contains('editor-preview-full'))) continue;
+
+            // Bug 1: entrar em preview só sobrepõe visualmente o textarea
+            // por trás (troca de classe), nunca tira o foco dele — se o
+            // cursor já estava lá, teclas digitadas continuam indo pro
+            // documento mesmo com o preview na tela.
+            easyMDE.codemirror.getInputField().blur();
+
+            // Bug 2: mermaid não renderiza a primeira vez que o preview é
+            // ativado numa nota recém-aberta — #noteEditor pode ter acabado
+            // de sair de d-none no mesmo tick síncrono, e o navegador ainda
+            // não pintou o container quando o mermaid tenta medir o texto
+            // (SVG de tamanho 0). Duplo rAF garante que já pintou pelo menos
+            // uma vez antes de forçar um re-render do zero — que recria os
+            // nós, não reaproveita nada que o mermaid possa ter marcado como
+            // já processado na tentativa ruim anterior.
+            requestAnimationFrame(() => requestAnimationFrame(refreshPreviewIfActive));
+        }
+    }).observe(easyMDE.codemirror.getWrapperElement(), {
+        attributes: true, attributeFilter: ['class'], subtree: true,
+    });
 
     // ── Feedback rápido sem toast ─────────────────────────────────────────
     // Só usado onde a ação não deixa nenhum outro rastro visível (salvar,
@@ -869,6 +928,9 @@
         showMobileEditor();
         easyMDE.codemirror.refresh();
 
+        // Entrar em preview aqui passa pelo MESMO MutationObserver que cobre
+        // toolbar/Ctrl+P (ver perto da criação do easyMDE) — já cuida do
+        // blur e do re-render forçado do mermaid, um lugar só pros 3 casos.
         const wantPreview = SETTINGS['notes.default_open_mode'] === 'preview';
         if (wantPreview !== easyMDE.isPreviewActive()) {
             EasyMDE.togglePreview(easyMDE);
