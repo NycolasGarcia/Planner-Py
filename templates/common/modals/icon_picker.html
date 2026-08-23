@@ -9,10 +9,15 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
 
-            <div class="modal-body">
-                <input type="text" id="iconPickerSearch" class="form-control mb-3" placeholder="Buscar ícone...">
+            <!-- d-flex flex-column: busca fixa no topo, grid ocupa o resto da
+                 altura disponível e rola por conta própria. Sem isso (grid com
+                 max-height fixo em px), o modal-fullscreen-sm-down do mobile
+                 sobrava como espaço morto abaixo de um box pequeno em vez de
+                 aproveitar a tela toda pros ícones. -->
+            <div class="modal-body d-flex flex-column" style="min-height: 0;">
+                <input type="text" id="iconPickerSearch" class="form-control mb-3 flex-shrink-0" placeholder="Buscar ícone...">
 
-                <div id="iconPickerGrid" class="d-flex flex-wrap gap-2" style="max-height: 400px; overflow-y: auto;">
+                <div id="iconPickerGrid" class="d-flex flex-wrap gap-2 flex-grow-1 overflow-y-auto" style="min-height: 0;">
                     <!-- Preenchido por icon_picker.js -->
                 </div>
             </div>

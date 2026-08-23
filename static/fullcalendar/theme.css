@@ -13,14 +13,6 @@
     --fc-neutral-text-color: var(--bs-secondary-color);
     --fc-border-color: var(--bs-border-color);
 
-    --fc-button-text-color: #fff;
-    --fc-button-bg-color: var(--app-accent);
-    --fc-button-border-color: var(--app-accent);
-    --fc-button-hover-bg-color: color-mix(in srgb, var(--app-accent) 85%, black);
-    --fc-button-hover-border-color: color-mix(in srgb, var(--app-accent) 80%, black);
-    --fc-button-active-bg-color: color-mix(in srgb, var(--app-accent) 80%, black);
-    --fc-button-active-border-color: color-mix(in srgb, var(--app-accent) 75%, black);
-
     --fc-event-bg-color: var(--app-accent);
     --fc-event-border-color: var(--app-accent);
     --fc-event-text-color: #fff;
@@ -43,7 +35,6 @@
 
 /* Texto/estrutura sem variável própria da lib — sobrescreve a classe
    direto (nomes estáveis do FullCalendar v6, documentados). */
-#eventCalendar .fc-toolbar-title,
 #eventCalendar .fc-col-header-cell-cushion,
 #eventCalendar .fc-daygrid-day-number,
 #eventCalendar .fc-list-day-cushion,
@@ -62,16 +53,32 @@
     border-color: var(--bs-border-color);
 }
 
-/* Cor por evento — sem cor (null) já cai no default (--fc-event-bg-color
-   = --app-accent, setado acima). Cor da paleta fixa usa a classe direto
-   (mesmo esquema de nome que o resto do app: secondary/info/primary/
-   success/warning/danger), sempre a cor literal, nunca o accent. */
-#eventCalendar .fc-event.evt-secondary { background: var(--bs-secondary); border-color: var(--bs-secondary); }
-#eventCalendar .fc-event.evt-info      { background: var(--bs-info);      border-color: var(--bs-info); }
-#eventCalendar .fc-event.evt-primary   { background: var(--bs-primary);   border-color: var(--bs-primary); }
-#eventCalendar .fc-event.evt-success   { background: var(--bs-success);   border-color: var(--bs-success); }
-#eventCalendar .fc-event.evt-warning   { background: var(--bs-warning);   border-color: var(--bs-warning); }
-#eventCalendar .fc-event.evt-danger    { background: var(--bs-danger);    border-color: var(--bs-danger); }
+/* Padding interno das células de dia — o default da lib é bem apertado
+   (4px só no número), some com o "respiro" que os ícones de evento
+   precisam pra não ficar grudados na borda da célula/no número. */
+#eventCalendar .fc-daygrid-day-frame {
+    padding: 4px;
+}
+#eventCalendar .fc-daygrid-day-number {
+    padding: 8px;
+}
+
+/* Evento no calendário mensal = só o ícone, na cor certa (definida via
+   style inline no próprio JS de eventContent) — sem fundo, sem borda, sem
+   nome/hora. É o único jeito de caber vários eventos no mesmo dia sem
+   quebrar em mobile; a contrapartida é a Agenda, que continua mostrando
+   nome/hora/ícone completos. */
+#eventCalendar .fc-daygrid-event {
+    background: transparent;
+    border: none;
+    display: inline-block;
+    margin: 1px 3px 1px 0;
+    padding: 0;
+}
+#eventCalendar .fc-event-main {
+    font-size: 1.05em;
+    line-height: 1;
+}
 
 /* Ressaltar dias (Settings > Eventos) — dias da semana marcados pelo
    usuário. Usa --app-accent-text-emphasis (não --app-accent-bg-subtle,

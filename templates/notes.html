@@ -10,6 +10,7 @@
 <script src="{{ url_for('static', filename='mermaid/mermaid.min.js') }}"></script>
 <script src="{{ url_for('static', filename='highlight/highlight.min.js') }}"></script>
 <script src="{{ url_for('static', filename='easymde/easymde.min.js') }}"></script>
+<script src="{{ url_for('static', filename='sortablejs/sortable.min.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -32,7 +33,7 @@
 
 <!-- Modal de pasta (criar/editar) -->
 <div class="modal fade" id="folderModal" tabindex="-1">
-    <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-centered modal-sm">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="folderModalTitle">Nova pasta</h5>
@@ -164,14 +165,16 @@
                 <span class="text-secondary small">
                     <i class="bi bi-pin"></i> Fixadas
                 </span>
-                <div class="mt-2 mb-3" id="pinnedList"></div>
+                <div class="mt-2" id="pinnedFoldersList"></div>
+                <div class="mt-1 mb-3" id="pinnedLooseList" data-folder-id="" data-pinned-zone="true"></div>
             </div>
 
             <div id="othersSection" class="d-none">
                 <span class="text-secondary small">
                     <i class="bi bi-archive"></i> Outros
                 </span>
-                <div class="mt-2" id="notesList"></div>
+                <div class="mt-2" id="othersFoldersList"></div>
+                <div class="mt-1" id="othersLooseList" data-folder-id="" data-pinned-zone="false"></div>
             </div>
 
             <div id="lixeiraSection" class="d-none mt-3">
@@ -431,7 +434,7 @@
             { name: 'italic', action: EasyMDE.toggleItalic, className: 'bi bi-type-italic', title: 'Itálico (Ctrl+I)' },
             { name: 'strikethrough', action: EasyMDE.toggleStrikethrough, className: 'bi bi-type-strikethrough', title: 'Tachado' },
             '|',
-            { name: 'code', action: EasyMDE.toggleCodeBlock, className: 'bi bi-code-slash', title: 'Código (Ctrl+Alt+C)', noMobile: true },
+            { name: 'code', action: EasyMDE.toggleCodeBlock, className: 'bi bi-code-slash', title: 'Código (Ctrl+Alt+C)' },
             { name: 'quote', action: EasyMDE.toggleBlockquote, className: 'bi bi-blockquote-left', title: "Citação (Ctrl+')" },
             { name: 'unordered-list', action: EasyMDE.toggleUnorderedList, className: 'bi bi-list-ul', title: 'Lista (Ctrl+L)' },
             { name: 'ordered-list', action: EasyMDE.toggleOrderedList, className: 'bi bi-list-ol', title: 'Lista numerada (Ctrl+Alt+L)' },
@@ -654,31 +657,65 @@
         return !q || note.title.toLowerCase().includes(q);
     }
 
-    function folderBlockHtml(folder, notes, isOpen) {
+    // "há X" relativo — mesma ideia do rodapé das tasklists (prazo/projeto/
+    // nota), só que pra "editado pela última vez", com dado que já está
+    // todo carregado no client (sem custo de backend nenhum).
+    function timeAgo(iso) {
+        if (!iso) return '';
+        const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+        if (days <= 0) return 'hoje';
+        if (days === 1) return 'há 1 dia';
+        if (days < 7) return `há ${days} dias`;
+        const weeks = Math.floor(days / 7);
+        if (weeks < 5) return weeks === 1 ? 'há 1 semana' : `há ${weeks} semanas`;
+        const months = Math.floor(days / 30);
+        if (months < 12) return months === 1 ? 'há 1 mês' : `há ${months} meses`;
+        const years = Math.floor(days / 365);
+        return years === 1 ? 'há 1 ano' : `há ${years} anos`;
+    }
+
+    // Card mais "pesado" que antes (mais alto, sombra, canto mais
+    // arredondado) — mas mantém o preenchido sólido que a pasta já tinha,
+    // ao contrário da tasklist (que não tinha identidade visual própria e
+    // por isso ganhou a faixa de cor à esquerda). Faixa em cima de um fundo
+    // já 100% colorido só competiria, não acrescentaria nada.
+    function folderBlockHtml(folder, notes, isOpen, allNotesInFolder) {
         const color   = colorOrAccent(folder.color);
         const icon    = folder.icon || 'bi-folder';
         const chevron = isOpen ? 'bi-chevron-down' : 'bi-chevron-right';
+        const fullList = allNotesInFolder || notes;
+        const count = fullList.length;
+        const lastUpdated = fullList.reduce((max, n) => {
+            const t = n.updated_at || n.created_at;
+            return (!max || (t && t > max)) ? t : max;
+        }, null);
+        const metaParts = [count ? `${count} nota${count === 1 ? '' : 's'}` : 'vazia'];
+        if (lastUpdated) metaParts.push(`editado ${timeAgo(lastUpdated)}`);
+        const meta = metaParts.join(' · ');
+
+        // Notas só viram alvo de drop quando a pasta está aberta — arrastar
+        // pra dentro de uma pasta fechada não expande ela sozinho (v1
+        // deliberadamente simples: abre a pasta primeiro, depois arrasta).
         const notesHtml = isOpen
-            ? `<div class="ps-3 mt-1">${notes.map(noteCardHtml).join('')}</div>`
+            ? `<div class="ps-3 mt-1 folder-notes-sublist" id="folder-notes-${folder.id}" data-folder-id="${folder.id}">${notes.map(noteCardHtml).join('')}</div>`
             : '';
         // Lixeira é protegida: sem lápis de edição (não pode renomear/reicone
         // a pasta de sistema — só chega lá via "Excluir" numa nota).
-        // .btn-group > .btn do Bootstrap tem flex:1 1 auto por padrão — só
-        // "width" não bastava, o botão ainda CRESCIA pra ocupar sobra de
-        // espaço. flex:0 0 28px trava grow/shrink/basis de uma vez, via
-        // inline style (maior especificidade possível).
         const editBtn = folder.is_system ? '' : `
-                        <button type="button" class="btn btn-${color}" data-folder-edit="${folder.id}" title="Editar pasta" style="flex: 0 0 28px;">
+                        <button type="button" class="btn btn-${color} flex-shrink-0" data-folder-edit="${folder.id}" title="Editar pasta">
                             <i class="bi bi-pencil-fill"></i>
                         </button>`;
-        return `<div class="mb-1">
-                    <div class="btn-group btn-group-sm w-100">
-                        <button type="button" class="btn btn-${color} d-flex align-items-center gap-1 flex-grow-1 text-start overflow-hidden"
-                                data-folder-toggle="${folder.id}">
+        return `<div class="mb-2" data-folder-id="${folder.id}">
+                    <div class="btn btn-${color} shadow-sm rounded-3 w-100 p-2 d-flex align-items-stretch gap-2 text-start overflow-hidden">
+                        <div class="flex-grow-1 d-flex align-items-center gap-2 overflow-hidden" style="cursor:pointer; min-width:0;"
+                             data-folder-toggle="${folder.id}">
                             <i class="${chevron} flex-shrink-0"></i>
                             <i class="${escHtml(icon)} flex-shrink-0"></i>
-                            <span class="text-truncate">${escHtml(folder.name)}</span>
-                        </button>${editBtn}
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="text-truncate fw-semibold">${escHtml(folder.name)}</div>
+                                <div class="text-truncate small" style="opacity:.85;">${meta}</div>
+                            </div>
+                        </div>${editBtn}
                     </div>
                     ${notesHtml}
                 </div>`;
@@ -727,38 +764,47 @@
         );
 
         function folderVisibleAndNotes(folder) {
-            const notes = sortNotes(notesByFolder.get(folder.id) || []);
+            const allNotesInFolder = sortNotes(notesByFolder.get(folder.id) || []);
             if (!q) {
-                return { visible: true, notes, open: expandedFolderIds.has(folder.id) };
+                return { visible: true, notes: allNotesInFolder, allNotesInFolder, open: expandedFolderIds.has(folder.id) };
             }
             const nameMatches    = folder.name.toLowerCase().includes(q);
-            const matchingNotes  = notes.filter(n => noteMatchesQuery(n, q));
-            if (nameMatches) return { visible: true, notes, open: true };
-            if (matchingNotes.length) return { visible: true, notes: matchingNotes, open: true };
-            return { visible: false, notes: [], open: false };
+            const matchingNotes  = allNotesInFolder.filter(n => noteMatchesQuery(n, q));
+            if (nameMatches) return { visible: true, notes: allNotesInFolder, allNotesInFolder, open: true };
+            if (matchingNotes.length) return { visible: true, notes: matchingNotes, allNotesInFolder, open: true };
+            return { visible: false, notes: [], allNotesInFolder, open: false };
         }
 
-        function renderGroup(folderIdSet, looseNotes) {
-            let html = sortFolders(visibleFolders.filter(f => folderIdSet.has(f.id)))
+        // Pastas e notas soltas em containers IRMÃOS separados (não mais
+        // misturados num innerHTML só) — "pastas sempre acima de notas"
+        // vira garantido pela própria posição no DOM, não uma regra
+        // validada a cada drop.
+        function renderGroup(folderIdSet, looseNotes, foldersEl, looseEl) {
+            const foldersHtml = sortFolders(visibleFolders.filter(f => folderIdSet.has(f.id)))
                 .map(folder => {
-                    const { visible, notes, open } = folderVisibleAndNotes(folder);
-                    return visible ? folderBlockHtml(folder, notes, open) : '';
+                    const { visible, notes, allNotesInFolder, open } = folderVisibleAndNotes(folder);
+                    return visible ? folderBlockHtml(folder, notes, open, allNotesInFolder) : '';
                 })
                 .join('');
             const loose = sortNotes(looseNotes).filter(n => noteMatchesQuery(n, q));
-            html += loose.map(noteCardHtml).join('');
-            return html;
+            const looseHtml = loose.map(noteCardHtml).join('');
+            foldersEl.innerHTML = foldersHtml;
+            looseEl.innerHTML = looseHtml;
+            return foldersHtml + looseHtml;
         }
 
         const otherFolderIds = new Set(visibleFolders.filter(f => !pinnedFolderIds.has(f.id)).map(f => f.id));
         const pinnedLoose = folderless.filter(n => n.is_pinned);
         const otherLoose  = folderless.filter(n => !n.is_pinned);
 
-        const pinnedHtml = renderGroup(pinnedFolderIds, pinnedLoose);
-        const othersHtml = renderGroup(otherFolderIds, otherLoose);
+        const pinnedFoldersEl = document.getElementById('pinnedFoldersList');
+        const pinnedLooseEl = document.getElementById('pinnedLooseList');
+        const othersFoldersEl = document.getElementById('othersFoldersList');
+        const othersLooseEl = document.getElementById('othersLooseList');
 
-        document.getElementById('pinnedList').innerHTML = pinnedHtml;
-        document.getElementById('notesList').innerHTML  = othersHtml;
+        const pinnedHtml = renderGroup(pinnedFolderIds, pinnedLoose, pinnedFoldersEl, pinnedLooseEl);
+        const othersHtml = renderGroup(otherFolderIds, otherLoose, othersFoldersEl, othersLooseEl);
+
         document.getElementById('pinnedSection').classList.toggle('d-none', !pinnedHtml);
         document.getElementById('othersSection').classList.toggle('d-none', !othersHtml);
 
@@ -780,6 +826,106 @@
 
         wireNoteCardClicks();
         wireFolderControls();
+        initDragAndDrop(!!q);
+    }
+
+    // ── Drag & drop (pastas e notas) ───────────────────────────────────────
+    // "notes": um grupo só, compartilhado entre as duas áreas de soltas
+    // (Fixadas/Outras) e o sublist de toda pasta ABERTA — é isso que permite
+    // arrastar uma nota de uma pasta pra outra, ou pra dentro/fora de
+    // qualquer uma. Pasta fechada não é alvo (v1 simples: abre primeiro).
+    // Lixeira fica de fora de propósito — não reordena, não recebe drop
+    // (o endpoint de reorder rejeita mover nota pra lá, igual o PUT já fazia).
+    // "folders": cada seção com seu próprio grupo isolado — pasta não cruza
+    // de Fixadas pra Outras arrastando (isso é só via pin explícito).
+    let noteSortables = [];
+    let folderSortables = [];
+
+    function onNoteDragEnd(evt) {
+        const container = evt.to;
+        const ids = Array.from(container.children).map(el => parseInt(el.dataset.id, 10));
+        const payload = { order: ids };
+        if (container.dataset.folderId !== undefined) {
+            payload.folder_id = container.dataset.folderId ? parseInt(container.dataset.folderId, 10) : null;
+        }
+        if (container.dataset.pinnedZone !== undefined) {
+            payload.is_pinned = container.dataset.pinnedZone === 'true';
+        }
+        persistNoteReorder(payload);
+    }
+
+    async function persistNoteReorder(payload) {
+        await fetch('/api/notes/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        payload.order.forEach((id, idx) => {
+            const n = allNotes.find(x => x.id === id);
+            if (!n) return;
+            n.order = idx;
+            if ('folder_id' in payload) n.folder_id = payload.folder_id;
+            if ('is_pinned' in payload) n.is_pinned = payload.is_pinned;
+        });
+        // Arrastar sempre vira a nova ordem "Criação" — sem isso, reabrir a
+        // sidebar num outro critério (A→Z etc.) faria o arrasto sumir de vista.
+        sortBy = 'order';
+        sortDir = 'asc';
+        renderSidebar();
+    }
+
+    function onFolderDragEnd(evt) {
+        const ids = Array.from(evt.to.children).map(el => parseInt(el.dataset.folderId, 10));
+        persistFolderReorder(ids);
+    }
+
+    async function persistFolderReorder(ids) {
+        await fetch('/api/note-folders/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order: ids }),
+        });
+        ids.forEach((id, idx) => {
+            const f = allFolders.find(x => x.id === id);
+            if (f) f.order = idx;
+        });
+        sortBy = 'order';
+        sortDir = 'asc';
+        renderSidebar();
+    }
+
+    function initDragAndDrop(searchActive) {
+        noteSortables.forEach(s => s.destroy());
+        folderSortables.forEach(s => s.destroy());
+        noteSortables = [];
+        folderSortables = [];
+
+        // Lixeira excluída de propósito: só pega os sublists dentro das
+        // duas seções normais, nunca #lixeiraList.
+        const noteContainers = [
+            document.getElementById('pinnedLooseList'),
+            document.getElementById('othersLooseList'),
+            ...document.querySelectorAll('#pinnedFoldersList .folder-notes-sublist, #othersFoldersList .folder-notes-sublist'),
+        ].filter(Boolean);
+        noteContainers.forEach(el => {
+            noteSortables.push(new Sortable(el, {
+                group: 'notes',
+                animation: 150,
+                disabled: searchActive || selectMode,
+                onEnd: onNoteDragEnd,
+            }));
+        });
+
+        [document.getElementById('pinnedFoldersList'), document.getElementById('othersFoldersList')].forEach(el => {
+            if (!el) return;
+            folderSortables.push(new Sortable(el, {
+                animation: 150,
+                filter: '[data-folder-edit]',
+                preventOnFilter: false,
+                disabled: searchActive || selectMode,
+                onEnd: onFolderDragEnd,
+            }));
+        });
     }
 
     function applyFilter() {

@@ -1,13 +1,840 @@
 {% extends "common/base.html" %}
 
-{% block title %}Página Inicial - Planner App{% endblock %}
+{% block title %}Tasks - Planner App{% endblock %}
+
+{% block head %}
+<script src="{{ url_for('static', filename='sortablejs/sortable.min.js') }}"></script>
+<style>
+    /* Card de tasklist na sidebar — sensação de card de verdade, não de
+       linha de pasta (Notas). Cor da faixa lateral vem inline (por lista). */
+    .tasklist-card { transition: background-color .15s ease, box-shadow .15s ease; }
+    .tasklist-card:hover { background-color: var(--bs-tertiary-bg); }
+</style>
+{% endblock %}
 
 {% block content %}
 
-    <span class="display-3 fw-bold text-accent"> WIP - Tasks</span>
+<!-- Modal de confirmação de exclusão (compartilhado lista/task — mensagem
+     trocada em runtime, mesmo padrão do deleteNoteModal). -->
+<div class="modal fade" id="deleteTaskModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <p class="mb-3" id="deleteTaskModalMessage">Excluir?</p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-sm btn-danger" id="confirmDeleteTaskBtn">Excluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Vínculos (compartilhado lista/task, igual o de exclusão) —
+     prazo (Event por trás) e nota vinculada moram aqui agora, não mais
+     como campos soltos no header/na linha da task. -->
+<div class="modal fade" id="taskLinkModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Vínculos <span class="text-muted small" id="taskLinkModalSubtitle"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body d-flex flex-column gap-3">
+                <div>
+                    <label class="form-label small text-muted mb-1">Prazo</label>
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="date" class="form-control form-control-sm" id="linkDeadlineInput">
+                        <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button"
+                                id="linkRecurrenceToggleBtn" title="Recorrência">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                    </div>
+                    <div class="d-none border rounded p-2 mt-2" id="linkRecurrenceFields">
+                        <select class="form-select form-select-sm mb-2" id="linkRecurrenceType">
+                            <option value="interval">A cada N dias</option>
+                            <option value="weekdays">Dias da semana</option>
+                            <option value="monthday">Dia(s) do mês</option>
+                        </select>
+                        <input type="number" min="1" class="form-control form-control-sm d-none mb-2"
+                               id="linkRecurrenceInterval" placeholder="A cada quantos dias">
+                        <div class="d-none gap-1 mb-2 flex-wrap" id="linkWeekdaysWrap">
+                            {% for i, label in [(0,'S'),(1,'T'),(2,'Q'),(3,'Q'),(4,'S'),(5,'S'),(6,'D')] %}
+                            <input type="checkbox" class="btn-check" id="linkWeekday{{ i }}" value="{{ i }}">
+                            <label class="btn btn-sm btn-outline-secondary" for="linkWeekday{{ i }}">{{ label }}</label>
+                            {% endfor %}
+                        </div>
+                        <input type="text" class="form-control form-control-sm d-none mb-2"
+                               id="linkMonthdaysInput" placeholder="Dias do mês, ex: 1,15,28">
+                        <input type="date" class="form-control form-control-sm" id="linkRecurrenceEnd" placeholder="Termina em (opcional)">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label small text-muted mb-1">Nota vinculada</label>
+                    <!-- Mesmo estado reservado/desabilitado que Notas usa
+                         hoje pro botão equivalente — interconectividade
+                         entre módulos ainda não foi construída. -->
+                    <button class="btn btn-sm btn-outline-info w-100" type="button" disabled>
+                        <i class="bi bi-bezier2"></i> Em breve
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 h-100" id="tasksRoot">
+
+    <!-- SIDEBAR: listas -->
+    <section id="taskListsPane" class="col-12 col-lg-4 col-xl-3 h-100 d-flex d-lg-flex flex-column p-3 border-end bg-body-secondary" style="min-height: 0;">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="display-6 fw-semibold mb-0" style="font-size: 1.5rem;">Tasks</h1>
+            <button class="btn btn-sm bg-accent-subtle" id="newTaskListBtn">Nova lista</button>
+        </div>
+
+        <hr>
+
+        <!-- Busca + Ordenação (mesmo padrão de Notas) -->
+        <div class="d-flex gap-1 mb-3">
+            <input type="text" class="form-control form-control-sm shadow-sm" placeholder="Buscar listas..." id="taskListSearch">
+            <div class="dropdown flex-shrink-0">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" title="Ordenar">
+                    <i class="bi bi-sort-down"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><h6 class="dropdown-header">Ordenar por</h6></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="created" data-dir="asc"><i class="bi bi-clock me-1"></i>Criação ↑</a></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="created" data-dir="desc"><i class="bi bi-clock me-1"></i>Criação ↓</a></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="alpha" data-dir="asc"><i class="bi bi-sort-alpha-down me-1"></i>A → Z</a></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="alpha" data-dir="desc"><i class="bi bi-sort-alpha-up me-1"></i>Z → A</a></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="updated" data-dir="desc"><i class="bi bi-clock-history me-1"></i>Modificação (mais recente)</a></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="updated" data-dir="asc"><i class="bi bi-clock-history me-1"></i>Modificação (mais antiga)</a></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="color" data-dir="asc"><i class="bi bi-palette me-1"></i>Por cor</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="flex-grow-1 overflow-auto">
+            <div id="pinnedTaskListsSection" class="d-none">
+                <span class="text-secondary small"><i class="bi bi-pin"></i> Fixadas</span>
+                <div class="mt-2 mb-3" id="pinnedTaskListsList"></div>
+            </div>
+            <div id="otherTaskListsSection" class="d-none">
+                <span class="text-secondary small"><i class="bi bi-list-check"></i> Outras</span>
+                <div class="mt-2" id="otherTaskListsList"></div>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- ÁREA DA LISTA: escondida por padrão no mobile (a sidebar aparece
+         sozinha primeiro), sempre visível a partir de lg — mesmo padrão de
+         noteEditorPane em Notas (showMobileList/showMobileDetail). -->
+    <section id="taskMainPane" class="col-12 col-lg-8 col-xl-9 h-100 d-none d-lg-flex flex-column p-3"
+             style="min-height: 0; overflow: hidden;">
+
+        <!-- Empty state -->
+        <div id="taskListEmptyState" class="d-flex flex-column align-items-center justify-content-center flex-grow-1 text-muted">
+            <i class="bi bi-list-check" style="font-size: 5rem;"></i>
+            <p class="mt-3 mb-0">Selecione uma lista ou crie uma pra começar</p>
+        </div>
+
+        <!-- Lista selecionada -->
+        <div id="taskListDetail" class="d-none flex-column flex-grow-1" style="min-height: 0;">
+
+            <div class="flex-shrink-0 mb-2">
+
+                <!-- Linha 1: voltar (mobile) + nome (autosave no change) -->
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-secondary flex-shrink-0 d-lg-none" type="button"
+                            id="taskListBackBtn" title="Voltar pras listas">
+                        <i class="bi bi-arrow-left"></i>
+                    </button>
+                    <input type="text" class="form-control border-0 fw-bold flex-grow-1"
+                           placeholder="Nome da lista" id="taskListNameInput">
+                </div>
+
+                <!-- Linha 2: cor, ícone, vínculos (prazo + nota), pin, apagar -->
+                <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                    <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button" id="taskListColorBtn"
+                            data-bs-toggle="modal" data-bs-target="#colorPickerModal" data-target-input="#taskListColorValue">
+                        <span class="rounded-circle d-inline-block bg-accent" id="taskListColorDot" style="width:14px;height:14px;"></span>
+                    </button>
+                    <input type="hidden" id="taskListColorValue">
+
+                    <button class="btn btn-sm btn-outline-accent flex-shrink-0" type="button" id="taskListIconBtn"
+                            data-bs-toggle="modal" data-bs-target="#iconPickerModal" data-target-input="#taskListIconValue">
+                        <i class="bi bi-list-check" id="taskListIconPreview"></i>
+                    </button>
+                    <input type="hidden" id="taskListIconValue">
+
+                    <!-- Prazo + nota vinculada moram no modal de Vínculos
+                         agora (ver #taskLinkModal) — não é mais um botão
+                         reservado/desabilitado, abre de verdade. -->
+                    <button class="btn btn-sm btn-outline-info flex-shrink-0" type="button"
+                            id="taskListLinkBtn" title="Vínculos (prazo, nota)">
+                        <i class="bi bi-bezier2"></i>
+                    </button>
+
+                    <button class="btn btn-sm btn-outline-success flex-shrink-0" type="button" id="taskListPinBtn" title="Fixar lista">
+                        <i class="bi bi-pin"></i>
+                    </button>
+
+                    <button class="btn btn-sm btn-outline-danger flex-shrink-0 ms-auto" id="taskListDeleteBtn" title="Excluir lista">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <hr class="flex-shrink-0">
+
+            <!-- Busca + Ordenação dentro da lista -->
+            <div class="d-flex gap-1 mb-2 flex-shrink-0">
+                <input type="text" class="form-control form-control-sm" placeholder="Buscar nesta lista..." id="taskSearch">
+                <div class="dropdown flex-shrink-0">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" title="Ordenar">
+                        <i class="bi bi-sort-down"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><h6 class="dropdown-header">Ordenar por</h6></li>
+                        <li><a class="dropdown-item t-sort-opt" href="#" data-sort="alpha" data-dir="asc"><i class="bi bi-sort-alpha-down me-1"></i>A → Z</a></li>
+                        <li><a class="dropdown-item t-sort-opt" href="#" data-sort="alpha" data-dir="desc"><i class="bi bi-sort-alpha-up me-1"></i>Z → A</a></li>
+                        <li><a class="dropdown-item t-sort-opt" href="#" data-sort="created" data-dir="asc"><i class="bi bi-clock me-1"></i>Criação ↑</a></li>
+                        <li><a class="dropdown-item t-sort-opt" href="#" data-sort="created" data-dir="desc"><i class="bi bi-clock me-1"></i>Criação ↓</a></li>
+                        <li><a class="dropdown-item t-sort-opt" href="#" data-sort="updated" data-dir="desc"><i class="bi bi-clock-history me-1"></i>Modificação (mais recente)</a></li>
+                        <li><a class="dropdown-item t-sort-opt" href="#" data-sort="updated" data-dir="asc"><i class="bi bi-clock-history me-1"></i>Modificação (mais antiga)</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="flex-grow-1 overflow-auto" id="taskItemsList" style="min-height: 0;"></div>
+
+            <div class="flex-shrink-0 d-flex gap-2 mt-2">
+                <input type="text" class="form-control form-control-sm" id="newTaskInput" placeholder="Nova task...">
+                <button class="btn btn-sm bg-accent-subtle flex-shrink-0" id="newTaskBtn">Adicionar</button>
+            </div>
+
+        </div>
+
+    </section>
+
+</div>
+
+<!-- Template de uma linha de task (clonado via JS) -->
+<template id="taskRowTemplate">
+    <div class="task-row border rounded p-2 mb-2 d-flex align-items-center gap-2">
+        <input type="checkbox" class="form-check-input flex-shrink-0 task-done-check" style="margin-top:0;">
+        <span class="flex-grow-1 task-name text-truncate"></span>
+        <button class="btn btn-sm btn-outline-danger flex-shrink-0 task-delete-btn" type="button">
+            <i class="bi bi-trash"></i>
+        </button>
+    </div>
+</template>
 
 {% endblock %}
 
 {% block scripts %}
-<!-- Scripts aqui -->
+<script>
+(function () {
+    const COLORS = ['secondary', 'info', 'primary', 'success', 'warning', 'danger'];
+    const COLOR_ORDER = Object.fromEntries(COLORS.map((c, i) => [c, i]));
+    function colorOrAccent(c) { return COLORS.includes(c) ? c : 'accent'; }
+    function escHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+    }
+    function formatBadgeDate(iso) {
+        const [y, m, d] = iso.split('-');
+        return `${d}/${m}`;
+    }
+
+    let currentTaskLists = [];
+    let currentTaskList = null; // objeto completo (com .tasks) da lista aberta
+    let sortableInstance = null;
+
+    let tlSortBy = 'manual', tlSortDir = 'asc', tlQuery = '';
+    let tSortBy = 'manual', tSortDir = 'asc', tQuery = '';
+    let pinnedSortable = null, otherSortable = null;
+
+    const emptyStateEl = document.getElementById('taskListEmptyState');
+    const detailEl = document.getElementById('taskListDetail');
+    const itemsEl = document.getElementById('taskItemsList');
+    const rowTemplate = document.getElementById('taskRowTemplate');
+    const deleteModalEl = document.getElementById('deleteTaskModal');
+    const deleteModal = new bootstrap.Modal(deleteModalEl);
+    let pendingDelete = null; // {type: 'list'|'task', id}
+
+    // ---------- Mobile pane switch (mesmo padrão de showMobileList/Editor
+    // em Notas: troca classes d-flex/d-none, desktop mostra os 2 juntos). ----------
+    function showMobileDetail() {
+        document.getElementById('taskListsPane').classList.replace('d-flex', 'd-none');
+        document.getElementById('taskMainPane').classList.replace('d-none', 'd-flex');
+    }
+    function showMobileLists() {
+        document.getElementById('taskMainPane').classList.replace('d-flex', 'd-none');
+        document.getElementById('taskListsPane').classList.replace('d-none', 'd-flex');
+    }
+    document.getElementById('taskListBackBtn').addEventListener('click', showMobileLists);
+
+    // ---------- Sidebar ----------
+    // Card mais "pesado" que uma linha de pasta comum — faixa de cor à
+    // esquerda + sombra + padding maior, 2 linhas (cabeçalho / barra de
+    // progresso) com uma linha em branco entre elas, tudo clicável.
+    // Linha de metadado no rodapé do card — sempre "valor <ícone>" (nunca
+    // o contrário), sempre a MESMA altura mesmo sem valor (célula vazia),
+    // pra todos os cards da sidebar ficarem com a mesma altura total
+    // independente de terem prazo/projeto/nota vinculados ou não.
+    function tasklistMetaRowHtml(icon, value) {
+        const inner = value
+            ? `<span class="text-truncate">${escHtml(value)}</span><i class="${icon} flex-shrink-0"></i>` : '';
+        return `<div class="d-flex align-items-center justify-content-end gap-1 small text-muted" style="height: 1.2rem;">${inner}</div>`;
+    }
+
+    function tasklistRowHtml(tl) {
+        const color = colorOrAccent(tl.color);
+        const colorVar = color === 'accent' ? 'var(--app-accent)' : `var(--bs-${color})`;
+        const icon = tl.icon || 'bi-list-check';
+        const count = tl.task_count || 0;
+        const done = tl.done_count || 0;
+        const pct = count ? Math.round((done / count) * 100) : 0;
+        // Settings > Tarefas > Contador: absoluto (x/y) | percentual (x%) |
+        // nenhum — controla só o rótulo numérico, a barra em si é sempre
+        // mostrada (é o indicador visual, o texto é só um complemento).
+        const counterMode = (window.__settings || {})['tarefas.contador'] || 'absoluto';
+        const counterText = counterMode === 'percentual' ? `${pct}%`
+            : counterMode === 'nenhum' ? ''
+            : `${done}/${count}`;
+        const counter = counterText
+            ? `<span class="small text-muted flex-shrink-0">${counterText}</span>` : '';
+        const dueDate = tl.deadline
+            ? `<span class="small text-muted flex-shrink-0 d-flex align-items-center gap-1">
+                   <span>${formatBadgeDate(tl.deadline.date)}</span><i class="bi-calendar-event flex-shrink-0"></i>
+               </span>` : '';
+        // Ordem de baixo pra cima é sempre: cabeçalho (com o prazo já na
+        // mesma linha do nome) -> projeto -> nota -> barra de progresso
+        // por ÚLTIMO, sempre o componente mais embaixo do card.
+        return `<button type="button" class="btn bg-body text-start w-100 mb-3 p-3 shadow-sm rounded-3 tasklist-item tasklist-card"
+                        style="border-left: 4px solid ${colorVar};" data-id="${tl.id}">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="${escHtml(icon)} flex-shrink-0" style="color:${colorVar};"></i>
+                        <span class="flex-grow-1 text-truncate fw-semibold">${escHtml(tl.name)}</span>
+                        ${dueDate}
+                    </div>
+                    ${tasklistMetaRowHtml('bi-kanban', tl.project_name)}
+                    ${tasklistMetaRowHtml('bi-journal-text', tl.note_title)}
+                    <div style="height: .65rem;"></div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" style="width:${pct}%; background-color:${colorVar};"
+                                 aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        ${counter}
+                    </div>
+                </button>`;
+    }
+
+    function sortTaskLists(list) {
+        if (tlSortBy === 'manual') return list.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        const dir = tlSortDir === 'desc' ? -1 : 1;
+        const arr = list.slice();
+        if (tlSortBy === 'alpha') {
+            arr.sort((a, b) => dir * a.name.localeCompare(b.name));
+        } else if (tlSortBy === 'updated') {
+            arr.sort((a, b) => dir * (new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at)));
+        } else if (tlSortBy === 'color') {
+            arr.sort((a, b) => (COLOR_ORDER[a.color] ?? 99) - (COLOR_ORDER[b.color] ?? 99));
+        } else {
+            arr.sort((a, b) => dir * (a.created_at || '').localeCompare(b.created_at || ''));
+        }
+        return arr;
+    }
+
+    function renderTaskListGroup(container, list) {
+        const q = tlQuery.trim().toLowerCase();
+        const filtered = q ? list.filter(tl => tl.name.toLowerCase().includes(q)) : list;
+        const html = sortTaskLists(filtered).map(tasklistRowHtml).join('');
+        container.innerHTML = html;
+        container.querySelectorAll('.tasklist-item').forEach(btn => {
+            btn.addEventListener('click', () => openTaskList(parseInt(btn.dataset.id, 10)));
+        });
+        return html;
+    }
+
+    // Uma sequência global só (fixadas + outras, na ordem visual atual)
+    // vira o novo "order" de cada tasklist — mesmo padrão do reorder de
+    // tasks dentro de uma lista.
+    async function persistTaskListOrder() {
+        const pinnedIds = Array.from(document.getElementById('pinnedTaskListsList').children).map(el => parseInt(el.dataset.id, 10));
+        const otherIds = Array.from(document.getElementById('otherTaskListsList').children).map(el => parseInt(el.dataset.id, 10));
+        const order = [...pinnedIds, ...otherIds];
+        await fetch('/api/tasklists/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order }),
+        });
+        order.forEach((id, idx) => {
+            const tl = currentTaskLists.find(t => t.id === id);
+            if (tl) tl.order = idx;
+        });
+    }
+
+    function initTaskListSortables() {
+        // Sem "handle": o card inteiro é a superfície de arrastar, não só
+        // um ícone. SortableJS já distingue clique (abre a lista) de
+        // arrastar (reordena) sozinho, então nenhum dos dois quebra o outro.
+        // Não trava mais em "só se tlSortBy === manual" — arrastar SEMPRE
+        // funciona, e é o próprio ato de arrastar que faz virar manual.
+        const disabled = tlQuery.trim().length > 0;
+        if (pinnedSortable) pinnedSortable.destroy();
+        if (otherSortable) otherSortable.destroy();
+        const opts = {
+            animation: 150, disabled,
+            onEnd: () => {
+                tlSortBy = 'manual';
+                persistTaskListOrder();
+            },
+        };
+        pinnedSortable = new Sortable(document.getElementById('pinnedTaskListsList'), opts);
+        otherSortable = new Sortable(document.getElementById('otherTaskListsList'), opts);
+    }
+
+    function applyTaskListFilter() {
+        const pinned = currentTaskLists.filter(tl => tl.is_pinned);
+        const others = currentTaskLists.filter(tl => !tl.is_pinned);
+        const pinnedHtml = renderTaskListGroup(document.getElementById('pinnedTaskListsList'), pinned);
+        const othersHtml = renderTaskListGroup(document.getElementById('otherTaskListsList'), others);
+        document.getElementById('pinnedTaskListsSection').classList.toggle('d-none', !pinnedHtml);
+        document.getElementById('otherTaskListsSection').classList.toggle('d-none', !othersHtml);
+        initTaskListSortables();
+
+        // Sem busca ativa (senão os containers só têm o subconjunto
+        // filtrado, reindexar aqui bagunçaria a ordem de quem está
+        // escondido) e com um critério diferente de manual, a própria
+        // renderização já vira a nova ordem persistida — não só o
+        // resultado de um drag. "Manual" passa a refletir sempre o
+        // último critério de fato usado, nunca uma posição esquecida.
+        if (tlSortBy !== 'manual' && !tlQuery.trim()) persistTaskListOrder();
+    }
+
+    async function loadTaskLists() {
+        currentTaskLists = await fetch('/api/tasklists').then(r => r.json());
+        applyTaskListFilter();
+    }
+
+    document.getElementById('taskListSearch').addEventListener('input', function () {
+        tlQuery = this.value;
+        applyTaskListFilter();
+    });
+    document.querySelectorAll('.tl-sort-opt').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            tlSortBy = a.dataset.sort;
+            tlSortDir = a.dataset.dir;
+            applyTaskListFilter();
+        });
+    });
+
+    document.getElementById('newTaskListBtn').addEventListener('click', async () => {
+        const tl = await fetch('/api/tasklists', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'Nova lista' }),
+        }).then(r => r.json());
+        await loadTaskLists();
+        openTaskList(tl.id);
+    });
+
+    // ---------- Lista selecionada ----------
+    async function openTaskList(id) {
+        currentTaskList = await fetch(`/api/tasklists/${id}`).then(r => r.json());
+        emptyStateEl.classList.add('d-none');
+        detailEl.classList.remove('d-none');
+        detailEl.classList.add('d-flex');
+        tQuery = '';
+        document.getElementById('taskSearch').value = '';
+        renderTaskListDetail();
+        showMobileDetail();
+    }
+
+    // Separado de applyTaskFilter() de propósito: cor/ícone/pin/nome mudam
+    // com bastante frequência (autosave por campo) e não podem forçar um
+    // rebuild inteiro da lista de tasks toda vez — isso fecharia qualquer
+    // task expandida sem motivo.
+    function renderTaskListHeader() {
+        const tl = currentTaskList;
+        document.getElementById('taskListNameInput').value = tl.name;
+        document.getElementById('taskListColorValue').value = tl.color || '';
+        document.getElementById('taskListColorDot').className =
+            `rounded-circle d-inline-block bg-${colorOrAccent(tl.color)}`;
+        document.getElementById('taskListIconValue').value = tl.icon || '';
+        document.getElementById('taskListIconPreview').className = tl.icon || 'bi bi-list-check';
+        document.getElementById('taskListPinBtn').classList.toggle('btn-success', tl.is_pinned);
+        document.getElementById('taskListPinBtn').classList.toggle('btn-outline-success', !tl.is_pinned);
+    }
+
+    function renderTaskListDetail() {
+        renderTaskListHeader();
+        applyTaskFilter();
+    }
+
+    function sortTasks(list) {
+        if (tSortBy === 'manual') return list.slice().sort((a, b) => a.order - b.order);
+        const dir = tSortDir === 'desc' ? -1 : 1;
+        const arr = list.slice();
+        if (tSortBy === 'alpha') {
+            arr.sort((a, b) => dir * a.name.localeCompare(b.name));
+        } else if (tSortBy === 'updated') {
+            arr.sort((a, b) => dir * (new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at)));
+        } else {
+            arr.sort((a, b) => dir * (a.created_at || '').localeCompare(b.created_at || ''));
+        }
+        return arr;
+    }
+
+    // Reordenar não é só um ORDER BY de exibição — a ordem escolhida vira a
+    // ordem persistida de verdade (reindexa TODAS as tasks, não só as que
+    // se moveram), pra "Manual" mais tarde já refletir o último critério
+    // usado, e não uma posição velha/esquecida.
+    async function persistTaskOrder() {
+        const order = Array.from(itemsEl.children).map(el => parseInt(el.dataset.taskId, 10));
+        await fetch(`/api/tasklists/${currentTaskList.id}/tasks/reorder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order }),
+        });
+        order.forEach((id, idx) => {
+            const t = currentTaskList.tasks.find(t => t.id === id);
+            if (t) t.order = idx;
+        });
+    }
+
+    function applyTaskFilter() {
+        const q = tQuery.trim().toLowerCase();
+        const filtered = q
+            ? currentTaskList.tasks.filter(t => t.name.toLowerCase().includes(q))
+            : currentTaskList.tasks;
+
+        itemsEl.innerHTML = '';
+        sortTasks(filtered).forEach(t => itemsEl.appendChild(buildTaskRow(t)));
+
+        // Sem "handle": a linha inteira é a superfície de arrastar. filter
+        // exclui o checkbox/apagar de iniciar um drag (senão clicar neles
+        // vira gesto ambíguo) — mas continuam clicáveis normalmente. Não
+        // trava mais em "só se tSortBy === manual": arrastar SEMPRE
+        // funciona, e é o próprio ato de arrastar que faz virar manual.
+        if (sortableInstance) sortableInstance.destroy();
+        sortableInstance = new Sortable(itemsEl, {
+            animation: 150,
+            filter: '.task-done-check, .task-delete-btn',
+            preventOnFilter: false,
+            disabled: q.length > 0,
+            onEnd: () => {
+                tSortBy = 'manual';
+                persistTaskOrder();
+            },
+        });
+
+        // Sem busca ativa (senão o itemsEl só tem o subconjunto filtrado,
+        // reindexar aqui bagunçaria a ordem de quem está escondido) e com
+        // um critério diferente de manual, a própria renderização já vira
+        // a nova ordem persistida — não só o resultado de um drag.
+        if (tSortBy !== 'manual' && !q) persistTaskOrder();
+    }
+
+    document.getElementById('taskSearch').addEventListener('input', function () {
+        tQuery = this.value;
+        applyTaskFilter();
+    });
+    document.querySelectorAll('.t-sort-opt').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            tSortBy = a.dataset.sort;
+            tSortDir = a.dataset.dir;
+            applyTaskFilter();
+        });
+    });
+
+    async function saveTaskListField(patch) {
+        currentTaskList = await fetch(`/api/tasklists/${currentTaskList.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch),
+        }).then(r => r.json());
+        // Reflete no header (nome/cor/ícone/pin) sem reconstruir a lista de
+        // tasks inteira à toa.
+        renderTaskListHeader();
+        refreshTaskBadges();
+        loadTaskLists();
+    }
+
+    // Prazo da PRÓPRIA lista mudou — não afeta as tasks, mas se o modal de
+    // Vínculos estava aberto pra lista, o valor em tela também precisa
+    // refletir a resposta mais recente do servidor.
+    function refreshTaskBadges() {
+        if (linkModalTarget && linkModalTarget.kind === 'tasklist') {
+            document.getElementById('linkDeadlineInput').value = currentTaskList.deadline ? currentTaskList.deadline.date : '';
+        }
+    }
+
+    document.getElementById('taskListNameInput').addEventListener('change', function () {
+        saveTaskListField({ name: this.value });
+    });
+    document.getElementById('taskListColorValue').addEventListener('change', function () {
+        document.getElementById('taskListColorDot').className = `rounded-circle d-inline-block bg-${colorOrAccent(this.value)}`;
+        saveTaskListField({ color: this.value || null });
+    });
+    document.getElementById('taskListIconValue').addEventListener('change', function () {
+        document.getElementById('taskListIconPreview').className = this.value || 'bi bi-list-check';
+        saveTaskListField({ icon: this.value || null });
+    });
+    document.getElementById('taskListPinBtn').addEventListener('click', () => {
+        saveTaskListField({ is_pinned: !currentTaskList.is_pinned });
+    });
+
+    document.getElementById('taskListDeleteBtn').addEventListener('click', () => {
+        pendingDelete = { type: 'list', id: currentTaskList.id };
+        document.getElementById('deleteTaskModalMessage').textContent =
+            `Excluir a lista "${currentTaskList.name}" e todas as tasks dela?`;
+        deleteModal.show();
+    });
+
+    // ---------- Modal de Vínculos (prazo + nota) — compartilhado entre a
+    // TaskList aberta e qualquer Task dela. linkModalTarget descreve QUEM
+    // está sendo editado no momento: como ler o prazo atual e como salvar. ----------
+    const linkModalEl = document.getElementById('taskLinkModal');
+    const linkModal = new bootstrap.Modal(linkModalEl);
+    let linkModalTarget = null; // { kind: 'tasklist'|'task', title, getDeadline(), save(deadline) }
+
+    function syncRecurrenceTypeVisibility(select, intervalEl, weekdaysEl, monthdaysEl) {
+        intervalEl.classList.toggle('d-none', select.value !== 'interval');
+        weekdaysEl.classList.toggle('d-none', select.value !== 'weekdays');
+        weekdaysEl.classList.toggle('d-flex', select.value === 'weekdays');
+        monthdaysEl.classList.toggle('d-none', select.value !== 'monthday');
+    }
+
+    function buildDeadlinePayload(dateVal, recurring, typeSel, intervalEl, weekdayEls, monthdaysEl, endEl) {
+        if (!dateVal) return null;
+        if (!recurring) return { date: dateVal, recurrence_enabled: false };
+        const type = typeSel.value;
+        const payload = {
+            date: dateVal, recurrence_enabled: true, recurrence_type: type,
+            recurrence_end: endEl.value || null,
+        };
+        if (type === 'interval') payload.recurrence_interval = parseInt(intervalEl.value, 10) || 1;
+        if (type === 'weekdays') payload.recurrence_weekdays = weekdayEls.filter(cb => cb.checked).map(cb => parseInt(cb.value, 10));
+        if (type === 'monthday') payload.recurrence_monthdays = (monthdaysEl.value || '').split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+        return payload;
+    }
+
+    function resetLinkRecurrenceFields() {
+        document.getElementById('linkRecurrenceType').value = 'interval';
+        document.getElementById('linkRecurrenceInterval').value = '';
+        document.querySelectorAll('#linkWeekdaysWrap input[type=checkbox]').forEach(cb => cb.checked = false);
+        document.getElementById('linkMonthdaysInput').value = '';
+        document.getElementById('linkRecurrenceEnd').value = '';
+        syncRecurrenceTypeVisibility(document.getElementById('linkRecurrenceType'),
+            document.getElementById('linkRecurrenceInterval'), document.getElementById('linkWeekdaysWrap'),
+            document.getElementById('linkMonthdaysInput'));
+    }
+
+    async function openLinkModal(target) {
+        linkModalTarget = target;
+        document.getElementById('taskLinkModalSubtitle').textContent = target.title ? `— ${target.title}` : '';
+        const deadline = target.getDeadline();
+        document.getElementById('linkDeadlineInput').value = deadline ? deadline.date : '';
+
+        const recurring = !!(deadline && deadline.recurrence_enabled);
+        document.getElementById('linkRecurrenceFields').classList.toggle('d-none', !recurring);
+        document.getElementById('linkRecurrenceToggleBtn').classList.toggle('btn-accent', recurring);
+        document.getElementById('linkRecurrenceToggleBtn').classList.toggle('btn-outline-secondary', !recurring);
+
+        if (recurring) {
+            // A prévia (deadline.recurrence_enabled) não carrega a regra
+            // completa — busca o Event de verdade só quando precisa editar.
+            const full = await fetch(`/api/events/${deadline.event_id}`).then(r => r.ok ? r.json() : null);
+            if (full) {
+                document.getElementById('linkRecurrenceType').value = full.recurrence_type || 'interval';
+                document.getElementById('linkRecurrenceInterval').value = full.recurrence_interval || '';
+                document.querySelectorAll('#linkWeekdaysWrap input[type=checkbox]').forEach(cb => {
+                    cb.checked = (full.recurrence_weekdays || []).includes(parseInt(cb.value, 10));
+                });
+                document.getElementById('linkMonthdaysInput').value = (full.recurrence_monthdays || []).join(',');
+                document.getElementById('linkRecurrenceEnd').value = full.recurrence_end || '';
+                syncRecurrenceTypeVisibility(document.getElementById('linkRecurrenceType'),
+                    document.getElementById('linkRecurrenceInterval'), document.getElementById('linkWeekdaysWrap'),
+                    document.getElementById('linkMonthdaysInput'));
+            }
+        } else {
+            resetLinkRecurrenceFields();
+        }
+        linkModal.show();
+    }
+
+    async function saveLinkDeadline() {
+        if (!linkModalTarget) return;
+        const dateVal = document.getElementById('linkDeadlineInput').value;
+        const recurring = !document.getElementById('linkRecurrenceFields').classList.contains('d-none')
+            && document.getElementById('linkRecurrenceToggleBtn').classList.contains('btn-accent');
+        const deadline = buildDeadlinePayload(
+            dateVal, recurring,
+            document.getElementById('linkRecurrenceType'),
+            document.getElementById('linkRecurrenceInterval'),
+            Array.from(document.querySelectorAll('#linkWeekdaysWrap input[type=checkbox]')),
+            document.getElementById('linkMonthdaysInput'),
+            document.getElementById('linkRecurrenceEnd'),
+        );
+        await linkModalTarget.save(deadline);
+    }
+
+    document.getElementById('linkDeadlineInput').addEventListener('change', () => {
+        if (!document.getElementById('linkDeadlineInput').value) {
+            document.getElementById('linkRecurrenceToggleBtn').classList.remove('btn-accent');
+            document.getElementById('linkRecurrenceToggleBtn').classList.add('btn-outline-secondary');
+            resetLinkRecurrenceFields();
+            if (linkModalTarget) linkModalTarget.save(null);
+            return;
+        }
+        saveLinkDeadline();
+    });
+    document.getElementById('linkRecurrenceToggleBtn').addEventListener('click', () => {
+        document.getElementById('linkRecurrenceFields').classList.toggle('d-none');
+    });
+    document.getElementById('linkRecurrenceType').addEventListener('change', function () {
+        syncRecurrenceTypeVisibility(this, document.getElementById('linkRecurrenceInterval'),
+            document.getElementById('linkWeekdaysWrap'), document.getElementById('linkMonthdaysInput'));
+        // O botão de recorrência primeiro só expande/colapsa; ligar de
+        // verdade (btn-accent) acontece quando o usuário mexe em algum
+        // campo lá dentro com uma data já preenchida — senão "abrir
+        // avançado" já criaria uma recorrência vazia sem querer.
+        document.getElementById('linkRecurrenceToggleBtn').classList.add('btn-accent');
+        document.getElementById('linkRecurrenceToggleBtn').classList.remove('btn-outline-secondary');
+        if (document.getElementById('linkDeadlineInput').value) saveLinkDeadline();
+    });
+    ['linkRecurrenceInterval', 'linkMonthdaysInput', 'linkRecurrenceEnd'].forEach(id => {
+        document.getElementById(id).addEventListener('change', () => {
+            if (document.getElementById('linkDeadlineInput').value) saveLinkDeadline();
+        });
+    });
+    document.querySelectorAll('#linkWeekdaysWrap input[type=checkbox]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            if (document.getElementById('linkDeadlineInput').value) saveLinkDeadline();
+        });
+    });
+    linkModalEl.addEventListener('hidden.bs.modal', () => { linkModalTarget = null; });
+
+    document.getElementById('taskListLinkBtn').addEventListener('click', () => {
+        openLinkModal({
+            kind: 'tasklist',
+            title: currentTaskList.name,
+            getDeadline: () => currentTaskList.deadline,
+            save: (d) => saveTaskListField({ deadline: d }),
+        });
+    });
+
+    // ---------- Tasks dentro da lista ----------
+    function buildTaskRow(task) {
+        const node = rowTemplate.content.firstElementChild.cloneNode(true);
+        node.dataset.taskId = task.id;
+        fillTaskRow(node, task);
+        wireTaskRow(node, task);
+        return node;
+    }
+
+    function fillTaskRow(node, task) {
+        node.querySelector('.task-done-check').checked = task.is_done;
+        const nameEl = node.querySelector('.task-name');
+        nameEl.textContent = task.name;
+        nameEl.classList.toggle('text-decoration-line-through', task.is_done);
+        nameEl.classList.toggle('text-muted', task.is_done);
+    }
+
+    // Linha de task minimalista de propósito — só ordem/checkbox/título/
+    // apagar. Ícone, vínculos e o accordion de detalhes saíram daqui;
+    // prazo/vínculo continuam existindo só no nível da TaskList.
+    function wireTaskRow(node, task) {
+        const id = task.id;
+
+        node.querySelector('.task-done-check').addEventListener('change', async () => {
+            const updated = await fetch(`/api/tasks/${id}/toggle`, { method: 'POST' }).then(r => r.json());
+            Object.assign(task, updated);
+            fillTaskRow(node, task);
+            loadTaskLists(); // atualiza contador/barra de progresso da sidebar
+        });
+
+        node.querySelector('.task-delete-btn').addEventListener('click', () => {
+            pendingDelete = { type: 'task', id };
+            document.getElementById('deleteTaskModalMessage').textContent = `Excluir a task "${task.name}"?`;
+            deleteModal.show();
+        });
+    }
+
+    document.getElementById('newTaskBtn').addEventListener('click', addTaskFromInput);
+    document.getElementById('newTaskInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addTaskFromInput();
+    });
+    async function addTaskFromInput() {
+        const input = document.getElementById('newTaskInput');
+        const name = input.value.trim();
+        if (!name || !currentTaskList) return;
+        input.value = '';
+        const task = await fetch(`/api/tasklists/${currentTaskList.id}/tasks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+        }).then(r => r.json());
+        currentTaskList.tasks.push(task);
+        applyTaskFilter();
+        loadTaskLists();
+    }
+
+    document.getElementById('confirmDeleteTaskBtn').addEventListener('click', async () => {
+        if (!pendingDelete) return;
+        if (pendingDelete.type === 'list') {
+            await fetch(`/api/tasklists/${pendingDelete.id}`, { method: 'DELETE' });
+            currentTaskList = null;
+            detailEl.classList.add('d-none');
+            detailEl.classList.remove('d-flex');
+            emptyStateEl.classList.remove('d-none');
+            showMobileLists();
+        } else {
+            await fetch(`/api/tasks/${pendingDelete.id}`, { method: 'DELETE' });
+            currentTaskList.tasks = currentTaskList.tasks.filter(t => t.id !== pendingDelete.id);
+            applyTaskFilter();
+        }
+        pendingDelete = null;
+        deleteModal.hide();
+        loadTaskLists();
+    });
+
+    // Deep-link (mesmo padrão de Notas/Eventos — ver search_bar.html):
+    // ?open_list=<id> abre a lista; ?open_task=<id>&list=<tasklist_id>
+    // abre a lista, rola até a task e pisca a borda pra achar ela na hora.
+    window.__tasksPage = {
+        openTaskListById: (id) => openTaskList(id),
+        openTaskById: async (taskId, taskListId) => {
+            await openTaskList(taskListId);
+            const row = itemsEl.querySelector(`[data-task-id="${taskId}"]`);
+            row?.scrollIntoView({ block: 'center' });
+            if (row) {
+                row.classList.add('border-accent');
+                setTimeout(() => row.classList.remove('border-accent'), 1500);
+            }
+        },
+    };
+
+    loadTaskLists().then(() => {
+        const params = new URLSearchParams(window.location.search);
+        const openList = params.get('open_list');
+        const openTask = params.get('open_task');
+        const listParam = params.get('list');
+        if (openTask && listParam) {
+            window.__tasksPage.openTaskById(parseInt(openTask, 10), parseInt(listParam, 10));
+        } else if (openList) {
+            openTaskList(parseInt(openList, 10));
+        }
+    });
+})();
+</script>
 {% endblock %}

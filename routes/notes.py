@@ -198,6 +198,52 @@ def delete_note(note_id):
         return '', 204
 
 
+@notes_bp.route('/api/notes/reorder', methods=['POST'])
+def reorder_notes():
+    # Uma chamada só por container que mudou depois de um drag (drag entre
+    # pastas só precisa reindexar o destino — a origem perder um item não
+    # quebra a ordem relativa de quem ficou, os valores só não são mais
+    # contíguos, e order nunca é comparado ENTRE containers diferentes).
+    # folder_id/is_pinned são opcionais: só vêm quando o container de
+    # destino representa essa mudança (pasta específica, ou a área de
+    # soltas de Fixadas/Outras) — soltar DENTRO de uma pasta nunca mexe
+    # em is_pinned da nota.
+    data = request.get_json(silent=True) or {}
+    order = data.get('order') or []
+    with SessionLocal() as db:
+        lixeira = _get_lixeira(db)
+        if 'folder_id' in data and lixeira and data['folder_id'] == lixeira.id:
+            return jsonify({'error': 'cannot move to Lixeira directly, use delete'}), 422
+        by_id = {n.id: n for n in db.execute(select(Note).where(Note.id.in_(order))).scalars()}
+        for idx, note_id in enumerate(order):
+            note = by_id.get(note_id)
+            if not note:
+                continue
+            note.order = idx
+            if 'folder_id' in data:
+                note.folder_id = data['folder_id']
+                if note.deleted_at is not None:
+                    note.deleted_at = None
+            if 'is_pinned' in data:
+                note.is_pinned = bool(data['is_pinned'])
+        db.commit()
+        return '', 204
+
+
+@notes_bp.route('/api/note-folders/reorder', methods=['POST'])
+def reorder_note_folders():
+    data = request.get_json(silent=True) or {}
+    order = data.get('order') or []
+    with SessionLocal() as db:
+        by_id = {f.id: f for f in db.execute(select(NoteFolder).where(NoteFolder.id.in_(order))).scalars()}
+        for idx, folder_id in enumerate(order):
+            folder = by_id.get(folder_id)
+            if folder and not folder.is_system:
+                folder.order = idx
+        db.commit()
+        return '', 204
+
+
 @notes_bp.route('/api/note-folders', methods=['GET'])
 def list_note_folders():
     with SessionLocal() as db:

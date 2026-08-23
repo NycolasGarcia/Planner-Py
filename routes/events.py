@@ -5,6 +5,9 @@ from sqlalchemy import select
 
 from db.database import SessionLocal
 from models.event import Event
+from models.task import Task
+from models.task_list import TaskList
+from models.project import Project
 
 events_bp = Blueprint('events', __name__)
 
@@ -22,8 +25,28 @@ def _parse_time(s):
     return time.fromisoformat(s) if s else None
 
 
-def _serialize(event):
-    return {
+def _find_task_link(db, event_id):
+    # Event nunca sabe quem o referencia (ver models/event.py) — pra
+    # mostrar "isso é o prazo de qual task/lista" a busca tem que ser
+    # inversa. Task tem prioridade sobre TaskList: um Event só pode ser
+    # dono de um dos dois ao mesmo tempo na prática (cada tela só liga o
+    # próprio event_id, nunca os dois pro mesmo Event).
+    task = db.execute(select(Task).where(Task.event_id == event_id)).scalar_one_or_none()
+    if task:
+        return {'type': 'task', 'id': task.id, 'task_list_id': task.task_list_id}
+    tasklist = db.execute(select(TaskList).where(TaskList.event_id == event_id)).scalar_one_or_none()
+    if tasklist:
+        return {'type': 'tasklist', 'id': tasklist.id}
+    return None
+
+
+def _find_project_link(db, event_id):
+    project = db.execute(select(Project).where(Project.event_id == event_id)).scalar_one_or_none()
+    return {'id': project.id} if project else None
+
+
+def _serialize(event, db=None):
+    data = {
         'id':                   event.id,
         'name':                 event.name,
         'color':                event.color,
@@ -39,9 +62,12 @@ def _serialize(event):
         'recurrence_weekdays':  [int(x) for x in event.recurrence_weekdays.split(',') if x != ''] if event.recurrence_weekdays else [],
         'recurrence_monthdays': [int(x) for x in event.recurrence_monthdays.split(',') if x != ''] if event.recurrence_monthdays else [],
         'notes_id':             event.notes_id,
-        'task_id':              event.task_id,
         'created_at':           event.created_at.isoformat() if event.created_at else None,
     }
+    if db is not None:
+        data['task_link'] = _find_task_link(db, event.id)
+        data['project_link'] = _find_project_link(db, event.id)
+    return data
 
 
 def _find_interval_anchors(event, search_start, search_end):
@@ -203,7 +229,7 @@ def events_by_date():
         result = []
         for event in rows:
             if day in _expand_occurrences(event, day, day):
-                result.append(_serialize(event))
+                result.append(_serialize(event, db))
         result.sort(key=lambda e: (e['time_start'] or '', e['name']))
         return jsonify(result)
 
@@ -244,8 +270,6 @@ def _apply_fields(event, data):
         event.recurrence_monthdays = ','.join(str(int(d)) for d in monthdays) if monthdays else None
     if 'notes_id' in data:
         event.notes_id = data['notes_id']
-    if 'task_id' in data:
-        event.task_id = data['task_id']
 
     # Trava de consistência (mesma regra decidida pro form): numa recorrência
     # semanal/mensal, o dia da semana/mês de date_start SEMPRE faz parte do
@@ -291,7 +315,7 @@ def create_event():
         db.add(event)
         db.commit()
         db.refresh(event)
-        return jsonify(_serialize(event)), 201
+        return jsonify(_serialize(event, db)), 201
 
 
 @events_bp.route('/api/events/<int:event_id>', methods=['GET'])
@@ -300,7 +324,7 @@ def get_event(event_id):
         event = db.get(Event, event_id)
         if not event:
             return jsonify({'error': 'not found'}), 404
-        return jsonify(_serialize(event))
+        return jsonify(_serialize(event, db))
 
 
 @events_bp.route('/api/events/<int:event_id>', methods=['PUT'])
@@ -316,7 +340,7 @@ def update_event(event_id):
             return jsonify({'error': str(e)}), 422
         db.commit()
         db.refresh(event)
-        return jsonify(_serialize(event))
+        return jsonify(_serialize(event, db))
 
 
 @events_bp.route('/api/events/<int:event_id>', methods=['DELETE'])

@@ -36,7 +36,10 @@ class Event(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     notes_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
-    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True)
 
+    # Event nunca referencia quem o usa como prazo — é sempre o outro lado
+    # (Task/TaskList/Project.event_id) que aponta pra cá, mesmo padrão de
+    # Note. Um Event "prazo" sem ninguém apontando pra ele é lixo (a rota
+    # de delete do dono cuida disso); um Event "livre" (criado direto no
+    # módulo Eventos) nunca teve dono pra começo de conversa.
     note = relationship("Note", backref="events")
-    task = relationship("Task", backref="event", uselist=False)

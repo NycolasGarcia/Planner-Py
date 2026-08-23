@@ -37,6 +37,7 @@ DEFAULT_SETTINGS = {
     'eventos.ressaltar_sex':      'false',
     'eventos.ressaltar_sab':      'false',
     'eventos.ressaltar_dom':      'false',
+    'tarefas.contador':           'absoluto',  # 'absoluto' (x/y) | 'percentual' (x%) | 'nenhum'
 }
 
 

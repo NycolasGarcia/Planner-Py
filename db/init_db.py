@@ -51,6 +51,103 @@ def _relax_events_color_nullable(conn):
             conn.execute(text("DROP TABLE events"))
 
 
+def _migrate_events_drop_task_id(conn):
+    # Event deixou de referenciar quem o usa como prazo (Task/TaskList/
+    # Project.event_id é a direção certa agora — ver models/event.py).
+    # SQLite recusa DROP COLUMN numa coluna que faz parte de uma FK ("error
+    # in table events after drop column: unknown column ... in foreign key
+    # definition") — só dá pra tirar recriando a tabela. Como já existem
+    # eventos reais salvos, não dá pra só dropar (perderia os dados): renomeia
+    # a tabela atual pro create_all() (chamado depois, no fim de
+    # _run_migrations) recriar "events" do zero sem task_id, e
+    # _finish_events_drop_task_id copia os dados de volta.
+    cols = conn.execute(text("PRAGMA table_info(events)")).fetchall()
+    if any(c[1] == "task_id" for c in cols):
+        conn.execute(text("ALTER TABLE events RENAME TO events_old_task_id"))
+        # Índices não trocam de nome junto com a tabela — sem isso o
+        # create_all() bate de frente com o nome antigo (ix_events_date_start
+        # "already exists") ao tentar recriar o índice na "events" nova.
+        indexes = conn.execute(text(
+            "SELECT name FROM sqlite_master WHERE type='index' "
+            "AND tbl_name='events_old_task_id' AND sql IS NOT NULL"
+        )).fetchall()
+        for (idx_name,) in indexes:
+            conn.execute(text(f"DROP INDEX {idx_name}"))
+
+
+def _finish_events_drop_task_id(conn):
+    # Continuação de _migrate_events_drop_task_id — só faz sentido chamar
+    # depois que Base.metadata.create_all() já recriou "events" do zero
+    # (com o schema novo, sem task_id).
+    tables = conn.execute(text(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='events_old_task_id'"
+    )).fetchall()
+    if not tables:
+        return  # nada pra migrar
+    cols = [c[1] for c in conn.execute(text("PRAGMA table_info(events)")).fetchall()]
+    col_list = ", ".join(cols)
+    conn.execute(text(f"INSERT INTO events ({col_list}) SELECT {col_list} FROM events_old_task_id"))
+    conn.execute(text("DROP TABLE events_old_task_id"))
+
+
+def _migrate_tasks_drop_own_visuals(conn):
+    # Task deixou de ter cor/ícone/descrição próprios — herda visual da
+    # TaskList (ver routes/tasks.py). Nenhuma das 3 colunas participa de FK,
+    # então DROP COLUMN direto funciona (diferente do task_id de Event).
+    cols = {c[1] for c in conn.execute(text("PRAGMA table_info(tasks)")).fetchall()}
+    for col in ("color", "icon", "description"):
+        if col in cols:
+            conn.execute(text(f"ALTER TABLE tasks DROP COLUMN {col}"))
+
+
+def _migrate_tasklists_add_order_and_updated_at(conn):
+    # order: reordenar por arrastar na sidebar (mesmo padrão de Task.order,
+    # que já existe). updated_at: sort "Modificação", igual Notas. Nenhuma
+    # tasklist real tinha esses campos antes — backfill por created_at pra
+    # a ordem inicial já nascer coerente (não é NULL/0 pra todo mundo).
+    cols = {c[1] for c in conn.execute(text("PRAGMA table_info(task_lists)")).fetchall()}
+    if "updated_at" not in cols:
+        conn.execute(text("ALTER TABLE task_lists ADD COLUMN updated_at DATETIME"))
+        conn.execute(text("UPDATE task_lists SET updated_at = created_at WHERE updated_at IS NULL"))
+    if "order" not in cols:
+        conn.execute(text('ALTER TABLE task_lists ADD COLUMN "order" INTEGER'))
+        rows = conn.execute(text("SELECT id FROM task_lists ORDER BY created_at, id")).fetchall()
+        for idx, (tl_id,) in enumerate(rows):
+            conn.execute(text('UPDATE task_lists SET "order" = :o WHERE id = :id'), {"o": idx, "id": tl_id})
+
+
+def _migrate_tasks_add_updated_at(conn):
+    # Sort "Modificação" pras tasks, mesmo padrão de TaskList/Notas.
+    cols = {c[1] for c in conn.execute(text("PRAGMA table_info(tasks)")).fetchall()}
+    if "updated_at" not in cols:
+        conn.execute(text("ALTER TABLE tasks ADD COLUMN updated_at DATETIME"))
+        conn.execute(text("UPDATE tasks SET updated_at = created_at WHERE updated_at IS NULL"))
+
+
+def _reset_task_project_schema(conn):
+    # tasks/task_lists/project_cards ainda não têm nenhuma rota de CRUD
+    # (routes/tasks.py e routes/projects.py só renderizam a página vazia) —
+    # sempre vazias na prática. Mais simples dropar e deixar o create_all()
+    # final recriar do zero com o schema atual do model do que migrar
+    # due_date/is_completed/card_id coluna por coluna (mesmo padrão já
+    # usado em _relax_events_color_nullable). Guarda por uma coluna que só
+    # existe no schema antigo, pra não dropar de novo em toda inicialização;
+    # se por algum motivo a tabela não estiver vazia, só pula (não some com
+    # dado real sem querer).
+    old_schema_markers = {
+        "tasks": "due_date",
+        "task_lists": "card_id",
+        "project_cards": "due_date",
+    }
+    for table, marker_col in old_schema_markers.items():
+        cols = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+        if not any(c[1] == marker_col for c in cols):
+            continue  # já migrado
+        count = conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
+        if count == 0:
+            conn.execute(text(f"DROP TABLE {table}"))
+
+
 def _run_migrations():
     with engine.begin() as conn:
         _add_column_if_missing(conn, "notes", "folder_id",
@@ -67,9 +164,18 @@ def _run_migrations():
         _migrate_events_monthday_to_monthdays(conn)
         _add_column_if_missing(conn, "events", "duration_days",
                                 "duration_days INTEGER")
-    # Recria a tabela dropada acima com o schema atual do model
-    # (create_all só cria tabelas que não existem, não mexe nas outras).
+        _migrate_events_drop_task_id(conn)
+        _reset_task_project_schema(conn)
+        _migrate_tasks_drop_own_visuals(conn)
+        _migrate_tasks_add_updated_at(conn)
+        _migrate_tasklists_add_order_and_updated_at(conn)
+        _add_column_if_missing(conn, "projects", "event_id",
+                                "event_id INTEGER REFERENCES events(id)")
+    # Recria as tabelas dropadas/renomeadas acima com o schema atual do
+    # model (create_all só cria tabelas que não existem, não mexe nas outras).
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as conn:
+        _finish_events_drop_task_id(conn)
 
 
 def _seed_lixeira():

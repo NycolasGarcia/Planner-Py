@@ -17,6 +17,8 @@ class Project(Base):
 
     notes_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
 
+    # Prazo = um Event de verdade, não uma data literal (ver models/event.py).
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="SET NULL"), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

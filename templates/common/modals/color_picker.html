@@ -9,17 +9,23 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
 
-            <div class="modal-body d-flex flex-wrap gap-2 justify-content-center">
-                {% for color in ['secondary', 'info', 'primary', 'success', 'warning', 'danger'] %}
-                <button type="button" class="btn btn-{{ color }} rounded-circle p-3" data-color="{{ color }}" title="{{ color }}"></button>
-                {% endfor %}
-                <!-- "Sem cor": segue a Cor Principal do sistema dinamicamente
-                     (grava null, nunca a string "accent" ou "primary"). O
-                     botão em si fica vazio, igual aos outros 6 (conteúdo
-                     dentro dele desalinhava/aumentava o tamanho) — a tag
-                     "Padrão" vai num wrapper à parte, sem afetar o botão. -->
+            <div class="modal-body d-flex flex-column gap-3 align-items-center">
+                <!-- Andar 1: cores principais. Grid explícito (não flex-wrap)
+                     pra não depender da largura disponível — em telas
+                     estreitas, flex-wrap deixava os botões encolherem
+                     (deixavam de ser círculos) em vez de quebrar linha. -->
+                <div class="d-grid gap-2" style="grid-template-columns: repeat(6, 1fr);">
+                    {% for color in ['secondary', 'info', 'primary', 'success', 'warning', 'danger'] %}
+                    <button type="button" class="btn btn-{{ color }} rounded-circle p-0" data-color="{{ color }}" title="{{ color }}"
+                            style="width: 2.75rem; height: 2.75rem;"></button>
+                    {% endfor %}
+                </div>
+                <!-- Andar 2 (separado de propósito): "Sem cor" segue a Cor
+                     Principal do sistema dinamicamente (grava null, nunca a
+                     string "accent" ou "primary"). -->
                 <div class="d-flex flex-column align-items-center gap-1">
-                    <button type="button" class="btn btn-accent rounded-circle p-3" data-color="" title="Padrão (cor do sistema)"></button>
+                    <button type="button" class="btn btn-accent rounded-circle p-0" data-color="" title="Padrão (cor do sistema)"
+                            style="width: 2.75rem; height: 2.75rem;"></button>
                     <small class="text-muted" style="font-size: .65rem;">Padrão</small>
                 </div>
             </div>

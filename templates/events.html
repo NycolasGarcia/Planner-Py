@@ -27,20 +27,42 @@
 
 <div class="d-flex flex-column h-100" id="eventsRoot">
 
+    <!-- Título do mês — só no modo calendário (ver showPane), fixo no topo
+         do wrap independente da posição configurável dos seletores. -->
+    <div class="d-none d-lg-none text-center fw-semibold py-2 mb-2 border-bottom flex-shrink-0" id="eventMobileTitle"></div>
+
     <!-- Navegação mobile: só existe abaixo de lg (desktop mostra os 3
          painéis ao mesmo tempo, não precisa de seletor). Posição (topo/
-         embaixo) decidida via Settings > Eventos, igual a posição da
-         toolbar do EasyMDE em Notes. -->
-    <div class="d-lg-none d-flex justify-content-center gap-2 py-2 border-bottom flex-shrink-0" id="eventMobileNav">
-        <button type="button" class="btn btn-sm" data-pane="form" title="Novo evento">
-            <i class="bi bi-plus-square"></i>
-        </button>
-        <button type="button" class="btn btn-sm" data-pane="calendar" title="Calendário">
-            <i class="bi bi-calendar3"></i>
-        </button>
-        <button type="button" class="btn btn-sm" data-pane="agenda" title="Agenda">
-            <i class="bi bi-card-list"></i>
-        </button>
+         embaixo) decidida via Settings > Eventos — as duas linhas trocam
+         de ordem ENTRE SI conforme a posição (ver applyNavPosition): o
+         seletor de painel sempre fica na borda externa (mais perto do
+         topo/rodapé físico da tela), a navegação de data sempre mais
+         perto do conteúdo do calendário. -->
+    <div class="d-lg-none d-flex flex-column flex-shrink-0" id="eventMobileNavWrap">
+        <div class="d-flex justify-content-center gap-2 py-2" id="eventMobileNav">
+            <button type="button" class="btn btn-sm" data-pane="form" title="Novo evento">
+                <i class="bi bi-plus-square"></i>
+            </button>
+            <button type="button" class="btn btn-sm" data-pane="calendar" title="Calendário">
+                <i class="bi bi-calendar3"></i>
+            </button>
+            <button type="button" class="btn btn-sm" data-pane="agenda" title="Agenda">
+                <i class="bi bi-card-list"></i>
+            </button>
+        </div>
+        <!-- Navegação de mês do calendário — só aparece no modo calendário
+             (ver showPane), nunca em form/agenda. -->
+        <div class="d-none justify-content-center gap-2 pb-2" id="eventMobileCalNav">
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-accent" id="mobileCalPrevBtn" title="Mês anterior">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <button type="button" class="btn btn-accent" id="mobileCalTodayBtn">Hoje</button>
+                <button type="button" class="btn btn-accent" id="mobileCalNextBtn" title="Próximo mês">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="row g-0 flex-grow-1" style="min-height: 0;">
@@ -204,35 +226,72 @@
         </section>
 
         <!-- CALENDÁRIO (meio) -->
-        <section class="col-12 col-lg-6 h-100 d-flex d-lg-flex flex-column p-3" id="eventCalendarPane" style="min-height: 0;">
+        <section class="col-12 col-lg-6 h-100 d-flex d-lg-flex flex-column gap-2 px-1 px-lg-3 py-2 py-lg-3" id="eventCalendarPane" style="min-height: 0;">
+            <!-- Título + navegação de mês do desktop — FullCalendar não
+                 desenha mais o próprio header (headerToolbar:false, ver JS).
+                 Título SEMPRE em primeiro (nunca reordena — mesma regra do
+                 título mobile, fixo). A navegação </hoje/> e o próprio
+                 calendário são irmãos diretos aqui, e trocam de ordem ENTRE
+                 SI conforme Settings > Eventos > Seletores: "Em cima" =
+                 nav antes do calendário, "Em baixo" = nav depois (ver
+                 applyNavPosition — usa order-1/order-2, nunca order-first/
+                 -last, pra nunca competir com o order:0 implícito do
+                 título). Espaçamento entre os 3 é `gap-2` NO PAI, não
+                 margin em cada um — margin some/aparece dependendo de qual
+                 elemento acaba ficando por último na troca de ordem (bug
+                 real que já caiu nisso: nav com mb-2 não separa de nada
+                 quando ele mesmo vira o último). Gap no flex pai resolve
+                 isso de vez, independe de quem está em que posição. -->
+            <div class="d-none d-lg-block text-center fw-semibold flex-shrink-0" id="eventDesktopCalTitle"></div>
+            <div class="d-none d-lg-flex justify-content-center flex-shrink-0" id="eventDesktopCalNav">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-accent" id="calPrevBtn" title="Mês anterior">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <button type="button" class="btn btn-accent" id="calTodayBtn">Hoje</button>
+                    <button type="button" class="btn btn-accent" id="calNextBtn" title="Próximo mês">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
             <div id="eventCalendar" class="flex-grow-1" style="min-height: 0;"></div>
         </section>
 
         <!-- AGENDA (direita) -->
         <section class="col-12 col-lg-3 h-100 d-none d-lg-flex flex-column p-3 border-start"
-                  id="eventAgendaPane" style="min-height: 0; overflow-y: auto;">
+                  id="eventAgendaPane" style="min-height: 0;">
             <!-- Input de data nativo em vez de um título estático — no
                  mobile, é o jeito de trocar de data sem voltar pro
-                 calendário grande (abre o popup padrão do SO/navegador). -->
-            <input type="date" class="form-control form-control-sm mb-1 fw-semibold" id="eventAgendaDateInput">
-            <div class="small text-muted mb-2" id="eventAgendaDateLabel"></div>
-
-            <!-- Eventos sem horário (dia inteiro) — fora da grade de horas. -->
-            <div id="eventAgendaAllDayWrap" class="d-none mb-2">
-                <div class="small fw-semibold text-secondary mb-1">Dia inteiro</div>
-                <div id="eventAgendaAllDay" class="d-flex flex-column gap-1"></div>
+                 calendário grande (abre o popup padrão do SO/navegador).
+                 Posição (acima/abaixo do conteúdo) segue Settings >
+                 Eventos > Seletores, mesma lógica de order do resto
+                 (ver applyNavPosition). Fica FORA da área com scroll
+                 (eventAgendaBody, overflow próprio) de propósito — se
+                 estivesse dentro, rolar a grade de horas escondia o campo
+                 de data no meio do scroll. -->
+            <div class="flex-shrink-0" id="eventAgendaDateHeader">
+                <input type="date" class="form-control form-control-sm mb-1 fw-semibold" id="eventAgendaDateInput">
+                <div class="small text-muted mb-2" id="eventAgendaDateLabel"></div>
             </div>
 
-            <!-- Grade de horas (00h-23h), cada uma com sua própria linha
-                 divisória — visual antigo do mockup, agora populado de
-                 verdade a partir da hora de cada evento. -->
-            <div id="eventAgendaList">
-                {% for h in range(24) %}
-                <div class="d-flex gap-2 py-2 border-bottom">
-                    <div class="small text-muted flex-shrink-0" style="width: 3.2em;">{{ "%02d:00"|format(h) }}</div>
-                    <div class="flex-grow-1 d-flex flex-column gap-1" id="agendaHour{{ h }}"></div>
+            <div id="eventAgendaBody" class="flex-grow-1" style="min-height: 0; overflow-y: auto;">
+                <!-- Eventos sem horário (dia inteiro) — fora da grade de horas. -->
+                <div id="eventAgendaAllDayWrap" class="d-none mb-2">
+                    <div class="small fw-semibold text-secondary mb-1">Dia inteiro</div>
+                    <div id="eventAgendaAllDay" class="d-flex flex-column gap-1"></div>
                 </div>
-                {% endfor %}
+
+                <!-- Grade de horas (00h-23h), cada uma com sua própria linha
+                     divisória — visual antigo do mockup, agora populado de
+                     verdade a partir da hora de cada evento. -->
+                <div id="eventAgendaList">
+                    {% for h in range(24) %}
+                    <div class="d-flex gap-2 py-2 border-bottom">
+                        <div class="small text-muted flex-shrink-0" style="width: 3.2em;">{{ "%02d:00"|format(h) }}</div>
+                        <div class="flex-grow-1 d-flex flex-column gap-1" id="agendaHour{{ h }}"></div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </section>
 
@@ -310,6 +369,13 @@
             btn.classList.toggle('btn-accent', btn.dataset.pane === pane);
             btn.classList.toggle('btn-outline-secondary', btn.dataset.pane !== pane);
         });
+        // Navegação </hoje/> e título do mês só existem no modo calendário.
+        const calNav = document.getElementById('eventMobileCalNav');
+        calNav.classList.toggle('d-flex', pane === 'calendar');
+        calNav.classList.toggle('d-none', pane !== 'calendar');
+        const mobileTitle = document.getElementById('eventMobileTitle');
+        mobileTitle.classList.toggle('d-block', pane === 'calendar');
+        mobileTitle.classList.toggle('d-none', pane !== 'calendar');
         // FullCalendar não recalcula o próprio tamanho sozinho quando o
         // container estava display:none (d-none) e volta a aparecer — sem
         // isso o calendário quebra visualmente e o clique para de bater
@@ -330,12 +396,43 @@
     // via matchMedia (reage a rotação, não só no load) — mesma técnica já
     // usada pra posição da toolbar do EasyMDE em Notes.
     const navPosition = SETTINGS['eventos.nav_position'] || 'auto';
-    const mobileNavEl = document.getElementById('eventMobileNav');
+    const mobileNavWrapEl = document.getElementById('eventMobileNavWrap');
+    const mobileNavRowEl = document.getElementById('eventMobileNav');
+    const mobileCalNavRowEl = document.getElementById('eventMobileCalNav');
+    const desktopCalNavEl = document.getElementById('eventDesktopCalNav');
+    const agendaDateHeaderEl = document.getElementById('eventAgendaDateHeader');
 
     function applyNavPosition(isBottom) {
-        mobileNavEl.classList.toggle('order-last', isBottom);
-        mobileNavEl.classList.toggle('border-top', isBottom);
-        mobileNavEl.classList.toggle('border-bottom', !isBottom);
+        // Wrap inteiro: topo ou rodapé da tela, SEM espaço nenhum antes da
+        // linha divisória (fica colada no conteúdo do calendário, de
+        // propósito) — o respiro vai DEPOIS da linha, como padding do
+        // próprio wrap, entre ela e o conteúdo (Hoje/seletor) que vem a
+        // seguir. Antes disso o espaço tava sendo posto ANTES da linha
+        // (gap no pai lá de fora), empurrando ela pra longe do calendário
+        // em vez de separar ela do conteúdo abaixo — bug real, corrigido.
+        mobileNavWrapEl.classList.toggle('order-last', isBottom);
+        mobileNavWrapEl.classList.toggle('border-top', isBottom);
+        mobileNavWrapEl.classList.toggle('border-bottom', !isBottom);
+        mobileNavWrapEl.classList.toggle('pt-2', isBottom);
+        mobileNavWrapEl.classList.toggle('pb-2', !isBottom);
+        // Dentro do wrap, as duas linhas trocam de ordem ENTRE SI: o
+        // seletor de painel (form/calendário/agenda) sempre fica na borda
+        // externa (mais perto do topo/rodapé físico da tela), a navegação
+        // de data sempre mais perto do conteúdo do calendário.
+        mobileNavRowEl.classList.toggle('order-last', isBottom);
+        mobileCalNavRowEl.classList.toggle('order-first', isBottom);
+        // Desktop: título nunca se move (fica em order:0 implícito, sem
+        // classe). </hoje/> e o calendário trocam de ordem ENTRE SI —
+        // order-1/order-2 (não order-first/-last) pra nunca ficarem antes
+        // do título, que não tem classe de order nenhuma.
+        desktopCalNavEl.classList.toggle('order-1', !isBottom);
+        desktopCalNavEl.classList.toggle('order-2', isBottom);
+        const eventCalendarEl = document.getElementById('eventCalendar');
+        eventCalendarEl.classList.toggle('order-2', !isBottom);
+        eventCalendarEl.classList.toggle('order-1', isBottom);
+        // Agenda: o input de data (dd/mm/yyyy) segue a mesma posição,
+        // acima ou abaixo da grade de horas.
+        agendaDateHeaderEl.classList.toggle('order-last', isBottom);
     }
 
     if (navPosition === 'auto') {
@@ -613,16 +710,52 @@
         return `${y}-${m}-${day}`;
     }
 
+    // Ícones de vínculo do lado "end", centralizados verticalmente — link
+    // direto pra nota/task/projeto que criou esse evento como prazo (ou
+    // que está anexada nele, no caso da nota). stopPropagation em cada um
+    // pra não disparar o clique de editar o evento (o chip inteiro é
+    // clicável por trás).
+    function agendaLinkButtonsHtml(e) {
+        const buttons = [];
+        if (e.notes_id) {
+            buttons.push({ icon: 'bi-journal-text', title: 'Abrir nota vinculada', href: `/notes?open=${e.notes_id}` });
+        }
+        if (e.task_link) {
+            const href = e.task_link.type === 'task'
+                ? `/tasks?open_task=${e.task_link.id}&list=${e.task_link.task_list_id}`
+                : `/tasks?open_list=${e.task_link.id}`;
+            buttons.push({ icon: 'bi-check2-square', title: 'Abrir task vinculada', href });
+        }
+        if (e.project_link) {
+            buttons.push({ icon: 'bi-kanban', title: 'Abrir projeto vinculado', href: `/projects?open=${e.project_link.id}` });
+        }
+        if (!buttons.length) return '';
+        return `<div class="d-flex align-items-center gap-1 flex-shrink-0 agenda-chip-links">` +
+            buttons.map(b => `<button type="button" class="btn btn-outline-info btn-sm p-1 agenda-link-btn"
+                                       title="${b.title}" data-href="${b.href}" style="line-height:1;">
+                                   <i class="${b.icon}"></i>
+                               </button>`).join('') +
+            `</div>`;
+    }
+
     function agendaChip(e) {
         const color = colorOrAccent(e.color);
         const time = formatTime(e.time_start ? e.time_start.slice(0, 5) : '');
-        const el = document.createElement('button');
-        el.type = 'button';
-        el.className = `btn btn-outline-${color} btn-sm text-start d-flex align-items-center gap-2 w-100`;
-        el.innerHTML = `<i class="${escHtml(e.icon || 'bi-calendar-event')} flex-shrink-0"></i>
-                         <span class="flex-grow-1 text-truncate">${escHtml(e.name)}</span>
-                         ${time ? `<span class="small text-muted flex-shrink-0">${time}</span>` : ''}`;
-        el.addEventListener('click', () => openEventForEdit(e.id));
+        const el = document.createElement('div');
+        el.className = `btn btn-outline-${color} btn-sm d-flex align-items-stretch gap-2 w-100 p-0 overflow-hidden`;
+        el.innerHTML = `<div class="d-flex align-items-center gap-2 flex-grow-1 px-2 py-1 agenda-chip-body" style="min-width:0; cursor:pointer;">
+                             <i class="${escHtml(e.icon || 'bi-calendar-event')} flex-shrink-0"></i>
+                             <span class="flex-grow-1 text-truncate">${escHtml(e.name)}</span>
+                             ${time ? `<span class="small text-muted flex-shrink-0">${time}</span>` : ''}
+                         </div>
+                         ${agendaLinkButtonsHtml(e)}`;
+        el.querySelector('.agenda-chip-body').addEventListener('click', () => openEventForEdit(e.id));
+        el.querySelectorAll('.agenda-link-btn').forEach(btn => {
+            btn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                window.location.href = btn.dataset.href;
+            });
+        });
         return el;
     }
 
@@ -674,24 +807,27 @@
     const calendar = new FullCalendar.Calendar(calendarEl, {
         locale: 'pt-br',
         initialView: 'dayGridMonth',
-        // Botão "today" embutido do FullCalendar só navega a view (calendar.
-        // today()) — não sabe nada do form/agenda/highlight daqui. Troca por
-        // um customButton com o mesmo nome/posição, mas que passa pelo
-        // setFocusedDate (threeway) — clicável em qualquer mês, sempre volta
-        // pro dia de hoje nos 3 painéis de uma vez.
-        customButtons: {
-            todayFocus: {
-                text: 'Hoje',
-                click: () => setFocusedDate(localDateStr(new Date())),
-            },
-        },
-        headerToolbar: { left: 'prev,next todayFocus', center: 'title', right: '' },
+        // Toolbar nativa desligada de vez — título e navegação </hoje/>
+        // agora são elementos próprios (eventDesktopCal*/eventMobileCal*),
+        // pra poder reordenar/reposicionar independente do que o FullCalendar
+        // suporta nativamente (ver applyNavPosition e datesSet abaixo).
+        headerToolbar: false,
         height: '100%',
         editable: false,
         selectable: false,
         firstDay: SETTINGS['eventos.primeiro_dia_semana'] === 'mon' ? 1 : 0,
         eventTimeFormat: { hour: 'numeric', minute: '2-digit', hour12: SETTINGS['eventos.formato_hora'] === 'ampm' },
         events: '/api/events', // FullCalendar acrescenta start/end sozinho ao buscar
+        // Só ícone, na cor certa — sem fundo/nome/hora. Decisão consciente:
+        // perde o "peso visual" de uma pill cheia, mas é o único jeito de
+        // caber vários eventos no mesmo dia sem quebrar em mobile.
+        eventDisplay: 'list-item',
+        eventContent(arg) {
+            const color = colorOrAccent(arg.event.extendedProps.color);
+            const icon = arg.event.extendedProps.icon || 'bi-calendar-event';
+            const colorVar = color === 'accent' ? 'var(--app-accent)' : `var(--bs-${color})`;
+            return { html: `<i class="${icon}" style="color:${colorVar}"></i>` };
+        },
         dayCellClassNames(arg) {
             const classes = [];
             // Ressaltar dias (Settings) usa accent-text-emphasis — nunca
@@ -703,9 +839,6 @@
             if (localDateStr(arg.date) === focusedDate) classes.push('fc-day-focused');
             return classes;
         },
-        eventClassNames(arg) {
-            return [`evt-${colorOrAccent(arg.event.extendedProps.color)}`];
-        },
         dateClick(info) {
             resetForm(info.dateStr);
             setFocusedDate(info.dateStr, { moveCalendar: false, syncForm: false });
@@ -713,6 +846,12 @@
         },
         eventClick(info) {
             openEventForEdit(info.event.extendedProps.event_id);
+        },
+        // Dispara em toda troca de mês (prev/next/hoje/gotoDate) — título
+        // textual não existe mais como parte da toolbar nativa.
+        datesSet(arg) {
+            document.getElementById('eventMobileTitle').textContent = arg.view.title;
+            document.getElementById('eventDesktopCalTitle').textContent = arg.view.title;
         },
     });
     calendar.render();
@@ -737,6 +876,18 @@
     document.getElementById('eventDateStart').addEventListener('input', updateFormDateTimeLabels);
     document.getElementById('eventTimeStart').addEventListener('input', updateFormDateTimeLabels);
     document.getElementById('eventTimeEnd').addEventListener('input', updateFormDateTimeLabels);
+
+    // Navegação de mês embutida no mobile (junto de form/calendário/agenda,
+    // ver #eventMobileCalNav) — a toolbar nativa do FullCalendar some
+    // abaixo de 991.98px (theme.css), essa aqui assume o lugar dela.
+    document.getElementById('mobileCalPrevBtn').addEventListener('click', () => calendar.prev());
+    document.getElementById('mobileCalNextBtn').addEventListener('click', () => calendar.next());
+    document.getElementById('mobileCalTodayBtn').addEventListener('click', () => setFocusedDate(localDateStr(new Date())));
+
+    // Mesma navegação, versão desktop (ver #eventDesktopCalNav).
+    document.getElementById('calPrevBtn').addEventListener('click', () => calendar.prev());
+    document.getElementById('calNextBtn').addEventListener('click', () => calendar.next());
+    document.getElementById('calTodayBtn').addEventListener('click', () => setFocusedDate(localDateStr(new Date())));
 
     // Scroll do mouse/trackpad no calendário troca de mês — cooldown pra
     // não passar vários meses de uma vez só num gesto de trackpad (que
