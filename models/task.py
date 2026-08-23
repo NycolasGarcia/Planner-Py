@@ -24,13 +24,11 @@ class Task(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, nullable=True)
 
-    # Última ocorrência marcada como feita (não é um boolean: sem recorrência
-    # é só "preenchido = feito"; com recorrência, "feito" vira comparar essa
-    # data com a ocorrência mais recente que já devia ter acontecido — sem
-    # precisar de nenhum processo rodando pra "resetar" nada à meia-noite).
+    # "Feito" simples: presença = feito, None = não feito. Task nunca tem
+    # prazo/recorrência próprio (só a TaskList tem — ver models/task_list.py),
+    # então não existe "ocorrência recorrente" pra comparar aqui.
     last_check = Column(Date, nullable=True)
 
-    notes_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
-
-    # Prazo = um Event de verdade, não uma data literal (ver models/event.py).
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="SET NULL"), nullable=True)
+    # Task só existe dentro da sua TaskList — sem ícone, cor, nota vinculada
+    # ou prazo próprios (ver routes/tasks.py). Único vínculo possível é
+    # task_list_id acima; visual e prazo vêm inteiramente da lista-mãe.

@@ -71,12 +71,18 @@
                 </div>
                 <div>
                     <label class="form-label small text-muted mb-1">Nota vinculada</label>
-                    <!-- Mesmo estado reservado/desabilitado que Notas usa
-                         hoje pro botão equivalente — interconectividade
-                         entre módulos ainda não foi construída. -->
-                    <button class="btn btn-sm btn-outline-info w-100" type="button" disabled>
-                        <i class="bi bi-bezier2"></i> Em breve
-                    </button>
+                    <!-- Só um vínculo informativo (mostra note_title no
+                         card) — não afeta cor/ícone da lista nem das tasks
+                         de forma nenhuma. -->
+
+                    <div class="d-flex align-items-center gap-2 mb-1 d-none" id="linkNoteCurrentWrap">
+                        <span class="badge bg-secondary flex-grow-1 text-truncate text-start fw-normal" id="linkNoteCurrentLabel"></span>
+                        <button class="btn btn-sm btn-outline-danger flex-shrink-0" type="button" id="linkNoteRemoveBtn" title="Remover vínculo">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <input type="text" class="form-control form-control-sm" id="linkNoteSearch" placeholder="Buscar nota pra vincular...">
+                    <div class="list-group list-group-flush mt-1" id="linkNoteResults" style="max-height: 160px; overflow-y: auto;"></div>
                 </div>
             </div>
         </div>
@@ -90,10 +96,41 @@
 
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1 class="display-6 fw-semibold mb-0" style="font-size: 1.5rem;">Tasks</h1>
-            <button class="btn btn-sm bg-accent-subtle" id="newTaskListBtn">Nova lista</button>
+            <div class="d-flex gap-1">
+                <button class="btn btn-sm bg-accent-subtle" id="newTaskListBtn">Nova lista</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" id="tlSelectBtn" title="Selecionar listas">
+                    <i class="bi bi-check2-square"></i>
+                </button>
+            </div>
         </div>
 
         <hr>
+
+        <!-- Ações em massa (oculto por padrão, mesmo padrão de Notas) -->
+        <div id="tlBulkActions" class="d-none flex-column gap-1 mb-3">
+            <div class="d-grid gap-1" style="grid-template-columns: 1fr 1fr;">
+                <button class="btn btn-sm btn-outline-primary" type="button"
+                        data-bs-toggle="modal" data-bs-target="#colorPickerModal" data-target-input="#tlBulkColorValue"
+                        title="Aplicar cor em massa">
+                    <i class="bi bi-palette"></i> Cor
+                </button>
+                <input type="hidden" id="tlBulkColorValue">
+                <button class="btn btn-sm btn-outline-warning" type="button"
+                        data-bs-toggle="modal" data-bs-target="#iconPickerModal" data-target-input="#tlBulkIconValue"
+                        title="Aplicar ícone em massa">
+                    <i class="bi bi-tag"></i> Ícone
+                </button>
+                <input type="hidden" id="tlBulkIconValue">
+            </div>
+            <div class="d-grid gap-1" style="grid-template-columns: 1fr 1fr;">
+                <button class="btn btn-sm btn-outline-success" id="tlBulkPinBtn">
+                    <i class="bi bi-pin"></i> Fixar
+                </button>
+                <button class="btn btn-sm btn-outline-danger" id="tlBulkDeleteBtn">
+                    <i class="bi bi-trash"></i> Excluir
+                </button>
+            </div>
+        </div>
 
         <!-- Busca + Ordenação (mesmo padrão de Notas) -->
         <div class="d-flex gap-1 mb-3">
@@ -104,13 +141,13 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><h6 class="dropdown-header">Ordenar por</h6></li>
-                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="created" data-dir="asc"><i class="bi bi-clock me-1"></i>Criação ↑</a></li>
-                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="created" data-dir="desc"><i class="bi bi-clock me-1"></i>Criação ↓</a></li>
                     <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="alpha" data-dir="asc"><i class="bi bi-sort-alpha-down me-1"></i>A → Z</a></li>
                     <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="alpha" data-dir="desc"><i class="bi bi-sort-alpha-up me-1"></i>Z → A</a></li>
-                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="updated" data-dir="desc"><i class="bi bi-clock-history me-1"></i>Modificação (mais recente)</a></li>
-                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="updated" data-dir="asc"><i class="bi bi-clock-history me-1"></i>Modificação (mais antiga)</a></li>
-                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="color" data-dir="asc"><i class="bi bi-palette me-1"></i>Por cor</a></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="created" data-dir="asc"><i class="bi bi-clock me-1"></i>Criação ↑</a></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="created" data-dir="desc"><i class="bi bi-clock me-1"></i>Criação ↓</a></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="updated" data-dir="asc"><i class="bi bi-clock-history me-1"></i>Modificação ↑</a></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="updated" data-dir="desc"><i class="bi bi-clock-history me-1"></i>Modificação ↓</a></li>
+                    <li><a class="dropdown-item tl-sort-opt" href="#" data-sort="color" data-dir="asc"><i class="bi bi-palette me-1"></i>Cor</a></li>
                 </ul>
             </div>
         </div>
@@ -123,6 +160,10 @@
             <div id="otherTaskListsSection" class="d-none">
                 <span class="text-secondary small"><i class="bi bi-list-check"></i> Outras</span>
                 <div class="mt-2" id="otherTaskListsList"></div>
+            </div>
+            <div id="trashedTaskListsSection" class="d-none mt-3">
+                <span class="text-secondary small"><i class="bi bi-trash"></i> Lixeira</span>
+                <div class="mt-2" id="trashedTaskListsList"></div>
             </div>
         </div>
 
@@ -181,7 +222,21 @@
                         <i class="bi bi-pin"></i>
                     </button>
 
-                    <button class="btn btn-sm btn-outline-danger flex-shrink-0 ms-auto" id="taskListDeleteBtn" title="Excluir lista">
+                    <!-- Tudo aqui já salva sozinho no change de cada campo —
+                         esse botão não muda nada que já não estivesse salvo.
+                         Existe só pela sensação de confiabilidade (mesmo
+                         padrão do noteSaveBtn em Notas, que tem o mesmo
+                         "problema": auto-save já cobre tudo). -->
+                    <button class="btn btn-sm btn-outline-primary flex-shrink-0" type="button" id="taskListSaveBtn" title="Salvar lista">
+                        <i class="bi bi-floppy"></i>
+                    </button>
+
+                    <button class="btn btn-sm btn-outline-success flex-shrink-0 ms-auto" type="button"
+                            id="taskListCompleteAllBtn" title="Marcar todas como concluídas">
+                        <i class="bi bi-check2-all"></i>
+                    </button>
+
+                    <button class="btn btn-sm btn-outline-danger flex-shrink-0" id="taskListDeleteBtn" title="Excluir lista">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
@@ -202,13 +257,30 @@
                         <li><a class="dropdown-item t-sort-opt" href="#" data-sort="alpha" data-dir="desc"><i class="bi bi-sort-alpha-up me-1"></i>Z → A</a></li>
                         <li><a class="dropdown-item t-sort-opt" href="#" data-sort="created" data-dir="asc"><i class="bi bi-clock me-1"></i>Criação ↑</a></li>
                         <li><a class="dropdown-item t-sort-opt" href="#" data-sort="created" data-dir="desc"><i class="bi bi-clock me-1"></i>Criação ↓</a></li>
-                        <li><a class="dropdown-item t-sort-opt" href="#" data-sort="updated" data-dir="desc"><i class="bi bi-clock-history me-1"></i>Modificação (mais recente)</a></li>
-                        <li><a class="dropdown-item t-sort-opt" href="#" data-sort="updated" data-dir="asc"><i class="bi bi-clock-history me-1"></i>Modificação (mais antiga)</a></li>
+                        <li><a class="dropdown-item t-sort-opt" href="#" data-sort="updated" data-dir="asc"><i class="bi bi-clock-history me-1"></i>Modificação ↑</a></li>
+                        <li><a class="dropdown-item t-sort-opt" href="#" data-sort="updated" data-dir="desc"><i class="bi bi-clock-history me-1"></i>Modificação ↓</a></li>
                     </ul>
                 </div>
             </div>
 
-            <div class="flex-grow-1 overflow-auto" id="taskItemsList" style="min-height: 0;"></div>
+            <!-- Vazias (por fazer) sempre primeiro, Concluídas depois — cada
+                 uma com sua própria ordenação independente (a mesma
+                 escolhida no dropdown, mas reaplicada do zero em cada
+                 grupo, não um sort único na lista toda já misturada).
+                 Rótulo pequeno/muted/centralizado separa os 2 grupos, cada
+                 seção some inteira (rótulo incluso) se ficar vazia — mesma
+                 lógica de Fixadas/Outras, só que centralizado em vez de
+                 alinhado à esquerda com ícone. -->
+            <div class="flex-grow-1 overflow-auto" style="min-height: 0;">
+                <div id="pendingTasksSection">
+                    <div class="text-center text-muted small mb-2">Vazias</div>
+                    <div id="pendingTasksList"></div>
+                </div>
+                <div id="doneTasksSection" class="d-none mt-3">
+                    <div class="text-center text-muted small mb-2">Concluídas</div>
+                    <div id="doneTasksList"></div>
+                </div>
+            </div>
 
             <div class="flex-shrink-0 d-flex gap-2 mt-2">
                 <input type="text" class="form-control form-control-sm" id="newTaskInput" placeholder="Nova task...">
@@ -249,22 +321,51 @@
         const [y, m, d] = iso.split('-');
         return `${d}/${m}`;
     }
+    function flashConfirm(iconEl) {
+        const original = iconEl.className;
+        iconEl.className = 'bi bi-check-lg text-success';
+        setTimeout(() => { iconEl.className = original; }, 900);
+    }
 
     let currentTaskLists = [];
     let currentTaskList = null; // objeto completo (com .tasks) da lista aberta
-    let sortableInstance = null;
+    let pendingSortable = null, doneSortable = null;
 
-    let tlSortBy = 'manual', tlSortDir = 'asc', tlQuery = '';
+    const SETTINGS = window.__settings || {};
+
+    // Settings > Tarefas > "Ordenação padrão" só decide o CRITÉRIO inicial
+    // de visualização das listas ao abrir o app — nunca persiste sozinho
+    // (ver tlSortIsUserChosen abaixo). Só existe pro sort de tasklists na
+    // sidebar; o sort de tasks dentro de uma lista sempre abre em "manual"
+    // (reflete a ordem salva de verdade), já que "lista que eu abri por
+    // último" muda a cada clique — não faz sentido como preferência global.
+    const [_tlDefaultSortBy, _tlDefaultSortDir] = (SETTINGS['tarefas.ordenacao_padrao'] || 'manual-asc').split('-');
+    let tlSortBy = _tlDefaultSortBy, tlSortDir = _tlDefaultSortDir || 'asc', tlQuery = '';
+    // Vira true no primeiro clique de verdade num critério (dropdown) ou
+    // drag — só a partir daí um sort "não-manual" passa a ser persistido
+    // como nova ordem. Sem isso, um default diferente de "Manual" nos
+    // Settings reescreveria a ordem arrastada à mão toda vez que o app
+    // abrisse, silenciosamente — o próprio boot NUNCA deve gravar nada
+    // sozinho, só refletir na tela.
+    let tlSortIsUserChosen = false;
+
     let tSortBy = 'manual', tSortDir = 'asc', tQuery = '';
     let pinnedSortable = null, otherSortable = null;
 
+    // ---------- Seleção em massa de tasklists (mesmo padrão de Notas) ----------
+    let tlSelectMode = false;
+    let selectedTlIds = new Set();
+
     const emptyStateEl = document.getElementById('taskListEmptyState');
     const detailEl = document.getElementById('taskListDetail');
-    const itemsEl = document.getElementById('taskItemsList');
+    const pendingSectionEl = document.getElementById('pendingTasksSection');
+    const pendingListEl = document.getElementById('pendingTasksList');
+    const doneSectionEl = document.getElementById('doneTasksSection');
+    const doneListEl = document.getElementById('doneTasksList');
     const rowTemplate = document.getElementById('taskRowTemplate');
     const deleteModalEl = document.getElementById('deleteTaskModal');
     const deleteModal = new bootstrap.Modal(deleteModalEl);
-    let pendingDelete = null; // {type: 'list'|'task', id}
+    let pendingDelete = null; // array de ids de TaskList pendentes de confirmação — apagar task não usa mais modal
 
     // ---------- Mobile pane switch (mesmo padrão de showMobileList/Editor
     // em Notas: troca classes d-flex/d-none, desktop mostra os 2 juntos). ----------
@@ -296,6 +397,11 @@
         const color = colorOrAccent(tl.color);
         const colorVar = color === 'accent' ? 'var(--app-accent)' : `var(--bs-${color})`;
         const icon = tl.icon || 'bi-list-check';
+        const selected = tlSelectMode && selectedTlIds.has(tl.id);
+        // No modo seleção, o ícone da lista vira um indicador de check —
+        // mesmo padrão do noteCardHtml em Notas.
+        const leadIconCls = tlSelectMode ? (selected ? 'bi bi-check-circle-fill' : 'bi bi-circle') : escHtml(icon);
+        const leadIconStyle = tlSelectMode ? '' : ` style="color:${colorVar};"`;
         const count = tl.task_count || 0;
         const done = tl.done_count || 0;
         const pct = count ? Math.round((done / count) * 100) : 0;
@@ -315,10 +421,10 @@
         // Ordem de baixo pra cima é sempre: cabeçalho (com o prazo já na
         // mesma linha do nome) -> projeto -> nota -> barra de progresso
         // por ÚLTIMO, sempre o componente mais embaixo do card.
-        return `<button type="button" class="btn bg-body text-start w-100 mb-3 p-3 shadow-sm rounded-3 tasklist-item tasklist-card"
+        return `<button type="button" class="btn ${selected ? 'bg-accent-subtle' : 'bg-body'} text-start w-100 mb-3 p-3 shadow-sm rounded-3 tasklist-item tasklist-card"
                         style="border-left: 4px solid ${colorVar};" data-id="${tl.id}">
                     <div class="d-flex align-items-center gap-2">
-                        <i class="${escHtml(icon)} flex-shrink-0" style="color:${colorVar};"></i>
+                        <i class="${leadIconCls} flex-shrink-0 tl-lead-icon"${leadIconStyle}></i>
                         <span class="flex-grow-1 text-truncate fw-semibold">${escHtml(tl.name)}</span>
                         ${dueDate}
                     </div>
@@ -357,9 +463,30 @@
         const html = sortTaskLists(filtered).map(tasklistRowHtml).join('');
         container.innerHTML = html;
         container.querySelectorAll('.tasklist-item').forEach(btn => {
-            btn.addEventListener('click', () => openTaskList(parseInt(btn.dataset.id, 10)));
+            btn.addEventListener('click', () => {
+                const id = parseInt(btn.dataset.id, 10);
+                if (tlSelectMode) {
+                    toggleTlSelection(btn, id);
+                } else {
+                    openTaskList(id);
+                }
+            });
         });
         return html;
+    }
+
+    // Mutação direta no card clicado (em vez de re-render da lista inteira)
+    // — mesma ideia do wireNoteCardClicks em Notas, evita destruir/recriar
+    // os Sortables (desligados no modo seleção mesmo assim, mas sem
+    // necessidade) a cada clique de seleção.
+    function toggleTlSelection(btn, id) {
+        const icon = btn.querySelector('.tl-lead-icon');
+        const nowSelected = !selectedTlIds.has(id);
+        if (nowSelected) selectedTlIds.add(id); else selectedTlIds.delete(id);
+        btn.classList.toggle('bg-accent-subtle', nowSelected);
+        btn.classList.toggle('bg-body', !nowSelected);
+        icon.className = `bi ${nowSelected ? 'bi-check-circle-fill' : 'bi-circle'} flex-shrink-0 tl-lead-icon`;
+        updateTlBulkPinButton();
     }
 
     // Uma sequência global só (fixadas + outras, na ordem visual atual)
@@ -380,42 +507,103 @@
         });
     }
 
+    // Arrastar uma tasklist de "Outras" pra "Fixadas" (ou vice-versa) fixa/
+    // desfixa ela — mesmo gesto "solto pinned = pinned" que Notas já usa
+    // pra notas soltas. group compartilhado entre os 2 containers é o que
+    // permite cruzar de um pro outro (containers sem group ficam isolados).
+    async function onTaskListDragEnd(evt) {
+        const movedId = parseInt(evt.item.dataset.id, 10);
+        const nowPinned = evt.to.id === 'pinnedTaskListsList';
+        const tl = currentTaskLists.find(t => t.id === movedId);
+        const pinChanged = tl && tl.is_pinned !== nowPinned;
+        if (pinChanged) tl.is_pinned = nowPinned;
+        tlSortBy = 'manual';
+        if (pinChanged) {
+            await fetch(`/api/tasklists/${movedId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_pinned: nowPinned }),
+            });
+        }
+        await persistTaskListOrder();
+        // Recalcula visibilidade das seções (uma pode ter ficado vazia) e
+        // reconstrói os Sortables — mesmo padrão do fim de drag em Notas.
+        applyTaskListFilter();
+    }
+
     function initTaskListSortables() {
         // Sem "handle": o card inteiro é a superfície de arrastar, não só
         // um ícone. SortableJS já distingue clique (abre a lista) de
         // arrastar (reordena) sozinho, então nenhum dos dois quebra o outro.
         // Não trava mais em "só se tlSortBy === manual" — arrastar SEMPRE
         // funciona, e é o próprio ato de arrastar que faz virar manual.
-        const disabled = tlQuery.trim().length > 0;
+        const disabled = tlQuery.trim().length > 0 || tlSelectMode;
         if (pinnedSortable) pinnedSortable.destroy();
         if (otherSortable) otherSortable.destroy();
         const opts = {
-            animation: 150, disabled,
-            onEnd: () => {
-                tlSortBy = 'manual';
-                persistTaskListOrder();
-            },
+            animation: 150, disabled, group: 'tasklists',
+            onEnd: onTaskListDragEnd,
         };
         pinnedSortable = new Sortable(document.getElementById('pinnedTaskListsList'), opts);
         otherSortable = new Sortable(document.getElementById('otherTaskListsList'), opts);
     }
 
+    // Linha reduzida (não o card rico) — item na lixeira não precisa de
+    // barra de progresso/faixa de cor, só restaurar ou apagar de vez.
+    function trashedTasklistRowHtml(tl) {
+        return `<div class="d-flex align-items-center gap-2 border rounded p-2 mb-2" data-id="${tl.id}">
+                    <span class="flex-grow-1 text-truncate small text-muted text-decoration-line-through">${escHtml(tl.name)}</span>
+                    <button type="button" class="btn btn-sm btn-outline-success flex-shrink-0 tl-restore-btn" title="Restaurar">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0 tl-purge-btn" title="Excluir permanentemente">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>`;
+    }
+
+    function renderTrashedTaskLists(list) {
+        const q = tlQuery.trim().toLowerCase();
+        const filtered = q ? list.filter(tl => tl.name.toLowerCase().includes(q)) : list;
+        const container = document.getElementById('trashedTaskListsList');
+        container.innerHTML = filtered.map(trashedTasklistRowHtml).join('');
+        container.querySelectorAll('[data-id]').forEach(row => {
+            const id = parseInt(row.dataset.id, 10);
+            row.querySelector('.tl-restore-btn').addEventListener('click', async () => {
+                await fetch(`/api/tasklists/${id}/restore`, { method: 'POST' });
+                loadTaskLists();
+            });
+            row.querySelector('.tl-purge-btn').addEventListener('click', async () => {
+                await fetch(`/api/tasklists/${id}`, { method: 'DELETE' });
+                loadTaskLists();
+            });
+        });
+        // Mesma lógica de visibilidade da lixeira de Notas: "always" sempre
+        // mostra (mesmo vazia depois do filtro de busca), "if-has-items" só
+        // quando sobra algo depois do filtro, "never" nunca.
+        const visibility = SETTINGS['tarefas.lixeira_visibilidade'] || 'if-has-items';
+        const showSection = visibility === 'always' || (visibility === 'if-has-items' && filtered.length > 0);
+        document.getElementById('trashedTaskListsSection').classList.toggle('d-none', !showSection);
+    }
+
     function applyTaskListFilter() {
-        const pinned = currentTaskLists.filter(tl => tl.is_pinned);
-        const others = currentTaskLists.filter(tl => !tl.is_pinned);
+        const trashed = currentTaskLists.filter(tl => tl.deleted_at);
+        const pinned = currentTaskLists.filter(tl => tl.is_pinned && !tl.deleted_at);
+        const others = currentTaskLists.filter(tl => !tl.is_pinned && !tl.deleted_at);
         const pinnedHtml = renderTaskListGroup(document.getElementById('pinnedTaskListsList'), pinned);
         const othersHtml = renderTaskListGroup(document.getElementById('otherTaskListsList'), others);
         document.getElementById('pinnedTaskListsSection').classList.toggle('d-none', !pinnedHtml);
         document.getElementById('otherTaskListsSection').classList.toggle('d-none', !othersHtml);
+        renderTrashedTaskLists(trashed);
         initTaskListSortables();
 
         // Sem busca ativa (senão os containers só têm o subconjunto
         // filtrado, reindexar aqui bagunçaria a ordem de quem está
-        // escondido) e com um critério diferente de manual, a própria
-        // renderização já vira a nova ordem persistida — não só o
-        // resultado de um drag. "Manual" passa a refletir sempre o
-        // último critério de fato usado, nunca uma posição esquecida.
-        if (tlSortBy !== 'manual' && !tlQuery.trim()) persistTaskListOrder();
+        // escondido), com um critério diferente de manual, e só depois de
+        // um critério de fato ESCOLHIDO pelo usuário (não o default dos
+        // Settings aplicado sozinho no boot) — a própria renderização já
+        // vira a nova ordem persistida, não só o resultado de um drag.
+        if (tlSortBy !== 'manual' && !tlQuery.trim() && tlSortIsUserChosen) persistTaskListOrder();
     }
 
     async function loadTaskLists() {
@@ -432,6 +620,7 @@
             e.preventDefault();
             tlSortBy = a.dataset.sort;
             tlSortDir = a.dataset.dir;
+            tlSortIsUserChosen = true;
             applyTaskListFilter();
         });
     });
@@ -444,6 +633,70 @@
         }).then(r => r.json());
         await loadTaskLists();
         openTaskList(tl.id);
+    });
+
+    // ---------- Seleção em massa ----------
+    function enterTlSelectMode() {
+        tlSelectMode = true;
+        selectedTlIds.clear();
+        document.getElementById('tlSelectBtn').querySelector('i').className = 'bi bi-x-lg';
+        document.getElementById('tlBulkActions').classList.replace('d-none', 'd-flex');
+        updateTlBulkPinButton();
+        applyTaskListFilter();
+    }
+    function exitTlSelectMode() {
+        tlSelectMode = false;
+        selectedTlIds.clear();
+        document.getElementById('tlSelectBtn').querySelector('i').className = 'bi bi-check2-square';
+        document.getElementById('tlBulkActions').classList.replace('d-flex', 'd-none');
+        applyTaskListFilter();
+    }
+    document.getElementById('tlSelectBtn').addEventListener('click', () => {
+        if (tlSelectMode) exitTlSelectMode(); else enterTlSelectMode();
+    });
+
+    function selectedAllTlPinned() {
+        const ids = [...selectedTlIds];
+        return ids.length > 0 && ids.every(id => currentTaskLists.find(t => t.id === id)?.is_pinned);
+    }
+    function updateTlBulkPinButton() {
+        const btn = document.getElementById('tlBulkPinBtn');
+        const unpin = selectedAllTlPinned();
+        btn.querySelector('i').className = unpin ? 'bi bi-pin-fill' : 'bi bi-pin';
+        btn.lastChild.textContent = unpin ? ' Desafixar' : ' Fixar';
+    }
+    document.getElementById('tlBulkPinBtn').addEventListener('click', async () => {
+        const ids = [...selectedTlIds];
+        if (!ids.length) return;
+        const is_pinned = !selectedAllTlPinned();
+        await fetch('/api/tasklists/bulk-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, is_pinned }),
+        });
+        await loadTaskLists();
+        updateTlBulkPinButton();
+    });
+    document.getElementById('tlBulkColorValue').addEventListener('change', async function () {
+        const ids = [...selectedTlIds];
+        if (!ids.length) return;
+        await fetch('/api/tasklists/bulk-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, color: this.value || null }),
+        });
+        await loadTaskLists();
+    });
+    document.getElementById('tlBulkIconValue').addEventListener('change', async function () {
+        if (!this.value) return;
+        const ids = [...selectedTlIds];
+        if (!ids.length) return;
+        await fetch('/api/tasklists/bulk-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, icon: this.value }),
+        });
+        await loadTaskLists();
     });
 
     // ---------- Lista selecionada ----------
@@ -496,9 +749,13 @@
     // Reordenar não é só um ORDER BY de exibição — a ordem escolhida vira a
     // ordem persistida de verdade (reindexa TODAS as tasks, não só as que
     // se moveram), pra "Manual" mais tarde já refletir o último critério
-    // usado, e não uma posição velha/esquecida.
+    // usado, e não uma posição velha/esquecida. Vazias primeiro, Concluídas
+    // depois — um único "order" contínuo pra lista inteira, só a
+    // apresentação (e a ordenação DENTRO de cada grupo) é que é separada.
     async function persistTaskOrder() {
-        const order = Array.from(itemsEl.children).map(el => parseInt(el.dataset.taskId, 10));
+        const pendingIds = Array.from(pendingListEl.children).map(el => parseInt(el.dataset.taskId, 10));
+        const doneIds = Array.from(doneListEl.children).map(el => parseInt(el.dataset.taskId, 10));
+        const order = [...pendingIds, ...doneIds];
         await fetch(`/api/tasklists/${currentTaskList.id}/tasks/reorder`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -510,22 +767,39 @@
         });
     }
 
+    function renderTaskGroup(container, list) {
+        container.innerHTML = '';
+        sortTasks(list).forEach(t => container.appendChild(buildTaskRow(t)));
+    }
+
     function applyTaskFilter() {
         const q = tQuery.trim().toLowerCase();
         const filtered = q
             ? currentTaskList.tasks.filter(t => t.name.toLowerCase().includes(q))
             : currentTaskList.tasks;
 
-        itemsEl.innerHTML = '';
-        sortTasks(filtered).forEach(t => itemsEl.appendChild(buildTaskRow(t)));
+        const showDone = SETTINGS['tarefas.exibir_concluidas'] !== 'false';
+        const pending = filtered.filter(t => !t.is_done);
+        const done = showDone ? filtered.filter(t => t.is_done) : [];
+
+        // Cada grupo ordena do zero, com o MESMO critério — "A → Z" não
+        // vira um único sort na lista inteira já misturada, e sim A → Z
+        // dentro de Vazias e A → Z de novo, à parte, dentro de Concluídas.
+        renderTaskGroup(pendingListEl, pending);
+        renderTaskGroup(doneListEl, done);
+        pendingSectionEl.classList.toggle('d-none', pending.length === 0);
+        doneSectionEl.classList.toggle('d-none', done.length === 0);
 
         // Sem "handle": a linha inteira é a superfície de arrastar. filter
         // exclui o checkbox/apagar de iniciar um drag (senão clicar neles
         // vira gesto ambíguo) — mas continuam clicáveis normalmente. Não
         // trava mais em "só se tSortBy === manual": arrastar SEMPRE
         // funciona, e é o próprio ato de arrastar que faz virar manual.
-        if (sortableInstance) sortableInstance.destroy();
-        sortableInstance = new Sortable(itemsEl, {
+        // Os 2 grupos NÃO compartilham group (sem "arrastar pra completar"
+        // — completar continua sendo só o checkbox, um gesto explícito).
+        if (pendingSortable) pendingSortable.destroy();
+        if (doneSortable) doneSortable.destroy();
+        const dragOpts = {
             animation: 150,
             filter: '.task-done-check, .task-delete-btn',
             preventOnFilter: false,
@@ -534,12 +808,15 @@
                 tSortBy = 'manual';
                 persistTaskOrder();
             },
-        });
+        };
+        pendingSortable = new Sortable(pendingListEl, dragOpts);
+        doneSortable = new Sortable(doneListEl, dragOpts);
 
-        // Sem busca ativa (senão o itemsEl só tem o subconjunto filtrado,
-        // reindexar aqui bagunçaria a ordem de quem está escondido) e com
-        // um critério diferente de manual, a própria renderização já vira
-        // a nova ordem persistida — não só o resultado de um drag.
+        // Sem busca ativa (senão os containers só têm o subconjunto
+        // filtrado, reindexar aqui bagunçaria a ordem de quem está
+        // escondido) e com um critério diferente de manual, a própria
+        // renderização já vira a nova ordem persistida — não só o
+        // resultado de um drag.
         if (tSortBy !== 'manual' && !q) persistTaskOrder();
     }
 
@@ -575,6 +852,7 @@
     function refreshTaskBadges() {
         if (linkModalTarget && linkModalTarget.kind === 'tasklist') {
             document.getElementById('linkDeadlineInput').value = currentTaskList.deadline ? currentTaskList.deadline.date : '';
+            refreshLinkNoteDisplay();
         }
     }
 
@@ -592,12 +870,22 @@
     document.getElementById('taskListPinBtn').addEventListener('click', () => {
         saveTaskListField({ is_pinned: !currentTaskList.is_pinned });
     });
+    document.getElementById('taskListSaveBtn').addEventListener('click', async () => {
+        await saveTaskListField({ name: currentTaskList.name });
+        flashConfirm(document.querySelector('#taskListSaveBtn i'));
+    });
 
     document.getElementById('taskListDeleteBtn').addEventListener('click', () => {
-        pendingDelete = { type: 'list', id: currentTaskList.id };
+        pendingDelete = [currentTaskList.id];
         document.getElementById('deleteTaskModalMessage').textContent =
-            `Excluir a lista "${currentTaskList.name}" e todas as tasks dela?`;
+            `Mover a lista "${currentTaskList.name}" (e as tasks dela) pra Lixeira?`;
         deleteModal.show();
+    });
+
+    document.getElementById('taskListCompleteAllBtn').addEventListener('click', async () => {
+        currentTaskList = await fetch(`/api/tasklists/${currentTaskList.id}/tasks/complete-all`, { method: 'POST' }).then(r => r.json());
+        renderTaskListDetail();
+        loadTaskLists();
     });
 
     // ---------- Modal de Vínculos (prazo + nota) — compartilhado entre a
@@ -639,9 +927,64 @@
             document.getElementById('linkMonthdaysInput'));
     }
 
+    // ---------- Nota vinculada (dentro do modal de Vínculos) ----------
+    // Busca inline (sem modal dentro de modal) — cache simples de /api/notes,
+    // filtrado no client conforme digita.
+    let allNotesForLink = null;
+    async function loadNotesForLinkCache() {
+        if (!allNotesForLink) allNotesForLink = await fetch('/api/notes').then(r => r.json());
+        return allNotesForLink;
+    }
+
+    function renderLinkNoteResults(query) {
+        const q = query.trim().toLowerCase();
+        const list = document.getElementById('linkNoteResults');
+        if (!q) { list.innerHTML = ''; return; }
+        const matches = (allNotesForLink || []).filter(n => n.title.toLowerCase().includes(q)).slice(0, 20);
+        list.innerHTML = matches.map(n =>
+            `<button type="button" class="list-group-item list-group-item-action text-truncate" data-note-id="${n.id}">${escHtml(n.title)}</button>`
+        ).join('');
+        list.querySelectorAll('[data-note-id]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (!linkModalTarget) return;
+                await linkModalTarget.saveNote(parseInt(btn.dataset.noteId, 10));
+                refreshLinkNoteDisplay();
+                document.getElementById('linkNoteSearch').value = '';
+                list.innerHTML = '';
+            });
+        });
+    }
+
+    function refreshLinkNoteDisplay() {
+        if (!linkModalTarget) return;
+        const noteId = linkModalTarget.getNoteId();
+        const wrap = document.getElementById('linkNoteCurrentWrap');
+        const label = document.getElementById('linkNoteCurrentLabel');
+        if (noteId) {
+            const note = (allNotesForLink || []).find(n => n.id === noteId);
+            label.textContent = note ? note.title : `Nota #${noteId}`;
+            wrap.classList.remove('d-none');
+        } else {
+            wrap.classList.add('d-none');
+        }
+    }
+
+    document.getElementById('linkNoteSearch').addEventListener('input', function () {
+        renderLinkNoteResults(this.value);
+    });
+    document.getElementById('linkNoteRemoveBtn').addEventListener('click', async () => {
+        if (!linkModalTarget) return;
+        await linkModalTarget.saveNote(null);
+        refreshLinkNoteDisplay();
+    });
+
     async function openLinkModal(target) {
         linkModalTarget = target;
         document.getElementById('taskLinkModalSubtitle').textContent = target.title ? `— ${target.title}` : '';
+        await loadNotesForLinkCache();
+        document.getElementById('linkNoteSearch').value = '';
+        document.getElementById('linkNoteResults').innerHTML = '';
+        refreshLinkNoteDisplay();
         const deadline = target.getDeadline();
         document.getElementById('linkDeadlineInput').value = deadline ? deadline.date : '';
 
@@ -730,6 +1073,8 @@
             title: currentTaskList.name,
             getDeadline: () => currentTaskList.deadline,
             save: (d) => saveTaskListField({ deadline: d }),
+            getNoteId: () => currentTaskList.notes_id,
+            saveNote: (id) => saveTaskListField({ notes_id: id }),
         });
     });
 
@@ -743,7 +1088,16 @@
     }
 
     function fillTaskRow(node, task) {
-        node.querySelector('.task-done-check').checked = task.is_done;
+        const checkbox = node.querySelector('.task-done-check');
+        checkbox.checked = task.is_done;
+        // Task não tem cor própria — o checkbox usa a cor da TaskList aberta
+        // (o bug original: sem isso, ficava com o azul genérico do Bootstrap
+        // em vez de acompanhar a cor da lista, tipo verde numa lista verde).
+        const color = colorOrAccent(currentTaskList.color);
+        const colorVar = color === 'accent' ? 'var(--app-accent)' : `var(--bs-${color})`;
+        checkbox.style.setProperty('--bs-form-check-input-checked-bg-color', colorVar);
+        checkbox.style.setProperty('--bs-form-check-input-checked-border-color', colorVar);
+        checkbox.style.borderColor = colorVar;
         const nameEl = node.querySelector('.task-name');
         nameEl.textContent = task.name;
         nameEl.classList.toggle('text-decoration-line-through', task.is_done);
@@ -759,14 +1113,21 @@
         node.querySelector('.task-done-check').addEventListener('change', async () => {
             const updated = await fetch(`/api/tasks/${id}/toggle`, { method: 'POST' }).then(r => r.json());
             Object.assign(task, updated);
-            fillTaskRow(node, task);
+            // Concluir/desmarcar muda de qual dos 2 grupos (Vazias/
+            // Concluídas) a task faz parte — precisa re-renderizar os
+            // grupos inteiros, não só atualizar a linha no lugar.
+            applyTaskFilter();
             loadTaskLists(); // atualiza contador/barra de progresso da sidebar
         });
 
-        node.querySelector('.task-delete-btn').addEventListener('click', () => {
-            pendingDelete = { type: 'task', id };
-            document.getElementById('deleteTaskModalMessage').textContent = `Excluir a task "${task.name}"?`;
-            deleteModal.show();
+        // Sem modal de confirmação — diferente de excluir a lista inteira
+        // (que leva todas as tasks junto), apagar uma task solta é uma ação
+        // pequena e sem cascata, não precisa da fricção extra de confirmar.
+        node.querySelector('.task-delete-btn').addEventListener('click', async () => {
+            await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+            currentTaskList.tasks = currentTaskList.tasks.filter(t => t.id !== id);
+            applyTaskFilter();
+            loadTaskLists();
         });
     }
 
@@ -789,23 +1150,41 @@
         loadTaskLists();
     }
 
+    // Modal de confirmação sobra só pra excluir LISTA(S) inteira(s) (vão
+    // pra Lixeira, cascata: leva as tasks de cada uma junto) — apagar uma
+    // task solta não passa mais por aqui, ver wireTaskRow. Um id só ou
+    // vários (bulk) usam o mesmo fluxo.
     document.getElementById('confirmDeleteTaskBtn').addEventListener('click', async () => {
-        if (!pendingDelete) return;
-        if (pendingDelete.type === 'list') {
-            await fetch(`/api/tasklists/${pendingDelete.id}`, { method: 'DELETE' });
+        if (!pendingDelete || !pendingDelete.length) return;
+        if (pendingDelete.length === 1) {
+            await fetch(`/api/tasklists/${pendingDelete[0]}`, { method: 'DELETE' });
+        } else {
+            await fetch('/api/tasklists/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: pendingDelete }),
+            });
+        }
+        if (currentTaskList && pendingDelete.includes(currentTaskList.id)) {
             currentTaskList = null;
             detailEl.classList.add('d-none');
             detailEl.classList.remove('d-flex');
             emptyStateEl.classList.remove('d-none');
             showMobileLists();
-        } else {
-            await fetch(`/api/tasks/${pendingDelete.id}`, { method: 'DELETE' });
-            currentTaskList.tasks = currentTaskList.tasks.filter(t => t.id !== pendingDelete.id);
-            applyTaskFilter();
         }
         pendingDelete = null;
         deleteModal.hide();
+        if (tlSelectMode) exitTlSelectMode();
         loadTaskLists();
+    });
+
+    document.getElementById('tlBulkDeleteBtn').addEventListener('click', () => {
+        const ids = [...selectedTlIds];
+        if (!ids.length) return;
+        pendingDelete = ids;
+        document.getElementById('deleteTaskModalMessage').textContent =
+            `Mover ${ids.length} lista(s) (e as tasks delas) pra Lixeira?`;
+        deleteModal.show();
     });
 
     // Deep-link (mesmo padrão de Notas/Eventos — ver search_bar.html):
@@ -815,7 +1194,8 @@
         openTaskListById: (id) => openTaskList(id),
         openTaskById: async (taskId, taskListId) => {
             await openTaskList(taskListId);
-            const row = itemsEl.querySelector(`[data-task-id="${taskId}"]`);
+            const row = pendingListEl.querySelector(`[data-task-id="${taskId}"]`)
+                || doneListEl.querySelector(`[data-task-id="${taskId}"]`);
             row?.scrollIntoView({ block: 'center' });
             if (row) {
                 row.classList.add('border-accent');

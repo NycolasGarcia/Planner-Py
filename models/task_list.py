@@ -23,6 +23,12 @@ class TaskList(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, nullable=True)
 
+    # Preenchido quando a lista vai pra Lixeira — controla a retenção antes
+    # da exclusão permanente automática (mesmo esquema de Note.deleted_at).
+    # Task individual NUNCA passa por aqui: apagar task é sempre definitivo
+    # (recriar uma task é trivial; recriar uma lista inteira, não).
+    deleted_at = Column(DateTime, nullable=True)
+
     notes_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
 
     # Prazo = um Event de verdade, não uma data literal (ver models/event.py).

@@ -93,6 +93,26 @@
     bottom: 0;
 }
 
+/* Toolbar "flutuante" acima do teclado virtual — ligada só enquanto o
+   CodeMirror está com foco (ver notes.html, listeners focus/blur do
+   easyMDE + visualViewport). iOS Safari (e Android com "resize content"
+   desligado) não encolhe window.innerHeight quando o teclado abre, só o
+   visualViewport — sem tirar a toolbar do fluxo normal ela ficava presa
+   embaixo do teclado, inacessível. --toolbar-float-offset é atualizada
+   via JS a cada visualViewport.resize/scroll, sempre igual à altura que
+   o teclado está "comendo" da tela (0 quando ele está fechado). */
+#noteEditorWrap.toolbar-floating .editor-toolbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--toolbar-float-offset, 0px);
+    z-index: 1030;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, .2);
+}
+
 /* Botões que não fazem sentido/atrapalham numa tela estreita: lado a lado
    (força fullscreen com metade da largura via !important — não dá pra virar
    topo/baixo numa tela mobile, e "um modo só (preview) funcionando bem" já

@@ -3,7 +3,7 @@ import webbrowser
 import webview
 
 from flask import Flask, render_template, redirect, url_for
-from routes import events_bp, tasks_bp, projects_bp, notes_bp, focus_bp, ranks_bp, cloud_bp, settings_bp, profile_bp
+from routes import events_bp, tasks_bp, projects_bp, notes_bp, focus_bp, ranks_bp, graph_bp, cloud_bp, settings_bp, profile_bp
 from routes.settings import get_settings_dict
 from db.init_db import init_db
 
@@ -52,6 +52,7 @@ app.register_blueprint(projects_bp)
 app.register_blueprint(notes_bp)
 app.register_blueprint(focus_bp)
 app.register_blueprint(ranks_bp)
+app.register_blueprint(graph_bp)
 app.register_blueprint(cloud_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(profile_bp)

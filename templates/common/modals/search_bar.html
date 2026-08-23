@@ -58,6 +58,31 @@
                 </button>`;
     }
 
+    // Task não tem ícone próprio (herda da TaskList — ver models/task.py),
+    // então usa um genérico fixo aqui, igual o resto do app faz nos outros
+    // pontos de link cross-módulo (ex: agenda de Eventos).
+    function taskRowHtml(task, extra) {
+        return `<button type="button" class="list-group-item list-group-item-action d-flex align-items-start gap-2"
+                         data-open-task="${task.id}" data-open-task-list="${task.task_list_id}">
+                    <i class="bi bi-check2-square mt-1 flex-shrink-0"></i>
+                    <span class="overflow-hidden">
+                        <span class="d-block text-truncate fw-semibold">${escHtml(task.name)}</span>
+                        <span class="d-block text-truncate small text-muted">${extra}</span>
+                    </span>
+                </button>`;
+    }
+
+    function tasklistRowHtml(tasklist, extra) {
+        const icon = tasklist.icon || 'bi-list-check';
+        return `<button type="button" class="list-group-item list-group-item-action d-flex align-items-start gap-2" data-open-tasklist="${tasklist.id}">
+                    <i class="${escHtml(icon)} mt-1 flex-shrink-0"></i>
+                    <span class="overflow-hidden">
+                        <span class="d-block text-truncate fw-semibold">${escHtml(tasklist.name)}</span>
+                        <span class="d-block text-truncate small text-muted">${extra}</span>
+                    </span>
+                </button>`;
+    }
+
     function sectionHtml(label, items, renderItem) {
         if (!items.length) return '';
         return `<div class="mb-3">
@@ -76,6 +101,7 @@
     function render(data) {
         const notes = data.notes || { title: [], folder: [], content: [] };
         const events = data.events || { name: [], month: [], day: [] };
+        const tasks = data.tasks || { task: [], tasklist: [] };
         const html = [
             sectionHtml('Notas — Título', notes.title, n => noteRowHtml(n, n.folder_name || 'Sem pasta')),
             sectionHtml('Notas — Pasta', notes.folder, n => noteRowHtml(n, 'Pasta: ' + n.folder_name)),
@@ -83,6 +109,8 @@
             sectionHtml('Eventos — Nome', events.name, e => eventRowHtml(e, formatEventDate(e.date_start))),
             sectionHtml('Eventos — Mês', events.month, e => eventRowHtml(e, formatEventDate(e.date_start))),
             sectionHtml('Eventos — Dia', events.day, e => eventRowHtml(e, formatEventDate(e.date_start))),
+            sectionHtml('Tasks', tasks.task, t => taskRowHtml(t, t.task_list_name || 'Sem lista')),
+            sectionHtml('Listas de tasks', tasks.tasklist, tl => tasklistRowHtml(tl, 'Lista de tasks')),
         ].join('');
         results.innerHTML = html || '<p class="text-muted small mb-0">Nenhum resultado.</p>';
         results.querySelectorAll('[data-open-note]').forEach(btn => {
@@ -90,6 +118,12 @@
         });
         results.querySelectorAll('[data-open-event]').forEach(btn => {
             btn.addEventListener('click', () => openEventResult(parseInt(btn.dataset.openEvent)));
+        });
+        results.querySelectorAll('[data-open-task]').forEach(btn => {
+            btn.addEventListener('click', () => openTaskResult(parseInt(btn.dataset.openTask), parseInt(btn.dataset.openTaskList)));
+        });
+        results.querySelectorAll('[data-open-tasklist]').forEach(btn => {
+            btn.addEventListener('click', () => openTaskListResult(parseInt(btn.dataset.openTasklist)));
         });
     }
 
@@ -108,6 +142,24 @@
             window.__eventsPage.openEventById(eventId);
         } else {
             window.location.href = '/events?open=' + eventId;
+        }
+    }
+
+    function openTaskResult(taskId, taskListId) {
+        bootstrap.Modal.getInstance(modal)?.hide();
+        if (window.__tasksPage && typeof window.__tasksPage.openTaskById === 'function') {
+            window.__tasksPage.openTaskById(taskId, taskListId);
+        } else {
+            window.location.href = '/tasks?open_task=' + taskId + '&list=' + taskListId;
+        }
+    }
+
+    function openTaskListResult(tasklistId) {
+        bootstrap.Modal.getInstance(modal)?.hide();
+        if (window.__tasksPage && typeof window.__tasksPage.openTaskListById === 'function') {
+            window.__tasksPage.openTaskListById(tasklistId);
+        } else {
+            window.location.href = '/tasks?open_list=' + tasklistId;
         }
     }
 

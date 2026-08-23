@@ -6,17 +6,19 @@
                     </a>
                 </li>
 
+                <hr class="bg-secondary opacity-25 my-2">
+
+                <!-- Notes -->
+                <li class="nav-item my-2">
+                    <a href="/notes" class="nav-link nav-icon {% if active_page == 'notes' %}active{% endif %}">
+                        <i class="bi bi-journal-text"></i>
+                    </a>
+                </li>
+
                 <!-- Events -->
                 <li class="nav-item my-2">
                     <a href="/events" class="nav-link nav-icon {% if active_page == 'events' %}active{% endif %}">
                         <i class="bi bi-calendar-event"></i>
-                    </a>
-                </li>
-                
-                <!-- Projects -->
-                <li class="nav-item my-2">
-                    <a href="/projects" class="nav-link nav-icon {% if active_page == 'projects' %}active{% endif %}">
-                        <i class="bi bi-kanban"></i>
                     </a>
                 </li>
 
@@ -27,26 +29,33 @@
                     </a>
                 </li>
 
-                <hr class="bg-secondary opacity-25 my-2">
-
-                <!-- Notes -->
+                <!-- Projects -->
                 <li class="nav-item my-2">
-                    <a href="/notes" class="nav-link nav-icon {% if active_page == 'notes' %}active{% endif %}">
-                        <i class="bi bi-journal-text"></i>
+                    <a href="/projects" class="nav-link nav-icon {% if active_page == 'projects' %}active{% endif %}">
+                        <i class="bi bi-kanban"></i>
                     </a>
                 </li>
 
-                <!-- Focus -->
+                <hr class="bg-secondary opacity-25 my-2">
+
+                <!-- Ranks (Eisenhower) -->
+                <li class="nav-item my-2">
+                    <a href="/ranks" class="nav-link nav-icon {% if active_page == 'ranks' %}active{% endif %}">
+                        <i class="bi bi-grid"></i>
+                    </a>
+                </li>
+
+                <!-- Focus (Pomodoro) -->
                 <li class="nav-item my-2">
                     <a href="/focus" class="nav-link nav-icon {% if active_page == 'focus' %}active{% endif %}">
                         <i class="bi bi-clock-history"></i>
                     </a>
                 </li>
 
-                <!-- Ranks -->
+                <!-- Graph -->
                 <li class="nav-item my-2">
-                    <a href="/ranks" class="nav-link nav-icon {% if active_page == 'ranks' %}active{% endif %}">
-                        <i class="bi bi-grid"></i>
+                    <a href="/graph" class="nav-link nav-icon {% if active_page == 'graph' %}active{% endif %}">
+                        <i class="bi bi-diagram-3"></i>
                     </a>
                 </li>
 
@@ -81,5 +90,9 @@
                 </button>
                 <button class="btn btn-sm border-0 theme-toggle-btn">
                     <i class="bi bi-moon"></i>
+                </button>
+                <button class="btn btn-sm border-0" type="button"
+                        data-bs-toggle="modal" data-bs-target="#searchModal">
+                    <i class="bi bi-search"></i>
                 </button>
             </div>

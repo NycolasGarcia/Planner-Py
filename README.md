@@ -39,8 +39,9 @@ Criar um planejador pessoal **local, offline e altamente interconectado**, com t
 
 ```mermaid
 graph LR
-    P[Projeto] --> C[Card] --> T[Tarefa] --> E[Evento]
-    P & C & T & E --> N[Nota]
+    P[Projeto] --> C[Card] --> TL[Task List] --> T[Task]
+    P & TL --> E[Evento]
+    P & TL & E --> N[Nota]
 ```
 
 ## Funcionalidades
@@ -62,12 +63,13 @@ graph LR
 <details>
 <summary><strong>Tasks</strong></summary>
 
-- Task Lists stand-alone ou acopladas a cards de projeto
-- Tasks com prazo (`due_date`), ícone, cor e prioridade
-- Drag & drop para reordenação; toggle de conclusão
-- Validação de prazo pai/filho: task não pode vencer depois do pai
-
-> **W.I.P: Em desenvolvimento**
+- Task Lists com nome, cor, ícone, nota vinculada (informativo) e prazo — prazo é sempre um Evento de verdade por trás, com recorrência, nunca uma data literal
+- Task individual é deliberadamente mínima: nome, ordem e concluída/não concluída — sem cor, ícone, nota ou evento próprios, herda tudo da lista
+- Dentro de cada lista, tasks se dividem em "Vazias" e "Concluídas" (Settings decide se as concluídas aparecem), cada grupo com ordenação própria
+- Drag & drop real (a ordem arrastada É a nova ordem salva, não só um `ORDER BY` de exibição) pra Task Lists e tasks; arrastar uma lista entre Fixadas/Outras fixa ou desfixa ela
+- Seleção múltipla de Task Lists com cor/ícone/fixar/excluir em lote
+- Lixeira só para Task Lists — task individual é sempre exclusão direta e permanente (recriar uma task é trivial, recriar uma lista inteira não); retenção configurável e purge automático, mesmo esquema da Lixeira de Notas
+- Configurações dedicadas: contador do card (absoluto/percentual/nenhum), ordenação padrão ao abrir o app, exibir concluídas, visibilidade e retenção da lixeira
 
 </details>
 
@@ -96,16 +98,27 @@ graph LR
 
 </details>
 
+<details>
+<summary><strong>Graph</strong></summary>
+
+- Mapa visual (grafo) de como os objetos do app se relacionam entre si — parte do mesmo princípio de interconectividade que já liga Notas, Tasks, Projetos e Eventos, só que navegável
+- Selecionar um objeto qualquer (ex: uma nota) e ver com quem ele se conecta — projeto, task list, prazos (eventos) etc. — como um "minimap" da teia de vínculos
+- Ponto de entrada único pra enxergar relações que hoje só aparecem espalhadas, um vínculo de cada vez, dentro de cada módulo
+
+> **W.I.P: Em desenvolvimento**
+
+</details>
+
 ### Produtividade
 
 <details>
 <summary><strong>Pesquisa</strong></summary>
 
 - Barra de pesquisa global acessível de qualquer tela
-- Hoje cobre Notas (título, pasta, trecho do conteúdo) e Eventos (nome, mês, dia — considerando ocorrências recorrentes dentro do ano corrente)
+- Hoje cobre Notas (título, pasta, trecho do conteúdo), Eventos (nome, mês, dia — considerando ocorrências recorrentes dentro do ano corrente) e Tasks (nome de task, nome de Task List)
 - Formato pensado pra crescer: cada módulo novo entra como uma seção a mais no mesmo resultado
 
-> **W.I.P: Em desenvolvimento** — falta Projetos, Tasks e o restante
+> **W.I.P: Em desenvolvimento** — falta Projetos
 
 </details>
 
@@ -163,19 +176,34 @@ graph LR
 
 </details>
 
+<details>
+<summary><strong>Perfis (Vaults)</strong></summary>
+
+- Sem sentido ter "contas" num app 100% offline e sem sync — a ideia foi reformulada como **vaults**, no espírito do Obsidian: cada perfil é um arquivo `.db` totalmente separado e independente (ex: Trabalho, Faculdade, Pessoal), não uma tabela compartilhada com uma coluna de dono
+- Trocar de perfil = apontar o app pra outro arquivo `.db` — sem schema cruzado entre vaults, sem passo extra em cada criação de objeto perguntando "de qual perfil é isso?"
+- Exportar um perfil individual = copiar o arquivo `.db` correspondente
+- Planejado: proteção por senha opcional por vault (útil pra separar, por exemplo, um perfil de trabalho); visão agregada entre vaults via `ATTACH DATABASE` do SQLite, sem abrir mão do isolamento de cada arquivo
+- Mover um objeto entre vaults fica de fora do escopo inicial — dado o quanto o schema hoje é interligado (task ↔ evento, tasklist ↔ evento, card ↔ tasklist, nota ↔ pasta), não existe uma operação atômica "bonita" pra isso; a solução inicial é export+import manual
+
+> **W.I.P: Em desenvolvimento**
+
+</details>
+
 ## Roadmap
 
 - [x] Foundation: docs, schema, modelos ORM e estrutura base
 - [x] Notes — CRUD completo + editor Markdown + Mermaid
-- [ ] Tasks + Task Lists — CRUD + drag & drop + due dates
+- [x] Tasks + Task Lists — CRUD + drag & drop + Lixeira + busca
 - [x] Events — calendário + recorrência em 4 tipos + duração multi-dia
 - [ ] Projects / Kanban — colunas, cards, drag & drop
-- [ ] Interconectividade — vínculos bidirecionais entre todos os objetos (`notes_id`/`task_id` já existem no model de Evento, botão de vínculo já reservado na UI — falta Tasks existir pra fazer sentido)
+- [ ] Interconectividade — vínculos bidirecionais entre todos os objetos (Notas ↔ Tasks/Task Lists e Task Lists ↔ Eventos já funcionam; falta Projects existir de verdade pra fechar o ciclo)
 - [ ] Eisenhower Matrix — classificação + reflexo visual nas listas
 - [ ] Pomodoro — timer real + ciclos + alarme sonoro
 - [x] Settings + Customização — tema, cores, fontes, preferências por módulo
 - [ ] Import/Export do banco de dados
-- [ ] Dashboard, Profile e polish final
+- [ ] Graph — mapa de relações entre todos os objetos interligados
+- [ ] Perfis (Vaults) — múltiplos `.db` isolados, troca/export por perfil
+- [ ] Dashboard e polish final
 
 ## Stack
 

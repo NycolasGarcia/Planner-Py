@@ -11,6 +11,8 @@ from models.note import Note
 from models.note_folder import NoteFolder
 from models.settings import Setting
 from models.event import Event
+from models.task import Task
+from models.task_list import TaskList
 from routes.events import _expand_occurrences
 
 notes_bp = Blueprint('notes', __name__)
@@ -434,14 +436,15 @@ _MONTH_NAMES = [
 
 @notes_bp.route('/api/search')
 def search():
-    # Escopo: Notes (título/pasta/trecho) + Events (nome/mês/dia). Formato
-    # pensado pra crescer — cada módulo futuro (Tasks, Projects...) entra
-    # como uma chave nova ao lado de "notes"/"events".
+    # Escopo: Notes (título/pasta/trecho) + Events (nome/mês/dia) + Tasks
+    # (nome de task/nome de tasklist). Formato pensado pra crescer — cada
+    # módulo futuro (Projects...) entra como uma chave nova.
     q = (request.args.get('q') or '').strip()
     if not q:
         return jsonify({
             'notes':  {'title': [], 'folder': [], 'content': []},
             'events': {'name': [], 'month': [], 'day': []},
+            'tasks':  {'task': [], 'tasklist': []},
         })
 
     with SessionLocal() as db:
@@ -505,6 +508,23 @@ def search():
                 if target_day and any(o.day == target_day for o in occurrences):
                     day_hits.append(base)
 
+        tasklists = db.execute(select(TaskList)).scalars().all()
+        tasklists_by_id = {tl.id: tl for tl in tasklists}
+        tasklist_hits = [
+            {'id': tl.id, 'name': tl.name, 'icon': tl.icon, 'color': tl.color}
+            for tl in tasklists if ql in tl.name.lower()
+        ]
+        task_hits = []
+        for t in db.execute(select(Task)).scalars().all():
+            if not (t.name and ql in t.name.lower()):
+                continue
+            tl = tasklists_by_id.get(t.task_list_id)
+            task_hits.append({
+                'id': t.id, 'name': t.name,
+                'task_list_id': t.task_list_id,
+                'task_list_name': tl.name if tl else None,
+            })
+
         return jsonify({
             'notes': {
                 'title':   title_hits,
@@ -515,5 +535,9 @@ def search():
                 'name':  name_hits,
                 'month': month_hits,
                 'day':   day_hits,
+            },
+            'tasks': {
+                'task':     task_hits,
+                'tasklist': tasklist_hits,
             },
         })

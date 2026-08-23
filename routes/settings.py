@@ -38,6 +38,10 @@ DEFAULT_SETTINGS = {
     'eventos.ressaltar_sab':      'false',
     'eventos.ressaltar_dom':      'false',
     'tarefas.contador':           'absoluto',  # 'absoluto' (x/y) | 'percentual' (x%) | 'nenhum'
+    'tarefas.exibir_concluidas':  'true',
+    'tarefas.ordenacao_padrao':   'manual-asc',
+    'tarefas.lixeira_visibilidade': 'if-has-items',
+    'tarefas.lixeira_retencao_dias': '7',
 }
 
 

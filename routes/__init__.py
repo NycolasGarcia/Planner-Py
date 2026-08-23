@@ -5,6 +5,7 @@ from .projects import projects_bp
 from .notes import notes_bp
 from .focus import focus_bp
 from .ranks import ranks_bp
+from .graph import graph_bp
 
 from .cloud import cloud_bp
 from .settings import settings_bp

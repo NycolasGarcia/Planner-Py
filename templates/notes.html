@@ -147,13 +147,13 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><h6 class="dropdown-header">Ordenar por</h6></li>
-                    <li><a class="dropdown-item sort-opt" href="#" data-sort="order" data-dir="asc"><i class="bi bi-clock me-1"></i>Criação ↑</a></li>
-                    <li><a class="dropdown-item sort-opt" href="#" data-sort="order" data-dir="desc"><i class="bi bi-clock me-1"></i>Criação ↓</a></li>
                     <li><a class="dropdown-item sort-opt" href="#" data-sort="alpha" data-dir="asc"><i class="bi bi-sort-alpha-down me-1"></i>A → Z</a></li>
                     <li><a class="dropdown-item sort-opt" href="#" data-sort="alpha" data-dir="desc"><i class="bi bi-sort-alpha-up me-1"></i>Z → A</a></li>
-                    <li><a class="dropdown-item sort-opt" href="#" data-sort="updated" data-dir="desc"><i class="bi bi-clock-history me-1"></i>Última modificação (mais recente)</a></li>
-                    <li><a class="dropdown-item sort-opt" href="#" data-sort="updated" data-dir="asc"><i class="bi bi-clock-history me-1"></i>Última modificação (mais antiga)</a></li>
-                    <li><a class="dropdown-item sort-opt" href="#" data-sort="color" data-dir="asc"><i class="bi bi-palette me-1"></i>Por cor</a></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="order" data-dir="asc"><i class="bi bi-clock me-1"></i>Criação ↑</a></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="order" data-dir="desc"><i class="bi bi-clock me-1"></i>Criação ↓</a></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="updated" data-dir="asc"><i class="bi bi-clock-history me-1"></i>Modificação ↑</a></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="updated" data-dir="desc"><i class="bi bi-clock-history me-1"></i>Modificação ↓</a></li>
+                    <li><a class="dropdown-item sort-opt" href="#" data-sort="color" data-dir="asc"><i class="bi bi-palette me-1"></i>Cor</a></li>
                 </ul>
             </div>
         </div>
@@ -836,8 +836,9 @@
     // qualquer uma. Pasta fechada não é alvo (v1 simples: abre primeiro).
     // Lixeira fica de fora de propósito — não reordena, não recebe drop
     // (o endpoint de reorder rejeita mover nota pra lá, igual o PUT já fazia).
-    // "folders": cada seção com seu próprio grupo isolado — pasta não cruza
-    // de Fixadas pra Outras arrastando (isso é só via pin explícito).
+    // "folders": grupo compartilhado entre as 2 seções — cruzar de Fixadas
+    // pra Outras (ou vice-versa) fixa/desfixa a pasta (onFolderDragEnd),
+    // mesmo gesto que as notas soltas já tinham.
     let noteSortables = [];
     let folderSortables = [];
 
@@ -874,7 +875,23 @@
         renderSidebar();
     }
 
-    function onFolderDragEnd(evt) {
+    // Arrastar uma pasta de "Outros" pra "Fixadas" (ou vice-versa) fixa/
+    // desfixa ela — mesmo gesto "soltou aqui = pinned" que as notas soltas
+    // já usam, replicado pra pastas (group compartilhado entre as 2 seções
+    // é o que permite cruzar de uma pra outra).
+    async function onFolderDragEnd(evt) {
+        const movedId = parseInt(evt.item.dataset.folderId, 10);
+        const nowPinned = evt.to.id === 'pinnedFoldersList';
+        const folder = allFolders.find(f => f.id === movedId);
+        const pinChanged = folder && folder.is_pinned !== nowPinned;
+        if (pinChanged) folder.is_pinned = nowPinned;
+        if (pinChanged) {
+            await fetch(`/api/note-folders/${movedId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_pinned: nowPinned }),
+            });
+        }
         const ids = Array.from(evt.to.children).map(el => parseInt(el.dataset.folderId, 10));
         persistFolderReorder(ids);
     }
@@ -919,6 +936,7 @@
         [document.getElementById('pinnedFoldersList'), document.getElementById('othersFoldersList')].forEach(el => {
             if (!el) return;
             folderSortables.push(new Sortable(el, {
+                group: 'folders',
                 animation: 150,
                 filter: '[data-folder-edit]',
                 preventOnFilter: false,
@@ -1520,13 +1538,83 @@
     // tela ao vivo (matchMedia reage a resize/rotação, não só no load).
     const toolbarPosition = SETTINGS['notes.toolbar_position'] || 'auto';
     const noteEditorWrapEl = document.getElementById('noteEditorWrap');
+    const mobileMq = window.matchMedia('(max-width: 991.98px)');
     if (toolbarPosition === 'bottom') {
         noteEditorWrapEl.classList.add('toolbar-bottom');
     } else if (toolbarPosition === 'auto') {
-        const toolbarMq = window.matchMedia('(max-width: 991.98px)');
-        const syncToolbarPosition = () => noteEditorWrapEl.classList.toggle('toolbar-bottom', toolbarMq.matches);
+        const syncToolbarPosition = () => noteEditorWrapEl.classList.toggle('toolbar-bottom', mobileMq.matches);
         syncToolbarPosition();
-        toolbarMq.addEventListener('change', syncToolbarPosition);
+        mobileMq.addEventListener('change', syncToolbarPosition);
+    }
+
+    // Tocar num botão da toolbar tira o foco do CodeMirror por padrão —
+    // é a ação padrão do navegador ao apertar (mousedown) qualquer
+    // elemento focável, ANTES do próprio clique disparar. No mobile isso
+    // fecha o teclado (e, com o floating acima, também colapsa a toolbar
+    // de volta pro fluxo normal) no meio do toque, antes da formatação
+    // rodar. Os botões não precisam de foco próprio pra funcionar (as
+    // ações do EasyMDE manipulam o CodeMirror direto via API, focado ou
+    // não) — cancelar só essa ação padrão no mousedown resolve sem
+    // quebrar nada, o click/a ação continuam disparando normalmente.
+    noteEditorWrapEl.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.editor-toolbar')) e.preventDefault();
+    });
+
+    // Enquanto o editor está com foco, gruda a toolbar acima do teclado
+    // virtual em vez de deixar o fluxo normal da página escondê-la atrás
+    // dele. Só liga quando os dois valem:
+    //  - "(pointer: coarse)": dispositivo touch de verdade — não é sobre
+    //    largura de tela, é sobre existir um teclado virtual que possa
+    //    cobrir a toolbar. Uma janela de desktop estreita (mouse, sem
+    //    teclado nenhum abrindo) não deve "desconectar" a toolbar pro
+    //    fundo da página à toa.
+    //  - .toolbar-bottom presente: a toolbar já está no modo "embaixo"
+    //    (Settings > Notas > Posição da toolbar = Baixo, ou Auto numa
+    //    tela estreita). Com "Topo" forçado ela nunca flutua — escolha
+    //    explícita do usuário, respeitada mesmo no mobile.
+    // Ver .toolbar-floating em easymde/theme.css.
+    if (window.visualViewport) {
+        const touchMq = window.matchMedia('(pointer: coarse)');
+        let floating = false;
+        let scrollRestore = null;
+        const repositionFloatingToolbar = () => {
+            if (!floating) return;
+            const vv = window.visualViewport;
+            const keyboardGap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+            noteEditorWrapEl.style.setProperty('--toolbar-float-offset', keyboardGap + 'px');
+        };
+        easyMDE.codemirror.on('focus', () => {
+            if (!touchMq.matches || !noteEditorWrapEl.classList.contains('toolbar-bottom')) return;
+            floating = true;
+            // Guarda por onde a NOTA (o conteúdo dentro do CodeMirror, não
+            // a página) estava rolada antes de o teclado abrir — enquanto
+            // ele fica aberto, o próprio CodeMirror rola o cursor pra
+            // dentro da área menor que sobrou (por causa do teclado/da
+            // toolbar flutuante em cima dele), deixando o texto deslocado.
+            scrollRestore = easyMDE.codemirror.getScrollInfo();
+            noteEditorWrapEl.classList.add('toolbar-floating');
+            repositionFloatingToolbar();
+            window.visualViewport.addEventListener('resize', repositionFloatingToolbar);
+            window.visualViewport.addEventListener('scroll', repositionFloatingToolbar);
+        });
+        easyMDE.codemirror.on('blur', () => {
+            if (!floating) return;
+            floating = false;
+            noteEditorWrapEl.classList.remove('toolbar-floating');
+            noteEditorWrapEl.style.removeProperty('--toolbar-float-offset');
+            window.visualViewport.removeEventListener('resize', repositionFloatingToolbar);
+            window.visualViewport.removeEventListener('scroll', repositionFloatingToolbar);
+            // O teclado leva um instante pra terminar de fechar (viewport
+            // ainda encolhido no exato momento do blur) — restaura de
+            // novo um pouco depois, senão a nota fica só parcialmente
+            // devolvida ao lugar de origem em vez de voltar de verdade.
+            const restoreTo = scrollRestore;
+            scrollRestore = null;
+            if (restoreTo) {
+                easyMDE.codemirror.scrollTo(restoreTo.left, restoreTo.top);
+                setTimeout(() => easyMDE.codemirror.scrollTo(restoreTo.left, restoreTo.top), 150);
+            }
+        });
     }
 
     // ── Abertura via busca global (search_bar.html chama isso quando já

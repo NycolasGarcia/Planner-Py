@@ -90,6 +90,42 @@ def _finish_events_drop_task_id(conn):
     conn.execute(text("DROP TABLE events_old_task_id"))
 
 
+def _migrate_tasks_drop_links(conn):
+    # Task deixou de poder linkar nota ou ter prazo (Event) próprio — só a
+    # TaskList tem esses vínculos agora (ver routes/tasks.py). notes_id/
+    # event_id são colunas de FK — SQLite recusa DROP COLUMN direto nelas
+    # (mesma limitação do events.task_id acima), só dá pra tirar recriando
+    # a tabela. Já existem tasks reais salvas, então renomeia pro
+    # create_all() (fim de _run_migrations) recriar "tasks" do zero sem
+    # essas 2 colunas, e _finish_tasks_drop_links copia os dados de volta.
+    cols = conn.execute(text("PRAGMA table_info(tasks)")).fetchall()
+    if any(c[1] in ("notes_id", "event_id") for c in cols):
+        conn.execute(text("ALTER TABLE tasks RENAME TO tasks_old_links"))
+        indexes = conn.execute(text(
+            "SELECT name FROM sqlite_master WHERE type='index' "
+            "AND tbl_name='tasks_old_links' AND sql IS NOT NULL"
+        )).fetchall()
+        for (idx_name,) in indexes:
+            conn.execute(text(f"DROP INDEX {idx_name}"))
+
+
+def _finish_tasks_drop_links(conn):
+    # Continuação de _migrate_tasks_drop_links — só faz sentido depois que
+    # Base.metadata.create_all() já recriou "tasks" do zero (schema novo,
+    # sem notes_id/event_id).
+    tables = conn.execute(text(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='tasks_old_links'"
+    )).fetchall()
+    if not tables:
+        return
+    # "order" é reservado no SQLite — precisa vir entre aspas duplas, senão
+    # o INSERT quebra com "syntax error" bem na coluna order.
+    cols = [f'"{c[1]}"' for c in conn.execute(text("PRAGMA table_info(tasks)")).fetchall()]
+    col_list = ", ".join(cols)
+    conn.execute(text(f"INSERT INTO tasks ({col_list}) SELECT {col_list} FROM tasks_old_links"))
+    conn.execute(text("DROP TABLE tasks_old_links"))
+
+
 def _migrate_tasks_drop_own_visuals(conn):
     # Task deixou de ter cor/ícone/descrição próprios — herda visual da
     # TaskList (ver routes/tasks.py). Nenhuma das 3 colunas participa de FK,
@@ -169,13 +205,17 @@ def _run_migrations():
         _migrate_tasks_drop_own_visuals(conn)
         _migrate_tasks_add_updated_at(conn)
         _migrate_tasklists_add_order_and_updated_at(conn)
+        _add_column_if_missing(conn, "task_lists", "deleted_at",
+                                "deleted_at DATETIME")
         _add_column_if_missing(conn, "projects", "event_id",
                                 "event_id INTEGER REFERENCES events(id)")
+        _migrate_tasks_drop_links(conn)
     # Recria as tabelas dropadas/renomeadas acima com o schema atual do
     # model (create_all só cria tabelas que não existem, não mexe nas outras).
     Base.metadata.create_all(bind=engine)
     with engine.begin() as conn:
         _finish_events_drop_task_id(conn)
+        _finish_tasks_drop_links(conn)
 
 
 def _seed_lixeira():

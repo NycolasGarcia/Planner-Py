@@ -49,6 +49,21 @@
     </div>
 </div>
 
+<!-- Modal: visualizar Lixeira de Tasks (mesmo propósito do de Notas acima) -->
+<div class="modal fade" id="taskTrashViewerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-trash"></i> Lixeira — Tasks</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="list-group list-group-flush" id="taskTrashViewerList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="d-flex flex-column flex-lg-row h-100 gap-3">
 
     <!-- SUB-NAV: coluna fixa a partir de lg; abaixo disso vira tira
@@ -298,8 +313,26 @@
             <hr>
 
             <div class="d-flex justify-content-between align-items-center">
-                <span class="fw-semibold">Exibir concluídas</span>
+                <div>
+                    <span class="fw-semibold">Exibir concluídas</span><br>
+                    <small class="text-muted">Desligado, tasks concluídas somem da lista (mas continuam contando na barra de progresso)</small>
+                </div>
                 <input type="checkbox" class="form-check-input" data-setting="tarefas.exibir_concluidas">
+            </div>
+
+            <div class="mt-3">
+                <label class="form-label">Ordenação padrão (listas de tasks)</label>
+                <select class="form-select" data-setting="tarefas.ordenacao_padrao">
+                    <option value="manual-asc">Manual (minha ordem)</option>
+                    <option value="alpha-asc">A → Z</option>
+                    <option value="alpha-desc">Z → A</option>
+                    <option value="created-asc">Criação ↑</option>
+                    <option value="created-desc">Criação ↓</option>
+                    <option value="updated-asc">Modificação ↑</option>
+                    <option value="updated-desc">Modificação ↓</option>
+                    <option value="color-asc">Cor</option>
+                </select>
+                <small class="text-muted">Aplicado só como ponto de partida ao abrir o app — arrastar ou trocar o sort continua persistindo normalmente</small>
             </div>
 
             <div class="mt-3">
@@ -313,6 +346,37 @@
 
                     <input type="radio" class="btn-check" name="tarefas_contador" id="contador_nenhum" value="nenhum" data-setting="tarefas.contador">
                     <label class="btn btn-outline-accent" for="contador_nenhum">Nenhum</label>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-12"><hr></div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Visibilidade da lixeira</label>
+                    <select class="form-select" data-setting="tarefas.lixeira_visibilidade">
+                        <option value="never">Nunca visível</option>
+                        <option value="if-has-items">Visível apenas se houver alguma excluída</option>
+                        <option value="always">Sempre visível</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Dias na lixeira</label>
+                    <select class="form-select" data-setting="tarefas.lixeira_retencao_dias">
+                        <option value="none">Nenhum — exclui permanentemente</option>
+                        <option value="7">7 dias</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="viewTaskTrashBtn">
+                        <i class="bi bi-trash"></i> Visualizar lixeira
+                    </button>
+                    <small class="text-muted d-block mt-1">
+                        Só listas de tasks vão pra lixeira (apagar uma task individual é direto e
+                        permanente — recriar uma task é trivial, recriar uma lista inteira não).
+                    </small>
                 </div>
             </div>
         </div>
@@ -356,9 +420,9 @@
                 <div class="col-md-6">
                     <label class="form-label">Posição da toolbar</label>
                     <select class="form-select" data-setting="notes.toolbar_position">
-                        <option value="auto">Automática (topo no desktop, embaixo no mobile)</option>
-                        <option value="top">Sempre no topo</option>
-                        <option value="bottom">Sempre embaixo</option>
+                        <option value="auto">Auto</option>
+                        <option value="top">Topo</option>
+                        <option value="bottom">Baixo</option>
                     </select>
                 </div>
 
@@ -639,6 +703,38 @@
     document.getElementById('viewTrashBtn').addEventListener('click', () => {
         _trashModal.show();
         loadTrashViewer();
+    });
+
+    const _taskTrashModal = new bootstrap.Modal(document.getElementById('taskTrashViewerModal'));
+
+    async function loadTaskTrashViewer() {
+        const list = document.getElementById('taskTrashViewerList');
+        list.innerHTML = '<span class="list-group-item text-muted small">Carregando...</span>';
+        const tasklists = await fetch('/api/tasklists').then(r => r.json());
+        const trashed = tasklists.filter(tl => tl.deleted_at);
+        if (!trashed.length) {
+            list.innerHTML = '<span class="list-group-item text-muted small">Lixeira vazia</span>';
+            return;
+        }
+        list.innerHTML = trashed.map(tl => `
+            <div class="list-group-item d-flex align-items-center justify-content-between gap-2">
+                <span class="text-truncate">${escHtml(tl.name)}</span>
+                <button type="button" class="btn btn-sm btn-outline-success flex-shrink-0" data-restore-tl="${tl.id}">
+                    <i class="bi bi-arrow-counterclockwise"></i> Trazer de volta
+                </button>
+            </div>
+        `).join('');
+        list.querySelectorAll('[data-restore-tl]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                await fetch('/api/tasklists/' + btn.dataset.restoreTl + '/restore', { method: 'POST' });
+                loadTaskTrashViewer();
+            });
+        });
+    }
+
+    document.getElementById('viewTaskTrashBtn').addEventListener('click', () => {
+        _taskTrashModal.show();
+        loadTaskTrashViewer();
     });
 
     // ── Init ──────────────────────────────────────────────────────────────

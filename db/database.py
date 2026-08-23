@@ -1,7 +1,7 @@
 import os
 import sys
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 
@@ -34,3 +34,16 @@ SessionLocal = sessionmaker(
     autoflush=False,
     autocommit=False
 )
+
+
+# SQLite ignora FK por padrão em CADA conexão (não é uma config global do
+# arquivo) — sem isso, todo "ondelete=SET NULL" declarado nos models (Event,
+# Task, TaskList, Project...) é só decoração no schema, nunca roda de
+# verdade. Sem isso, apagar uma nota referenciada em outro lugar (ex: via
+# Note.__table__.delete() na Lixeira) deixava notes_id órfão apontando pra
+# uma linha que não existe mais, em vez de virar NULL sozinho.
+@event.listens_for(engine, "connect")
+def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
