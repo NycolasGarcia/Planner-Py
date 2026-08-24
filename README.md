@@ -160,8 +160,8 @@ graph LR
 <details>
 <summary><strong>Portabilidade</strong></summary>
 
-- Reset para preferências bae
--	Export e import de cofre *db entre máquinas
+- Reset para preferências base
+- 	Export e import de cofre *db entre máquinas
 
 > **W.I.P**
 
@@ -179,20 +179,22 @@ graph LR
 
 ## Roadmap
 
-- [ ] Fundação
+- [ ] Interconectividade
     - [x] Notas
     - [x] Tasks
     - [x] Events
-    - [ ] Projects
-    - [x] Settings
-- [ ] 
-- [ ] Interconectividade
-- [ ] Eisenhower Matrix
-- [ ] Pomodoro
-- [ ] Import/Export
-- [ ] Graph
-- [ ] Vaults
-- [ ] Dashboard e polish final
+    - [x] Projects
+    - [ ] Graph
+
+- [ ] Customização e Luberdade
+    - [ ] Import/Export
+    - [ ] Customização
+    - [ ] Vaults
+
+- [ ] Produtividade
+    - [ ] Eisenhower Matrix
+    - [ ] Pomodoro
+    - [ ] Dashboard
 
 
 ## Suporte
