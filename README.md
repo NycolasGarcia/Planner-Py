@@ -29,19 +29,18 @@ Suporte:
 
 ## Nosso Objetivo
 
-Criar um planejador pessoal **local, offline e altamente interconectado**, com três pilares centrais:
+Criar um planejador pessoal **local, multi-plataforma e altamente interconectado**, com três pilares centrais:
 
-- **Interconectividade:** objetos do app (projetos, tasks, eventos, notas) se linkam bidirecionalmente entre si
-- **Produtividade:** Eisenhower Matrix para priorização e Pomodoro para sessões de foco
-- **Customização e Liberdade:** banco local, sem dependência de cloud, configurações extensivas e importação/exportação do DB
+- **Interconectividade:** Objetos do app podem ser relacionados
+- **Produtividade:** Ferramenta que te ajuda a organizar projetos, definir prioridades e estabelecer sessões de foco
+- **Customização e Liberdade:** banco local, sem dependência de cloud ou internet
 
 ## Nosso Workflow
 
 ```mermaid
 graph LR
-    P[Projeto] --> C[Card] --> TL[Task List] --> T[Task]
-    P & TL --> E[Evento]
-    P & TL & E --> N[Nota]
+    A[Projetos] --> B[Tarefas] --> C[Eventos]
+    A & B & C --> D[Notas]
 ```
 
 ## Funcionalidades
@@ -51,61 +50,54 @@ graph LR
 <details>
 <summary><strong>Projetos</strong></summary>
 
-- Kanban com colunas e cards organizados por projeto
-- Cards com prazo, ícone, cor e classificação Eisenhower
-- Cada card pode ter uma Task List vinculada
-- Drag & drop de cards entre colunas com persistência de ordem
-
-> **W.I.P: Em desenvolvimento**
+- Usando da metodologia Kanban, podemos criar projetos
+- Projetos contam com colunas que descrevem as etapas atuais
+- Cards representam milestones desse projeto, e podem ter suas próprias subtarefas!
+- É possível atrelar um prazo aos seus projetos, tornando-os mais urgentes
+- Ao anexar uma nota, você pode registrar e documentar referências
+	
+> **W.I.P**
 
 </details>
 
 <details>
-<summary><strong>Tasks</strong></summary>
+<summary><strong>Tarefas</strong></summary>
 
-- Task Lists com nome, cor, ícone, nota vinculada (informativo) e prazo — prazo é sempre um Evento de verdade por trás, com recorrência, nunca uma data literal
-- Task individual é deliberadamente mínima: nome, ordem e concluída/não concluída — sem cor, ícone, nota ou evento próprios, herda tudo da lista
-- Dentro de cada lista, tasks se dividem em "Vazias" e "Concluídas" (Settings decide se as concluídas aparecem), cada grupo com ordenação própria
-- Drag & drop real (a ordem arrastada É a nova ordem salva, não só um `ORDER BY` de exibição) pra Task Lists e tasks; arrastar uma lista entre Fixadas/Outras fixa ou desfixa ela
-- Seleção múltipla de Task Lists com cor/ícone/fixar/excluir em lote
-- Lixeira só para Task Lists — task individual é sempre exclusão direta e permanente (recriar uma task é trivial, recriar uma lista inteira não); retenção configurável e purge automático, mesmo esquema da Lixeira de Notas
-- Configurações dedicadas: contador do card (absoluto/percentual/nenhum), ordenação padrão ao abrir o app, exibir concluídas, visibilidade e retenção da lixeira
+- Tarefas podem ser criadas, ordenadas ou concluidas
+- Tarefas que podem ser integradas a um projeto, quebrando grandes etapas em estruturas claras
+- Ao receber um prazo, tarefas criam um evento, este, pode ser recorrênte ou durar multiplos dias
+- Conectar tarefas a uma nota permite visualizar e documentar referencias fácilmente
+- Permite a busca por Lista de Tarefas, ou tasks individuais
 
 </details>
 
 <details>
 <summary><strong>Eventos</strong></summary>
 
-- Calendário mensal e agenda por hora (grade 00h–23h) — form, agenda e o destaque do calendário sempre sincronizados na mesma data
-- Recorrência em 4 tipos — intervalo fixo, dias da semana, dia do mês (multi-valor) ou anual — com trava de consistência: o dia/mês da data de início sempre faz parte da regra, pra nunca criar uma recorrência que não dispara na própria data em que foi criada
-- Duração multi-dia: uma ocorrência pode se estender por N dias consecutivos, repetindo a mesma faixa de horário em cada um
-- Auto-save por campo (cor, ícone, datas, recorrência) — sem botão "salvar"
-- Busca por nome, mês ou dia, considerando as ocorrências reais de eventos recorrentes dentro do ano corrente
-- Configurações dedicadas: formato de data/hora, primeiro dia da semana, destaque de dias da semana no calendário, painel inicial e posição da navegação no mobile
+- Função de Calendário e Agenda
+- Permite criar compromissos, estender sua duração e até gerar recorrência
+- Eventos podem ser criados como prazos de tarefas e projetos.
+- Permite Busca global por mês e título 
 
 </details>
 
 <details>
 <summary><strong>Notas</strong></summary>
 
-- Editor Markdown (EasyMDE) com toolbar customizada, preview em tempo real, blocos `mermaid` e syntax highlighting
-- Auto-save; pastas com cor, ícone, fixação e ordenação
-- Lixeira com retenção configurável (ou desligada), visível/oculta conforme Settings
-- Busca global por título, pasta ou trecho do conteúdo
-- Rastreio de última modificação, com ordenação por essa data
-- Seleção múltipla, ações em lote e export individual/em lote (`.md`/`.txt`)
-- Cor e ícone por nota e por pasta, seguindo a Cor Principal do sistema ou uma cor fixa da paleta
+- Editor Markdown que permite criar pastas e notas
+- Funções de Destaque incluem Auto-save, Ordenação, Download e Upload de arquivos
+- Suporte a Mermaid e LateX
+- Permite Busca global por pasta, título ou trecho do documento
 
 </details>
 
 <details>
 <summary><strong>Graph</strong></summary>
 
-- Mapa visual (grafo) de como os objetos do app se relacionam entre si — parte do mesmo princípio de interconectividade que já liga Notas, Tasks, Projetos e Eventos, só que navegável
-- Selecionar um objeto qualquer (ex: uma nota) e ver com quem ele se conecta — projeto, task list, prazos (eventos) etc. — como um "minimap" da teia de vínculos
-- Ponto de entrada único pra enxergar relações que hoje só aparecem espalhadas, um vínculo de cada vez, dentro de cada módulo
+- Mapa visual de como os objetos do app se relacionam
+- Permite ver todos os objetos relacionados, projetos, tasks, eventos e notas em um mapa navegável
 
-> **W.I.P: Em desenvolvimento**
+	> **W.I.P**
 
 </details>
 
@@ -115,21 +107,21 @@ graph LR
 <summary><strong>Pesquisa</strong></summary>
 
 - Barra de pesquisa global acessível de qualquer tela
-- Hoje cobre Notas (título, pasta, trecho do conteúdo), Eventos (nome, mês, dia — considerando ocorrências recorrentes dentro do ano corrente) e Tasks (nome de task, nome de Task List)
+- Permite buscar Notas, 
 - Formato pensado pra crescer: cada módulo novo entra como uma seção a mais no mesmo resultado
 
-> **W.I.P: Em desenvolvimento** — falta Projetos
-
+> **W.I.P**
+	
 </details>
 
 <details>
 <summary><strong>Priorização</strong></summary>
 
-- Eisenhower Matrix: classifica tasks e cards nos 4 quadrantes (Fazer / Agendar / Delegar / Deletar)
-- Ao classificar, o item muda de cor na lista ou kanban de origem
+- Matrix de Eisenhower, permite classifica tasks e cards em 4 quadrantes (Fazer / Agendar / Delegar / Deletar)
+- Ao classificar, os itens são filtrados e destacados na lista ou kanban de origem
 - Filtros por prazo, ordem alfabética e projeto
 
-> **W.I.P: Em desenvolvimento**
+> **W.I.P**
 
 </details>
 
@@ -137,10 +129,11 @@ graph LR
 <summary><strong>Foco</strong></summary>
 
 - Timer Pomodoro com ciclos configuráveis: trabalho, descanso curto e descanso longo
-- Alarme sonoro (Web Audio API) e popup que puxa a janela ao fim de cada fase
+- Alarme sonoro e popup que puxa a janela ao fim de cada fase
 - Contador de ciclos completados e indicador de fase atual
+- Widget que possibilita acompanhar em qualquer aba da ferramenta
 
-> **W.I.P: Em desenvolvimento**
+> **W.I.P**
 
 </details>
 
@@ -149,61 +142,66 @@ graph LR
 <details>
 <summary><strong>Visuais</strong></summary>
 
-- Tema claro/escuro/sistema, com Cor de Destaque (accent) aplicada via CSS variables — nunca sobrescreve as cores literais da paleta (uma nota "azul" continua azul, independente do accent escolhido)
-- Fonte do app (padrão do sistema, serifada ou monoespaçada), aplicada em tempo real sem recarregar a página
-- Ícone e cor individual por objeto (Bootstrap Icons — mais de 2.000 ícones)
+- Tema claro e escuro, 
+-	Cor de Destaque
+- Fonte do app padrão, serifada ou monoespaçada
+- Ícone e cor individual por objeto (mais de 2.000 ícones)
 
 </details>
 
 <details>
 <summary><strong>Comportamentos</strong></summary>
 
-- Configurações de janela (resolução, orientação, redimensionável) — aplicadas no próximo boot do app
-- Preferências dedicadas por módulo, hoje em Notas (pasta padrão aberta, fonte/tamanho do preview, modo de abertura, ordenação, lixeira) e Eventos (formato de data/hora, primeiro dia da semana, destaque de dias, painel inicial no mobile) — cresce junto com cada módulo novo
-- Auto-save de toda alteração, sem botão "salvar configurações"
-- Reset para os valores padrão a qualquer momento
+- Configurações de janela (resolução e orientação)
+- Preferências dedicadas por módulo que permitem customizar o comportamentos individuais
 
 </details>
 
 <details>
 <summary><strong>Portabilidade</strong></summary>
 
-- Export e import do banco de dados (`planner.db`) entre máquinas
-- Export e import de settings para JSON
-- Diálogo de arquivo nativo via PyWebView — sem dependência de cloud
+- Reset para preferências bae
+-	Export e import de cofre *db entre máquinas
 
-> **W.I.P: Em desenvolvimento**
+> **W.I.P**
 
 </details>
 
 <details>
 <summary><strong>Perfis (Vaults)</strong></summary>
 
-- Sem sentido ter "contas" num app 100% offline e sem sync — a ideia foi reformulada como **vaults**, no espírito do Obsidian: cada perfil é um arquivo `.db` totalmente separado e independente (ex: Trabalho, Faculdade, Pessoal), não uma tabela compartilhada com uma coluna de dono
-- Trocar de perfil = apontar o app pra outro arquivo `.db` — sem schema cruzado entre vaults, sem passo extra em cada criação de objeto perguntando "de qual perfil é isso?"
-- Exportar um perfil individual = copiar o arquivo `.db` correspondente
-- Planejado: proteção por senha opcional por vault (útil pra separar, por exemplo, um perfil de trabalho); visão agregada entre vaults via `ATTACH DATABASE` do SQLite, sem abrir mão do isolamento de cada arquivo
-- Mover um objeto entre vaults fica de fora do escopo inicial — dado o quanto o schema hoje é interligado (task ↔ evento, tasklist ↔ evento, card ↔ tasklist, nota ↔ pasta), não existe uma operação atômica "bonita" pra isso; a solução inicial é export+import manual
+- Ferramenta que permite criar múltiplos cofred *.db e armazenar informações de acordo com o seu perfil
+- Cofres podem ser protegidos por senha, requisitando ao entrar, gravar ou deletar 
 
-> **W.I.P: Em desenvolvimento**
+> **W.I.P**
 
 </details>
 
 ## Roadmap
 
-- [x] Foundation: docs, schema, modelos ORM e estrutura base
-- [x] Notes — CRUD completo + editor Markdown + Mermaid
-- [x] Tasks + Task Lists — CRUD + drag & drop + Lixeira + busca
-- [x] Events — calendário + recorrência em 4 tipos + duração multi-dia
-- [ ] Projects / Kanban — colunas, cards, drag & drop
-- [ ] Interconectividade — vínculos bidirecionais entre todos os objetos (Notas ↔ Tasks/Task Lists e Task Lists ↔ Eventos já funcionam; falta Projects existir de verdade pra fechar o ciclo)
-- [ ] Eisenhower Matrix — classificação + reflexo visual nas listas
-- [ ] Pomodoro — timer real + ciclos + alarme sonoro
-- [x] Settings + Customização — tema, cores, fontes, preferências por módulo
-- [ ] Import/Export do banco de dados
-- [ ] Graph — mapa de relações entre todos os objetos interligados
-- [ ] Perfis (Vaults) — múltiplos `.db` isolados, troca/export por perfil
+- [ ] Fundação
+    - [x] Notas
+    - [x] Tasks
+    - [x] Events
+    - [ ] Projects
+    - [x] Settings
+- [ ] 
+- [ ] Interconectividade
+- [ ] Eisenhower Matrix
+- [ ] Pomodoro
+- [ ] Import/Export
+- [ ] Graph
+- [ ] Vaults
 - [ ] Dashboard e polish final
+
+
+## Suporte
+
+- [x] Linux
+- [x] Windows
+- [ ] Mac
+- [ ] Android
+
 
 ## Stack
 
@@ -241,7 +239,9 @@ pip install -r requirements.txt
 py app.py
 ```
 
-Alternativa sem terminal: rode `dist/boot.py` (duplo clique/atalho) — cria o `venv`, instala as dependências e abre o app sozinho, caso ainda não existam.
+> Recentemente, uma alternativa que indepente de terminal foi criada para simplificar operação
+> Basta acessar a pasta Planner-py/dist, selecionar o arquivo `boot.py` e *'Executar como programa'*
+> Funcional para ambos Windows e Linux
 
 ## Estrutura do Projeto
 

@@ -34,6 +34,13 @@ class TaskList(Base):
     # Prazo = um Event de verdade, não uma data literal (ver models/event.py).
     event_id = Column(Integer, ForeignKey("events.id", ondelete="SET NULL"), nullable=True)
 
+    # Quadrante do Eisenhower (1 FAZER, 2 AGENDAR, 3 DELEGAR, 4 DELETAR — ver
+    # templates/ranks.html). Quando esta lista está linkada a um Card de
+    # projeto, é ESTE campo (não Card.rank) que decide a prioridade exibida
+    # no card — sem meio-termo, mesma regra de nome/cor/ícone/nota/prazo
+    # (ver models/project_card.py e routes/projects.py).
+    rank = Column(Integer, nullable=True)
+
     # Relacionamentos
     tasks = relationship(
         "Task",

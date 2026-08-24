@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from db.base import Base
@@ -14,6 +14,13 @@ class Project(Base):
 
     color = Column(String, nullable=True)
     icon = Column(String, nullable=True)
+
+    is_pinned = Column(Boolean, default=False, nullable=False)
+
+    # Preenchido quando o projeto vai pra Lixeira — mesmo esquema de
+    # TaskList.deleted_at (ver models/task_list.py). Column/Card individuais
+    # NUNCA passam por aqui: só o projeto (a coleção) tem lixeira própria.
+    deleted_at = Column(DateTime, nullable=True)
 
     notes_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
 

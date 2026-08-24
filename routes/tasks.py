@@ -64,16 +64,23 @@ def _find_related_note_title(db, tl):
     return note.title if note else None
 
 
-def _find_related_project_name(db, tl):
+def _find_related_card(db, tl):
     # TaskList não sabe se está anexada a um Card (é o Card que segura
     # tasklist_id — ver models/project_card.py) — busca inversa, igual o
-    # padrão já usado pra achar quem referencia um Event.
+    # padrão já usado pra achar quem referencia um Event. Devolve os ids
+    # (não só o nome) pra templates/tasks.html poder linkar/desvincular
+    # direto do card (ver bloco "Projeto" do #taskLinkModal).
     card = db.execute(select(Card).where(Card.tasklist_id == tl.id)).scalar_one_or_none()
     if not card:
         return None
     column = db.get(Column, card.column_id)
     project = db.get(Project, column.project_id) if column else None
-    return project.name if project else None
+    return {
+        'card_id':      card.id,
+        'column_id':    card.column_id,
+        'project_id':   project.id if project else None,
+        'project_name': project.name if project else None,
+    }
 
 
 def _serialize_tasklist(tasklist, event=None, task_count=None, done_count=None, db=None):
@@ -85,6 +92,7 @@ def _serialize_tasklist(tasklist, event=None, task_count=None, done_count=None, 
         'icon':        tasklist.icon,
         'is_pinned':   tasklist.is_pinned,
         'notes_id':    tasklist.notes_id,
+        'rank':        tasklist.rank,
         'deadline':    _serialize_deadline(event),
         'task_count':  task_count,
         'done_count':  done_count,
@@ -95,7 +103,11 @@ def _serialize_tasklist(tasklist, event=None, task_count=None, done_count=None, 
     }
     if db is not None:
         data['note_title'] = _find_related_note_title(db, tasklist)
-        data['project_name'] = _find_related_project_name(db, tasklist)
+        related_card = _find_related_card(db, tasklist)
+        data['card_id'] = related_card['card_id'] if related_card else None
+        data['column_id'] = related_card['column_id'] if related_card else None
+        data['project_id'] = related_card['project_id'] if related_card else None
+        data['project_name'] = related_card['project_name'] if related_card else None
     return data
 
 
@@ -184,6 +196,8 @@ def _apply_tasklist_fields(db, tl, data):
                 event.color = tl.color
     if 'is_pinned' in data:
         tl.is_pinned = bool(data['is_pinned'])
+    if 'rank' in data:
+        tl.rank = data['rank']
     if 'notes_id' in data:
         tl.notes_id = data['notes_id']
     if 'deadline' in data:

@@ -69,6 +69,20 @@
                         <input type="date" class="form-control form-control-sm" id="linkRecurrenceEnd" placeholder="Termina em (opcional)">
                     </div>
                 </div>
+                <!-- Prioridade (Eisenhower) — mesmo campo usado pelo Card
+                     de projeto quando linkado (ver models/task_list.py e
+                     routes/projects.py: card linkado usa ESTE rank, não o
+                     próprio). -->
+                <div>
+                    <label class="form-label small text-muted mb-1">Prioridade (Eisenhower)</label>
+                    <div class="d-grid gap-1" style="grid-template-columns: repeat(2, 1fr);">
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-rank="1"><i class="bi bi-check-circle-fill"></i> Fazer</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-rank="2"><i class="bi bi-calendar-check-fill"></i> Agendar</button>
+                        <button type="button" class="btn btn-sm btn-outline-warning" data-rank="3"><i class="bi bi-person-plus-fill"></i> Delegar</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-rank="4"><i class="bi bi-trash-fill"></i> Deletar</button>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link text-muted p-0 mt-1" id="linkRankClearBtn">Sem prioridade</button>
+                </div>
                 <div>
                     <label class="form-label small text-muted mb-1">Nota vinculada</label>
                     <!-- Só um vínculo informativo (mostra note_title no
@@ -83,6 +97,37 @@
                     </div>
                     <input type="text" class="form-control form-control-sm" id="linkNoteSearch" placeholder="Buscar nota pra vincular...">
                     <div class="list-group list-group-flush mt-1" id="linkNoteResults" style="max-height: 160px; overflow-y: auto;"></div>
+                </div>
+                <!-- Projeto: liga essa tasklist a um Card de um board (ver
+                     routes/projects.py). Card e TaskList não têm meio-termo
+                     (ver models/project_card.py) — uma vez linkado, nome/
+                     cor/ícone/nota/prazo do CARD viram os desta lista. -->
+                <div id="linkProjectBlock">
+                    <label class="form-label small text-muted mb-1">Projeto</label>
+
+                    <div class="d-none" id="linkProjectCurrentWrap">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-secondary flex-grow-1 text-truncate text-start fw-normal" id="linkProjectCurrentLabel"></span>
+                            <a class="btn btn-sm btn-outline-secondary flex-shrink-0" id="linkProjectOpenBtn" title="Abrir board">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-danger flex-shrink-0" type="button" id="linkProjectUnlinkBtn" title="Desvincular">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="linkProjectPickWrap">
+                        <input type="text" class="form-control form-control-sm" id="linkProjectSearch" placeholder="Buscar projeto pra vincular...">
+                        <div class="list-group list-group-flush mt-1" id="linkProjectResults" style="max-height: 120px; overflow-y: auto;"></div>
+                        <div class="d-none mt-2" id="linkProjectColumnWrap">
+                            <label class="form-label small text-muted mb-1">Coluna</label>
+                            <select class="form-select form-select-sm mb-2" id="linkProjectColumnSelect"></select>
+                            <button class="btn btn-sm btn-outline-secondary w-100" type="button" id="linkProjectCreateCardBtn">
+                                <i class="bi bi-plus-lg"></i> Criar cartão vinculado
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -978,6 +1023,73 @@
         refreshLinkNoteDisplay();
     });
 
+    // ---------- Projeto (dentro do modal de Vínculos, só faz sentido pra
+    // tasklist — Task não tem Card/board próprio) ----------
+    let allProjectsForLink = null;
+    async function loadProjectsForLinkCache() {
+        if (!allProjectsForLink) allProjectsForLink = await fetch('/api/projects').then(r => r.json());
+        return allProjectsForLink;
+    }
+
+    function refreshLinkProjectDisplay() {
+        const linked = !!currentTaskList.project_id;
+        document.getElementById('linkProjectCurrentWrap').classList.toggle('d-none', !linked);
+        document.getElementById('linkProjectPickWrap').classList.toggle('d-none', linked);
+        if (linked) {
+            document.getElementById('linkProjectCurrentLabel').textContent = currentTaskList.project_name || `Projeto #${currentTaskList.project_id}`;
+            document.getElementById('linkProjectOpenBtn').href = '/projects/' + currentTaskList.project_id;
+        } else {
+            document.getElementById('linkProjectSearch').value = '';
+            document.getElementById('linkProjectResults').innerHTML = '';
+            document.getElementById('linkProjectColumnWrap').classList.add('d-none');
+        }
+    }
+
+    document.getElementById('linkProjectSearch').addEventListener('input', async function () {
+        const q = this.value.trim().toLowerCase();
+        const results = document.getElementById('linkProjectResults');
+        if (!q) { results.innerHTML = ''; return; }
+        const projects = await loadProjectsForLinkCache();
+        const matches = projects.filter(p => p.name.toLowerCase().includes(q)).slice(0, 20);
+        results.innerHTML = matches.map(p =>
+            `<button type="button" class="list-group-item list-group-item-action text-truncate" data-project-id="${p.id}">${escHtml(p.name)}</button>`
+        ).join('');
+        results.querySelectorAll('[data-project-id]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const project = await fetch('/api/projects/' + btn.dataset.projectId).then(r => r.json());
+                const select = document.getElementById('linkProjectColumnSelect');
+                select.innerHTML = project.columns.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+                document.getElementById('linkProjectColumnWrap').classList.toggle('d-none', project.columns.length === 0);
+                if (!project.columns.length) {
+                    alert('Esse projeto ainda não tem nenhuma coluna — crie uma coluna no board antes de vincular.');
+                }
+            });
+        });
+    });
+
+    document.getElementById('linkProjectCreateCardBtn').addEventListener('click', async () => {
+        const columnId = document.getElementById('linkProjectColumnSelect').value;
+        if (!columnId || !currentTaskList) return;
+        await fetch(`/api/columns/${columnId}/cards`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tasklist_id: currentTaskList.id }),
+        });
+        currentTaskList = await fetch(`/api/tasklists/${currentTaskList.id}`).then(r => r.json());
+        refreshLinkProjectDisplay();
+        loadTaskLists();
+    });
+
+    document.getElementById('linkProjectUnlinkBtn').addEventListener('click', async () => {
+        if (!currentTaskList || !currentTaskList.card_id) return;
+        await fetch(`/api/cards/${currentTaskList.card_id}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tasklist_id: null }),
+        });
+        currentTaskList = await fetch(`/api/tasklists/${currentTaskList.id}`).then(r => r.json());
+        refreshLinkProjectDisplay();
+        loadTaskLists();
+    });
+
     async function openLinkModal(target) {
         linkModalTarget = target;
         document.getElementById('taskLinkModalSubtitle').textContent = target.title ? `— ${target.title}` : '';
@@ -985,6 +1097,11 @@
         document.getElementById('linkNoteSearch').value = '';
         document.getElementById('linkNoteResults').innerHTML = '';
         refreshLinkNoteDisplay();
+        document.getElementById('linkProjectBlock').classList.toggle('d-none', target.kind !== 'tasklist');
+        if (target.kind === 'tasklist') refreshLinkProjectDisplay();
+        document.querySelectorAll('#taskLinkModal [data-rank]').forEach(btn => {
+            btn.classList.toggle('active', target.kind === 'tasklist' && Number(btn.dataset.rank) === currentTaskList.rank);
+        });
         const deadline = target.getDeadline();
         document.getElementById('linkDeadlineInput').value = deadline ? deadline.date : '';
 
@@ -1066,6 +1183,19 @@
         });
     });
     linkModalEl.addEventListener('hidden.bs.modal', () => { linkModalTarget = null; });
+
+    document.querySelectorAll('#taskLinkModal [data-rank]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!linkModalTarget || linkModalTarget.kind !== 'tasklist') return;
+            await saveTaskListField({ rank: Number(btn.dataset.rank) });
+            document.querySelectorAll('#taskLinkModal [data-rank]').forEach(b => b.classList.toggle('active', b === btn));
+        });
+    });
+    document.getElementById('linkRankClearBtn').addEventListener('click', async () => {
+        if (!linkModalTarget || linkModalTarget.kind !== 'tasklist') return;
+        await saveTaskListField({ rank: null });
+        document.querySelectorAll('#taskLinkModal [data-rank]').forEach(b => b.classList.remove('active'));
+    });
 
     document.getElementById('taskListLinkBtn').addEventListener('click', () => {
         openLinkModal({

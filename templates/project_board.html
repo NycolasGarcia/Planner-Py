@@ -1,0 +1,934 @@
+{% extends "common/base.html" %}
+
+{% block title %}Projeto - Planner App{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='easymde/easymde.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='easymde/theme.css') }}">
+<script src="{{ url_for('static', filename='js/marked.min.js') }}"></script>
+<script src="{{ url_for('static', filename='easymde/easymde.min.js') }}"></script>
+<script src="{{ url_for('static', filename='sortablejs/sortable.min.js') }}"></script>
+<style>
+    /* Header segue o MESMO padrão de Notas/Tasks (cor/ícone/vínculos/pin/
+       salvar/excluir) — nenhum botão "especial" só de Projects, pra não
+       quebrar a consistência do app. */
+
+    /* BOARD: smart-grid — colunas E o botão "+ Nova coluna" dividem a
+       largura disponível em partes IGUAIS (flex:1 1 0, sem largura fixa em
+       px nem scroll horizontal). O botão conta como "mais uma coluna" na
+       divisão: 1 coluna real = 50/50 com o botão, 2 = 1/3 cada, e assim
+       por diante até projetos.max_colunas — aí o botão some e as colunas
+       reais ocupam 100% sozinhas. */
+    #projectBoard {
+        align-items: stretch;
+    }
+    .project-column {
+        flex: 1 1 0;
+        min-width: 0;
+        max-height: 100%;
+    }
+    .project-column-header {
+        border-top: 4px solid var(--column-color, var(--app-accent));
+        border-top-left-radius: .375rem;
+        border-top-right-radius: .375rem;
+        cursor: grab;
+    }
+    .project-card-list {
+        min-height: 2.5rem; /* alvo de drop mesmo com a coluna vazia */
+    }
+
+    /* Faixa lateral do card = quadrante do Eisenhower (Card.rank — mesmo
+       campo que Task.rank, ver models/project_card.py e /ranks). PONTUAL:
+       card sem rank fica sem faixa nenhuma (transparent) — só ganha cor
+       quando tem rank de verdade. Mapa de cor (mesmas cores de
+       templates/ranks.html): 1 FAZER=danger, 2 AGENDAR=primary,
+       3 DELEGAR=warning, 4 DELETAR=secondary. */
+    .project-mini-card {
+        border: 0;
+        border-left: 4px solid var(--card-color, transparent);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+        cursor: pointer;
+    }
+    .project-mini-card:hover {
+        box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .15);
+    }
+    /* Tamanho dinâmico de propósito — cada card só ocupa a altura que o
+       próprio conteúdo (descrição/badges/progresso, todos opcionais) pede. */
+    .project-mini-card-desc {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    /* Ícones de prazo/tasklist/notas do card: extrema direita, cada um
+       seu próprio link (evento / lista) — cada badge precisa impedir a
+       propagação pro clique do card (que abre o modal de edição). */
+    .project-mini-card-footer {
+        color: var(--bs-secondary-color);
+        text-decoration: none;
+    }
+    .project-mini-card-footer:hover {
+        color: var(--app-accent);
+    }
+    /* Card com tasklist vinculada: barrinha de progresso das tasks
+       (feitas/total), na cor do rank do card (ou accent se sem rank). */
+    .project-mini-card-progress {
+        height: 4px;
+        background: var(--bs-tertiary-bg);
+    }
+    .project-mini-card-progress > div {
+        background: var(--card-color, var(--app-accent));
+    }
+    .project-new-column-btn {
+        border-style: dashed !important;
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    /* Board não ocupa 100% da altura — sobra espaço embaixo pro painel de
+       "consulta" das notas ligadas ao projeto (nota do próprio projeto +
+       notas de tasklists vinculadas a cards), reforçando a sensação de
+       "tudo conectado" além de um ícone com link solto. */
+    #projectBoardWrap {
+        flex: 0 1 45%;
+        min-height: 220px;
+    }
+    /* Divisória arrastável entre o board e o painel de notas — arrasta
+       verticalmente pra dar mais espaço pras colunas OU pro editor de
+       notas, conforme o que estiver precisando de mais tela no momento. */
+    #projectSplitHandle {
+        cursor: row-resize;
+        height: 6px;
+        background: var(--bs-border-color);
+        border: 0;
+        margin: .5rem 0;
+        border-radius: 3px;
+        flex-shrink: 0;
+    }
+    #projectSplitHandle:hover,
+    #projectSplitHandle.dragging {
+        background: var(--app-accent);
+    }
+    #projectNotesPanel {
+        flex: 1 1 auto;
+        min-height: 220px;
+    }
+    #projectNotesTabs .nav-link {
+        --bs-nav-link-color: var(--bs-secondary-color);
+        cursor: pointer;
+    }
+    /* Reaproveita o #noteEditorWrap de templates/notes.html (mesmo ID,
+       página diferente) — herda de graça o CSS de static/easymde/theme.css
+       sem duplicar regra nenhuma aqui. */
+    #noteEditorWrap {
+        border: 1px solid var(--bs-border-color);
+        border-radius: .375rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex flex-column h-100">
+
+    <!-- HEADER: mesmo padrão de Notas/Tasks — linha 1 (voltar + título),
+         linha 2 (cor, ícone, vínculos, pin, salvar, excluir). -->
+    <div class="flex-shrink-0 mb-2">
+
+        <div class="d-flex align-items-center gap-2">
+            <a href="/projects" class="btn btn-sm btn-outline-secondary flex-shrink-0" title="Voltar pros projetos">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <input type="text" class="form-control border-0 fw-bold flex-grow-1" style="font-size: 1.25rem;"
+                   placeholder="Nome do projeto" id="projectNameInput">
+        </div>
+
+        <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+            <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button" id="projectColorBtn"
+                    data-bs-toggle="modal" data-bs-target="#colorPickerModal" data-target-input="#projectColorValue">
+                <span class="rounded-circle d-inline-block" id="projectColorDot" style="width:14px;height:14px;"></span>
+            </button>
+            <input type="hidden" id="projectColorValue">
+
+            <button class="btn btn-sm btn-outline-accent flex-shrink-0" type="button" id="projectIconBtn"
+                    data-bs-toggle="modal" data-bs-target="#iconPickerModal" data-target-input="#projectIconValue" title="Escolher ícone">
+                <i class="bi bi-kanban" id="projectIconPreview"></i>
+            </button>
+            <input type="hidden" id="projectIconValue">
+
+            <button class="btn btn-sm btn-outline-info flex-shrink-0" type="button" id="projectLinkBtn" title="Vínculos (prazo, nota)">
+                <i class="bi bi-bezier2"></i>
+            </button>
+
+            <button class="btn btn-sm btn-outline-success flex-shrink-0" type="button" id="projectPinBtn" title="Fixar projeto">
+                <i class="bi bi-pin"></i>
+            </button>
+
+            <button class="btn btn-sm btn-outline-primary flex-shrink-0" type="button" id="projectSaveBtn" title="Salvar projeto">
+                <i class="bi bi-floppy"></i>
+            </button>
+
+            <button class="btn btn-sm btn-outline-danger flex-shrink-0 ms-auto" type="button" id="projectDeleteBtn" title="Excluir projeto">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    </div>
+
+    <hr class="mt-0">
+
+    <!-- Modal: Vínculos do projeto (prazo + nota) — mesmo padrão do
+         #taskLinkModal de templates/tasks.html, versão reduzida (sem
+         recorrência por ora). -->
+    <div class="modal fade" id="projectLinkModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Vínculos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body d-flex flex-column gap-3">
+                    <div>
+                        <label class="form-label small text-muted mb-1">Prazo</label>
+                        <input type="date" class="form-control form-control-sm" id="projectDeadlineInput">
+                    </div>
+                    <div>
+                        <label class="form-label small text-muted mb-1">Nota vinculada</label>
+                        <div class="d-flex align-items-center gap-2 mb-1 d-none" id="projectNoteCurrentWrap">
+                            <span class="badge bg-secondary flex-grow-1 text-truncate text-start fw-normal" id="projectNoteCurrentLabel"></span>
+                            <button class="btn btn-sm btn-outline-danger flex-shrink-0" type="button" id="projectNoteRemoveBtn" title="Remover vínculo">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <input type="text" class="form-control form-control-sm" id="projectNoteSearch" placeholder="Buscar nota pra vincular...">
+                        <div class="list-group list-group-flush mt-1" id="projectNoteResults" style="max-height: 160px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: edição de Card. Nome/cor/ícone/nota/prazo só são editáveis
+         quando o card NÃO está linkado a uma tasklist — linkado, esses
+         campos viram somente-leitura (valor ao vivo da tasklist), sem
+         meio-termo (ver models/project_card.py). Descrição e rank
+         (Eisenhower) são sempre do card. -->
+    <div class="modal fade" id="cardEditModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cartão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body d-flex flex-column gap-3">
+
+                    <div>
+                        <label class="form-label small text-muted mb-1">Nome</label>
+                        <input type="text" class="form-control form-control-sm" id="cardNameInput">
+                    </div>
+
+                    <!-- Sem cor/ícone de card (removidos — sem uso visual
+                         em lugar nenhum do board; faixa lateral do
+                         mini-card é sempre pelo rank). Levantado bem pro
+                         topo (era o campo mais escondido, mas é o mais
+                         usado quando o card tem checklist embutido). -->
+                    <div>
+                        <label class="form-label small text-muted mb-1">Tasklist vinculada</label>
+                        <div class="d-flex align-items-center gap-2 mb-1 d-none" id="cardTasklistLinkedWrap">
+                            <span class="badge bg-secondary flex-grow-1 text-truncate text-start fw-normal" id="cardTasklistLinkedLabel"></span>
+                            <a class="btn btn-sm btn-outline-secondary flex-shrink-0" id="cardOpenTasklistBtn" title="Abrir lista">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-danger flex-shrink-0" type="button" id="cardTasklistUnlinkBtn" title="Desvincular">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div id="cardTasklistPickWrap">
+                            <input type="text" class="form-control form-control-sm" id="cardTasklistSearch" placeholder="Buscar lista existente pra vincular...">
+                            <div class="list-group list-group-flush mt-1" id="cardTasklistResults" style="max-height: 120px; overflow-y: auto;"></div>
+                            <button class="btn btn-sm btn-outline-secondary w-100 mt-1" type="button" id="cardCreateTasklistBtn">
+                                <i class="bi bi-plus-lg"></i> Criar nova lista vinculada
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Acesso rápido às tasks da lista vinculada — marcar
+                         feito/não-feito sem sair da página, mesma ideia do
+                         painel "Notas relacionadas" embutido no board. -->
+                    <div id="cardTasklistTasksBlock" class="d-none">
+                        <label class="form-label small text-muted mb-1">Tasks</label>
+                        <div class="d-flex flex-column gap-1" id="cardTasklistTasksList" style="max-height: 220px; overflow-y: auto;"></div>
+                    </div>
+
+                    <div>
+                        <label class="form-label small text-muted mb-1 d-flex justify-content-between">
+                            <span>Descrição</span>
+                            <span class="text-muted" id="cardDescriptionCounter">0/200</span>
+                        </label>
+                        <textarea class="form-control form-control-sm" id="cardDescriptionInput" rows="3" maxlength="200"></textarea>
+                    </div>
+
+                    <!-- Prioridade só existe quando o card é autônomo — linkado,
+                         quem decide é a TaskList (ver #taskLinkModal em
+                         templates/tasks.html), então esse bloco some por
+                         completo em vez de aparecer travado/desabilitado. -->
+                    <div id="cardRankBlock">
+                        <label class="form-label small text-muted mb-1">Prioridade (Eisenhower)</label>
+                        <div class="d-grid gap-1" style="grid-template-columns: repeat(2, 1fr);">
+                            <button type="button" class="btn btn-sm btn-outline-danger" data-rank="1"><i class="bi bi-check-circle-fill"></i> Fazer</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-rank="2"><i class="bi bi-calendar-check-fill"></i> Agendar</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" data-rank="3"><i class="bi bi-person-plus-fill"></i> Delegar</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-rank="4"><i class="bi bi-trash-fill"></i> Deletar</button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-link text-muted p-0 mt-1" id="cardRankClearBtn">Sem prioridade</button>
+                    </div>
+
+                    <!-- Campos próprios (só quando não linkado) -->
+                    <div id="cardOwnLinksBlock">
+                        <label class="form-label small text-muted mb-1">Prazo</label>
+                        <input type="date" class="form-control form-control-sm" id="cardDeadlineInput">
+                        <label class="form-label small text-muted mb-1 mt-2">Nota vinculada</label>
+                        <div class="d-flex align-items-center gap-2 mb-1 d-none" id="cardNoteCurrentWrap">
+                            <span class="badge bg-secondary flex-grow-1 text-truncate text-start fw-normal" id="cardNoteCurrentLabel"></span>
+                            <button class="btn btn-sm btn-outline-danger flex-shrink-0" type="button" id="cardNoteRemoveBtn" title="Remover vínculo">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <input type="text" class="form-control form-control-sm" id="cardNoteSearch" placeholder="Buscar nota pra vincular...">
+                        <div class="list-group list-group-flush mt-1" id="cardNoteResults" style="max-height: 120px; overflow-y: auto;"></div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-sm btn-outline-danger me-auto" type="button" id="cardDeleteBtn">
+                        <i class="bi bi-trash"></i> Excluir cartão
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden input global pro picker de cor de COLUNA — qual coluna está
+         sendo editada é rastreado em `editingColumnId` (JS), setado no
+         onclick do próprio botão que abre o picker. Sem ícone de coluna
+         (removido — não tinha uso visual em lugar nenhum do board). -->
+    <input type="hidden" id="colColorValue">
+
+    <!-- BOARD: altura limitada (ver #projectBoardWrap no CSS) — sobra
+         espaço pro painel de notas relacionadas logo abaixo. Smart-grid:
+         colunas + botão "Nova coluna" dividem a largura em partes iguais
+         (ver columnHtml()/renderBoard()), sem scroll horizontal. -->
+    <div id="projectBoardWrap" class="d-flex flex-column">
+        <div class="d-flex gap-3 flex-grow-1 pb-2" id="projectBoard" style="min-height: 0;"></div>
+    </div>
+
+    <hr id="projectSplitHandle" title="Arraste pra redimensionar">
+
+    <!-- NOTAS RELACIONADAS: nota do projeto + notas das tasklists
+         vinculadas a cards — modo preview por padrão, com opção de
+         editar de verdade (mesma lib do módulo Notas). -->
+    <div id="projectNotesPanel" class="d-flex flex-column d-none">
+
+        <div class="d-flex align-items-center justify-content-between mb-2 flex-shrink-0 flex-wrap gap-2">
+            <h2 class="fw-semibold mb-0 d-flex align-items-center gap-2" style="font-size: 1.1rem;">
+                <i class="bi bi-journals"></i> Notas relacionadas
+            </h2>
+            <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button" id="projectNotesEditToggle">
+                <i class="bi bi-pencil"></i> Editar
+            </button>
+        </div>
+
+        <ul class="nav nav-pills gap-1 mb-2 flex-shrink-0 flex-wrap" id="projectNotesTabs"></ul>
+
+        <div id="noteEditorWrap" class="flex-grow-1">
+            <textarea id="projectNotesContent"></textarea>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const PROJECT_ID = {{ project_id }};
+    const SETTINGS = window.__settings || {};
+    const SHOW_PROGRESS = SETTINGS['projetos.exibir_progresso'] !== 'false';
+    const MAX_COLUNAS = Number(SETTINGS['projetos.max_colunas'] || 6);
+    const RANK_COLORS = { 1: 'danger', 2: 'primary', 3: 'warning', 4: 'secondary' };
+
+    function escHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        }[c]));
+    }
+    function colorOrAccent(c) { return c || 'accent'; }
+    function colorVar(c) { return c === 'accent' ? 'var(--app-accent)' : `var(--bs-${c})`; }
+    function formatEventDate(isoDate) {
+        const [y, m, d] = isoDate.split('-').map(Number);
+        return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+    }
+
+    let currentProject = null;
+    let currentCard = null;
+    let editingColumnId = null;
+    let allNotesCache = null;
+    let allTasklistsCache = null;
+    let activeNotesPanelNoteId = null;
+
+    async function loadNotesCache(force) {
+        if (!allNotesCache || force) allNotesCache = await fetch('/api/notes').then(r => r.json());
+        return allNotesCache;
+    }
+    async function loadTasklistsCache(force) {
+        if (!allTasklistsCache || force) allTasklistsCache = await fetch('/api/tasklists').then(r => r.json());
+        return allTasklistsCache;
+    }
+
+    // ── Load / render geral ──────────────────────────────────────────────
+    async function loadProject() {
+        currentProject = await fetch(`/api/projects/${PROJECT_ID}`).then(r => r.json());
+        renderHeader();
+        renderBoard();
+        renderNotesPanel();
+    }
+
+    function findCard(cardId) {
+        for (const col of currentProject.columns) {
+            const found = col.cards.find(c => c.id === cardId);
+            if (found) return found;
+        }
+        return null;
+    }
+
+    // ── Header ────────────────────────────────────────────────────────────
+    function renderHeader() {
+        document.getElementById('projectNameInput').value = currentProject.name;
+        document.getElementById('projectColorValue').value = currentProject.color || '';
+        document.getElementById('projectColorDot').style.background = colorVar(colorOrAccent(currentProject.color));
+        document.getElementById('projectIconValue').value = currentProject.icon || '';
+        document.getElementById('projectIconPreview').className = currentProject.icon || 'bi bi-kanban';
+        const pinBtn = document.getElementById('projectPinBtn');
+        pinBtn.classList.toggle('btn-success', currentProject.is_pinned);
+        pinBtn.classList.toggle('btn-outline-success', !currentProject.is_pinned);
+    }
+
+    async function saveProjectField(patch) {
+        currentProject = await fetch(`/api/projects/${PROJECT_ID}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+        }).then(r => r.json());
+        renderHeader();
+    }
+
+    document.getElementById('projectNameInput').addEventListener('change', function () { saveProjectField({ name: this.value }); });
+    document.getElementById('projectColorValue').addEventListener('change', function () { saveProjectField({ color: this.value || null }); });
+    document.getElementById('projectIconValue').addEventListener('change', function () { saveProjectField({ icon: this.value || null }); });
+    document.getElementById('projectPinBtn').addEventListener('click', () => saveProjectField({ is_pinned: !currentProject.is_pinned }));
+    document.getElementById('projectSaveBtn').addEventListener('click', () => {}); // cosmético — tudo já autosalva
+    document.getElementById('projectDeleteBtn').addEventListener('click', () => {
+        const msg = `Mover "${currentProject.name}" pra lixeira? Colunas e cards continuam preservados até a exclusão definitiva `
+            + `(${currentProject.column_count} coluna(s), ${currentProject.card_count} card(s)).`;
+        if (!confirm(msg)) return;
+        fetch(`/api/projects/${PROJECT_ID}`, { method: 'DELETE' }).then(() => { window.location.href = '/projects'; });
+    });
+
+    // ── Vínculos do projeto (prazo + nota) ──────────────────────────────
+    async function refreshProjectNoteDisplay() {
+        const wrap = document.getElementById('projectNoteCurrentWrap');
+        if (currentProject.notes_id) {
+            const notes = await loadNotesCache();
+            const note = notes.find(n => n.id === currentProject.notes_id);
+            document.getElementById('projectNoteCurrentLabel').textContent = note ? note.title : ('Nota #' + currentProject.notes_id);
+            wrap.classList.remove('d-none');
+        } else {
+            wrap.classList.add('d-none');
+        }
+    }
+
+    document.getElementById('projectLinkBtn').addEventListener('click', async () => {
+        document.getElementById('projectDeadlineInput').value = currentProject.deadline ? currentProject.deadline.date : '';
+        document.getElementById('projectNoteSearch').value = '';
+        document.getElementById('projectNoteResults').innerHTML = '';
+        await refreshProjectNoteDisplay();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('projectLinkModal')).show();
+    });
+
+    document.getElementById('projectDeadlineInput').addEventListener('change', function () {
+        const v = this.value;
+        saveProjectField({ deadline: v ? { date: v, recurrence_enabled: false } : null });
+    });
+
+    document.getElementById('projectNoteSearch').addEventListener('input', async function () {
+        const q = this.value.trim().toLowerCase();
+        const input = this;
+        const results = document.getElementById('projectNoteResults');
+        if (!q) { results.innerHTML = ''; return; }
+        const notes = await loadNotesCache();
+        const matches = notes.filter(n => n.title.toLowerCase().includes(q)).slice(0, 20);
+        results.innerHTML = matches.map(n => `<button type="button" class="list-group-item list-group-item-action text-truncate" data-note-id="${n.id}">${escHtml(n.title)}</button>`).join('');
+        results.querySelectorAll('[data-note-id]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                await saveProjectField({ notes_id: parseInt(btn.dataset.noteId, 10) });
+                input.value = '';
+                results.innerHTML = '';
+                refreshProjectNoteDisplay();
+            });
+        });
+    });
+
+    document.getElementById('projectNoteRemoveBtn').addEventListener('click', async () => {
+        await saveProjectField({ notes_id: null });
+        refreshProjectNoteDisplay();
+    });
+
+    // ── Coluna: cor via picker global (1 hidden input compartilhado,
+    //    "qual coluna" fica em editingColumnId) ─────────────────────────
+    document.getElementById('colColorValue').addEventListener('change', function () {
+        if (editingColumnId == null) return;
+        fetch(`/api/columns/${editingColumnId}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ color: this.value || null }),
+        }).then(loadProject);
+    });
+
+    window.setEditingColumn = function (id) { editingColumnId = id; };
+
+    window.saveColumnName = function (input) {
+        const name = input.value.trim();
+        if (!name) { input.value = input.defaultValue; return; }
+        fetch(`/api/columns/${input.dataset.columnId}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+        }).then(loadProject);
+    };
+
+    window.deleteColumn = function (id) {
+        if (!confirm('Excluir esta coluna? Os cards dentro dela também são apagados. Tasklists vinculadas a esses cards NÃO são apagadas, só perdem o vínculo.')) return;
+        fetch(`/api/columns/${id}`, { method: 'DELETE' }).then(loadProject);
+    };
+
+    window.addColumn = async function () {
+        const resp = await fetch(`/api/projects/${PROJECT_ID}/columns`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Nova coluna' }),
+        });
+        if (!resp.ok) {
+            alert('Limite de colunas atingido (ver Configurações > Projetos).');
+            return;
+        }
+        loadProject();
+    };
+
+    window.addCardFromInput = function (input) {
+        const name = input.value.trim();
+        if (!name) return;
+        input.value = '';
+        fetch(`/api/columns/${input.dataset.columnId}/cards`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+        }).then(loadProject);
+    };
+
+    // ── Board / colunas / cards ──────────────────────────────────────────
+    function cardHtml(card) {
+        const rankColor = card.rank ? RANK_COLORS[card.rank] : null;
+        const style = rankColor ? `--card-color: var(--bs-${rankColor});` : '';
+
+        const badges = [];
+        if (card.notes_id) {
+            badges.push(`<a href="/notes?open=${card.notes_id}" class="project-mini-card-footer d-flex align-items-center gap-1" onclick="event.stopPropagation()" title="Nota vinculada"><i class="bi bi-journal-text"></i></a>`);
+        }
+        if (card.deadline) {
+            badges.push(`<a href="/events?open=${card.deadline.event_id}" class="project-mini-card-footer d-flex align-items-center gap-1" onclick="event.stopPropagation()" title="Prazo"><i class="bi bi-calendar"></i> ${formatEventDate(card.deadline.date)}</a>`);
+        }
+        if (card.tasklist_id) {
+            badges.push(`<a href="/tasks?open_list=${card.tasklist_id}" class="project-mini-card-footer d-flex align-items-center gap-1" onclick="event.stopPropagation()" title="Tasklist vinculada"><i class="bi bi-card-checklist"></i> ${card.task_progress.done}/${card.task_progress.total}</a>`);
+        }
+
+        // Aparece sempre que o card tem tasklist vinculada, mesmo com 0
+        // tasks ainda (0% preenchido) — é o indicador visual de "isso tem
+        // checklist", não só um resumo de progresso.
+        const progressPct = (card.task_progress && card.task_progress.total > 0)
+            ? Math.round(100 * card.task_progress.done / card.task_progress.total) : 0;
+        const progressHtml = (SHOW_PROGRESS && card.task_progress) ? `
+            <div class="rounded-pill overflow-hidden project-mini-card-progress">
+                <div style="width: ${progressPct}%; height: 100%;"></div>
+            </div>` : '';
+
+        const descHtml = card.description ? `<p class="text-muted small mb-0 project-mini-card-desc">${escHtml(card.description)}</p>` : '';
+
+        // Tamanho dinâmico de propósito: cada linha só existe se tiver
+        // conteúdo (sem slots vazios reservados).
+        return `
+            <div class="card project-mini-card" style="${style}" data-card-id="${card.id}" onclick="openCardModal(${card.id})">
+                <div class="card-body p-2 d-flex flex-column gap-1">
+                    <span class="fw-semibold small">${escHtml(card.name)}</span>
+                    ${descHtml}
+                    ${badges.length ? `<div class="d-flex gap-2 justify-content-end small">${badges.join('')}</div>` : ''}
+                    ${progressHtml}
+                </div>
+            </div>`;
+    }
+
+    function columnHtml(col) {
+        return `
+            <div class="project-column d-flex flex-column bg-body-secondary rounded" data-column-id="${col.id}"
+                 style="--column-color: ${colorVar(colorOrAccent(col.color))};">
+                <div class="d-flex align-items-center gap-2 p-2 project-column-header">
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-semibold flex-grow-1 p-0"
+                           value="${escHtml(col.name)}" data-column-id="${col.id}" onchange="saveColumnName(this)" onclick="event.stopPropagation()">
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis">${col.card_count}</span>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-link text-muted p-0 border-0" type="button" data-bs-toggle="dropdown" title="Opções da coluna">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#colorPickerModal" data-target-input="#colColorValue" onclick="setEditingColumn(${col.id})"><i class="bi bi-palette"></i> Cor</button></li>
+                            <li><button class="dropdown-item text-danger" type="button" onclick="deleteColumn(${col.id})"><i class="bi bi-trash"></i> Excluir coluna</button></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="d-flex flex-column gap-2 p-2 overflow-y-auto flex-grow-1 project-card-list" data-column-id="${col.id}">
+                    ${col.cards.map(cardHtml).join('')}
+                </div>
+                <div class="p-2 pt-0 d-flex gap-1">
+                    <input type="text" class="form-control form-control-sm" data-column-id="${col.id}" placeholder="Novo cartão..."
+                           onkeydown="if(event.key==='Enter') addCardFromInput(this)">
+                    <button class="btn btn-sm btn-outline-secondary flex-shrink-0" type="button"
+                            onclick="addCardFromInput(this.previousElementSibling)">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+            </div>`;
+    }
+
+    let cardSortables = [];
+    let columnSortable = null;
+
+    function initSortables() {
+        cardSortables.forEach(s => s.destroy());
+        cardSortables = [];
+        document.querySelectorAll('.project-card-list').forEach(el => {
+            cardSortables.push(new Sortable(el, { group: 'project-cards', animation: 150, onEnd: onCardDragEnd }));
+        });
+
+        if (columnSortable) columnSortable.destroy();
+        columnSortable = new Sortable(document.getElementById('projectBoard'), {
+            animation: 150,
+            handle: '.project-column-header',
+            onEnd: async () => {
+                const order = Array.from(document.querySelectorAll('.project-column')).map(el => parseInt(el.dataset.columnId, 10));
+                await fetch(`/api/projects/${PROJECT_ID}/columns/reorder`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }),
+                });
+                loadProject();
+            },
+        });
+    }
+
+    async function onCardDragEnd(evt) {
+        const fromColId = parseInt(evt.from.dataset.columnId, 10);
+        const toColId = parseInt(evt.to.dataset.columnId, 10);
+        const cardId = parseInt(evt.item.dataset.cardId, 10);
+
+        if (fromColId !== toColId) {
+            await fetch(`/api/cards/${cardId}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ column_id: toColId }),
+            });
+        }
+        const toOrder = Array.from(evt.to.children).map(el => parseInt(el.dataset.cardId, 10));
+        await fetch(`/api/columns/${toColId}/cards/reorder`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: toOrder }),
+        });
+        if (fromColId !== toColId) {
+            const fromOrder = Array.from(evt.from.children).map(el => parseInt(el.dataset.cardId, 10));
+            await fetch(`/api/columns/${fromColId}/cards/reorder`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: fromOrder }),
+            });
+        }
+        loadProject();
+    }
+
+    function renderBoard() {
+        const showNewColBtn = currentProject.columns.length < MAX_COLUNAS;
+        document.getElementById('projectBoard').innerHTML = currentProject.columns.map(columnHtml).join('')
+            + (showNewColBtn ? `
+                <button class="btn btn-outline-secondary project-new-column-btn align-self-start" type="button" onclick="addColumn()">
+                    <i class="bi bi-plus-lg"></i> Nova coluna
+                </button>` : '');
+        initSortables();
+    }
+
+    // ── Modal de edição de Card ──────────────────────────────────────────
+    window.openCardModal = function (cardId) {
+        const card = findCard(cardId);
+        if (!card) return;
+        currentCard = card;
+        populateCardModal(card);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('cardEditModal')).show();
+    };
+
+    function populateCardModal(card) {
+        const linked = !!card.tasklist_id;
+
+        const nameInput = document.getElementById('cardNameInput');
+        nameInput.value = card.name;
+        nameInput.disabled = linked;
+
+        document.getElementById('cardDescriptionInput').value = card.description || '';
+        document.getElementById('cardDescriptionCounter').textContent = (card.description || '').length + '/200';
+
+        // Rank também é decidido pela tasklist quando linkado (não pelo
+        // card) — mesma regra de nome/nota/prazo (ver models/task_list.py).
+        // Linkado, o bloco inteiro some (quem edita prioridade é a lista,
+        // via #taskLinkModal em templates/tasks.html).
+        document.getElementById('cardRankBlock').classList.toggle('d-none', linked);
+        document.querySelectorAll('#cardEditModal [data-rank]').forEach(btn => {
+            btn.classList.toggle('active', Number(btn.dataset.rank) === card.rank);
+        });
+
+        document.getElementById('cardOwnLinksBlock').classList.toggle('d-none', linked);
+        if (!linked) {
+            document.getElementById('cardDeadlineInput').value = card.deadline ? card.deadline.date : '';
+            document.getElementById('cardNoteSearch').value = '';
+            document.getElementById('cardNoteResults').innerHTML = '';
+            if (card.notes_id) {
+                loadNotesCache().then(notes => {
+                    const note = notes.find(n => n.id === card.notes_id);
+                    document.getElementById('cardNoteCurrentLabel').textContent = note ? note.title : ('Nota #' + card.notes_id);
+                    document.getElementById('cardNoteCurrentWrap').classList.remove('d-none');
+                });
+            } else {
+                document.getElementById('cardNoteCurrentWrap').classList.add('d-none');
+            }
+        }
+
+        document.getElementById('cardTasklistLinkedWrap').classList.toggle('d-none', !linked);
+        document.getElementById('cardTasklistPickWrap').classList.toggle('d-none', linked);
+        document.getElementById('cardTasklistTasksBlock').classList.toggle('d-none', !linked);
+        if (linked) {
+            document.getElementById('cardTasklistLinkedLabel').textContent = card.name;
+            document.getElementById('cardOpenTasklistBtn').href = '/tasks?open_list=' + card.tasklist_id;
+            loadCardTasklistTasks(card.tasklist_id);
+        } else {
+            document.getElementById('cardTasklistSearch').value = '';
+            document.getElementById('cardTasklistResults').innerHTML = '';
+        }
+    }
+
+    // Acesso rápido às tasks da lista vinculada — marcar feito/não-feito
+    // sem sair do card (mesma ideia do painel de notas embutido no board).
+    function cardTaskRowHtml(task) {
+        return `
+            <label class="d-flex align-items-center gap-2 small mb-0">
+                <input type="checkbox" class="form-check-input flex-shrink-0" ${task.is_done ? 'checked' : ''} data-task-id="${task.id}">
+                <span class="${task.is_done ? 'text-decoration-line-through text-muted' : ''}">${escHtml(task.name)}</span>
+            </label>`;
+    }
+
+    async function loadCardTasklistTasks(tasklistId) {
+        const list = document.getElementById('cardTasklistTasksList');
+        const tl = await fetch(`/api/tasklists/${tasklistId}`).then(r => r.json());
+        list.innerHTML = tl.tasks.length
+            ? tl.tasks.map(cardTaskRowHtml).join('')
+            : '<p class="text-muted small mb-0">Sem tasks ainda.</p>';
+    }
+
+    document.getElementById('cardTasklistTasksList').addEventListener('change', async (ev) => {
+        const cb = ev.target.closest('[data-task-id]');
+        if (!cb || !currentCard || !currentCard.tasklist_id) return;
+        await fetch(`/api/tasks/${cb.dataset.taskId}/toggle`, { method: 'POST' });
+        loadCardTasklistTasks(currentCard.tasklist_id);
+        loadProject(); // reflete o progresso atualizado no mini-card do board
+    });
+
+    async function saveCardField(patch) {
+        const updated = await fetch(`/api/cards/${currentCard.id}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+        }).then(r => r.json());
+        currentCard = updated;
+        populateCardModal(updated);
+        loadProject();
+    }
+
+    document.getElementById('cardNameInput').addEventListener('change', function () { saveCardField({ name: this.value }); });
+    document.getElementById('cardDescriptionInput').addEventListener('input', function () {
+        document.getElementById('cardDescriptionCounter').textContent = this.value.length + '/200';
+    });
+    document.getElementById('cardDescriptionInput').addEventListener('change', function () { saveCardField({ description: this.value }); });
+    document.getElementById('cardDeadlineInput').addEventListener('change', function () {
+        const v = this.value;
+        saveCardField({ deadline: v ? { date: v, recurrence_enabled: false } : null });
+    });
+    document.querySelectorAll('#cardEditModal [data-rank]').forEach(btn => {
+        btn.addEventListener('click', () => saveCardField({ rank: Number(btn.dataset.rank) }));
+    });
+    document.getElementById('cardRankClearBtn').addEventListener('click', () => saveCardField({ rank: null }));
+    document.getElementById('cardNoteRemoveBtn').addEventListener('click', () => saveCardField({ notes_id: null }));
+
+    document.getElementById('cardNoteSearch').addEventListener('input', async function () {
+        const q = this.value.trim().toLowerCase();
+        const input = this;
+        const results = document.getElementById('cardNoteResults');
+        if (!q) { results.innerHTML = ''; return; }
+        const notes = await loadNotesCache();
+        const matches = notes.filter(n => n.title.toLowerCase().includes(q)).slice(0, 20);
+        results.innerHTML = matches.map(n => `<button type="button" class="list-group-item list-group-item-action text-truncate" data-note-id="${n.id}">${escHtml(n.title)}</button>`).join('');
+        results.querySelectorAll('[data-note-id]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                saveCardField({ notes_id: parseInt(btn.dataset.noteId, 10) });
+                input.value = '';
+                results.innerHTML = '';
+            });
+        });
+    });
+
+    document.getElementById('cardTasklistSearch').addEventListener('input', async function () {
+        const q = this.value.trim().toLowerCase();
+        const results = document.getElementById('cardTasklistResults');
+        if (!q) { results.innerHTML = ''; return; }
+        const tls = await loadTasklistsCache(true);
+        // Exclui tasklists já linkadas a OUTRO card (unique=True no banco) —
+        // deixa passar a que já está linkada a este mesmo card (não deveria
+        // acontecer aqui já que essa busca só aparece quando NÃO linkado,
+        // mas defensivo não custa nada).
+        const matches = tls.filter(tl => (!tl.card_id || tl.card_id === currentCard.id) && tl.name.toLowerCase().includes(q)).slice(0, 20);
+        results.innerHTML = matches.map(tl => `<button type="button" class="list-group-item list-group-item-action text-truncate" data-tl-id="${tl.id}">${escHtml(tl.name)}</button>`).join('');
+        results.querySelectorAll('[data-tl-id]').forEach(btn => {
+            btn.addEventListener('click', () => saveCardField({ tasklist_id: parseInt(btn.dataset.tlId, 10) }));
+        });
+    });
+
+    document.getElementById('cardCreateTasklistBtn').addEventListener('click', async () => {
+        const tl = await fetch('/api/tasklists', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: currentCard.name }),
+        }).then(r => r.json());
+        saveCardField({ tasklist_id: tl.id });
+    });
+
+    document.getElementById('cardTasklistUnlinkBtn').addEventListener('click', () => saveCardField({ tasklist_id: null }));
+
+    document.getElementById('cardDeleteBtn').addEventListener('click', () => {
+        const msg = currentCard.tasklist_id
+            ? 'Excluir este cartão? A lista de tasks vinculada NÃO é apagada, só perde o vínculo.'
+            : 'Excluir este cartão?';
+        if (!confirm(msg)) return;
+        fetch(`/api/cards/${currentCard.id}`, { method: 'DELETE' }).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('cardEditModal'))?.hide();
+            loadProject();
+        });
+    });
+
+    // ── Painel de notas relacionadas (EasyMDE, mesma lib de Notas) ──────
+    const projectNotesMDE = new EasyMDE({
+        element: document.getElementById('projectNotesContent'),
+        autoDownloadFontAwesome: false,
+        spellChecker: false,
+        status: false,
+        toolbar: [
+            { name: 'bold', action: EasyMDE.toggleBold, className: 'bi bi-type-bold', title: 'Negrito' },
+            { name: 'italic', action: EasyMDE.toggleItalic, className: 'bi bi-type-italic', title: 'Itálico' },
+            '|',
+            { name: 'unordered-list', action: EasyMDE.toggleUnorderedList, className: 'bi bi-list-ul', title: 'Lista' },
+            { name: 'quote', action: EasyMDE.toggleBlockquote, className: 'bi bi-blockquote-left', title: 'Citação' },
+        ],
+        previewRender(plainText, previewEl) {
+            previewEl.innerHTML = marked.parse(plainText || '');
+            return null;
+        },
+    });
+
+    async function persistActiveNote() {
+        if (activeNotesPanelNoteId == null) return;
+        await fetch(`/api/notes/${activeNotesPanelNoteId}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: projectNotesMDE.value() }),
+        });
+        if (allNotesCache) {
+            const n = allNotesCache.find(n => n.id === activeNotesPanelNoteId);
+            if (n) n.text = projectNotesMDE.value();
+        }
+    }
+
+    async function renderNotesPanel() {
+        const panel = document.getElementById('projectNotesPanel');
+        const noteIds = currentProject.note_ids || [];
+        if (!noteIds.length) {
+            panel.classList.add('d-none');
+            activeNotesPanelNoteId = null;
+            return;
+        }
+        panel.classList.remove('d-none');
+        const notes = await loadNotesCache(true);
+        const related = noteIds.map(id => notes.find(n => n.id === id)).filter(Boolean);
+        const tabsEl = document.getElementById('projectNotesTabs');
+        tabsEl.innerHTML = related.map((n, i) => `
+            <li class="nav-item">
+                <button type="button" class="nav-link${i === 0 ? ' active' : ''}" data-note-id="${n.id}">
+                    <i class="bi bi-file-text"></i> ${escHtml(n.title)}
+                </button>
+            </li>`).join('');
+        tabsEl.querySelectorAll('.nav-link').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (!projectNotesMDE.isPreviewActive()) await persistActiveNote();
+                tabsEl.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeNotesPanelNoteId = parseInt(btn.dataset.noteId, 10);
+                projectNotesMDE.value(related.find(n => n.id === activeNotesPanelNoteId)?.text || '');
+                if (!projectNotesMDE.isPreviewActive()) EasyMDE.togglePreview(projectNotesMDE);
+            });
+        });
+        if (related.length) {
+            activeNotesPanelNoteId = related[0].id;
+            projectNotesMDE.value(related[0].text || '');
+            if (!projectNotesMDE.isPreviewActive()) EasyMDE.togglePreview(projectNotesMDE);
+        }
+    }
+
+    document.getElementById('projectNotesEditToggle').addEventListener('click', async function () {
+        const wasPreview = projectNotesMDE.isPreviewActive();
+        if (wasPreview) {
+            EasyMDE.togglePreview(projectNotesMDE);
+            this.innerHTML = '<i class="bi bi-eye"></i> Visualizar';
+        } else {
+            await persistActiveNote();
+            EasyMDE.togglePreview(projectNotesMDE);
+            this.innerHTML = '<i class="bi bi-pencil"></i> Editar';
+        }
+    });
+    EasyMDE.togglePreview(projectNotesMDE); // consulta = preview por padrão
+
+    // ── Divisória arrastável entre o board e o painel de notas ──────────
+    // Preferência de tela (não de conteúdo) — persistida em localStorage
+    // igual outras preferências de layout do app, não por projeto.
+    (function initBoardSplitDrag() {
+        const handle = document.getElementById('projectSplitHandle');
+        const boardWrap = document.getElementById('projectBoardWrap');
+        const SPLIT_KEY = 'projectBoardSplitPx';
+        try {
+            const saved = localStorage.getItem(SPLIT_KEY);
+            if (saved) boardWrap.style.flex = `0 0 ${saved}px`;
+        } catch (e) { /* localStorage indisponível — segue com o default 45% */ }
+
+        handle.addEventListener('mousedown', (ev) => {
+            ev.preventDefault();
+            const startY = ev.clientY;
+            const startHeight = boardWrap.getBoundingClientRect().height;
+            handle.classList.add('dragging');
+            function onMove(moveEv) {
+                const newHeight = Math.max(150, startHeight + (moveEv.clientY - startY));
+                boardWrap.style.flex = `0 0 ${newHeight}px`;
+            }
+            function onUp() {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                handle.classList.remove('dragging');
+                try { localStorage.setItem(SPLIT_KEY, Math.round(boardWrap.getBoundingClientRect().height)); } catch (e) { /* ignora */ }
+            }
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    })();
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    loadProject();
+})();
+</script>
+{% endblock %}

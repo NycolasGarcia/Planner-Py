@@ -136,6 +136,26 @@ def _migrate_tasks_drop_own_visuals(conn):
             conn.execute(text(f"ALTER TABLE tasks DROP COLUMN {col}"))
 
 
+def _migrate_columns_drop_width(conn):
+    # Largura de coluna virou smart-grid (flex igual entre colunas + botão
+    # "Nova coluna", sem px fixo nem arrastar — ver templates/project_board.html)
+    # — a coluna "width" (adicionada numa rodada anterior, depois desfeita)
+    # não participa de FK, DROP COLUMN direto funciona.
+    cols = {c[1] for c in conn.execute(text("PRAGMA table_info(project_columns)")).fetchall()}
+    if "width" in cols:
+        conn.execute(text("ALTER TABLE project_columns DROP COLUMN width"))
+
+
+def _migrate_cards_drop_own_visuals(conn):
+    # Card deixou de ter cor/ícone próprios — a faixa lateral do mini-card
+    # vem do rank (ver templates/project_board.html). Nenhuma das 2 colunas
+    # participa de FK, então DROP COLUMN direto funciona.
+    cols = {c[1] for c in conn.execute(text("PRAGMA table_info(project_cards)")).fetchall()}
+    for col in ("color", "icon"):
+        if col in cols:
+            conn.execute(text(f"ALTER TABLE project_cards DROP COLUMN {col}"))
+
+
 def _migrate_tasklists_add_order_and_updated_at(conn):
     # order: reordenar por arrastar na sidebar (mesmo padrão de Task.order,
     # que já existe). updated_at: sort "Modificação", igual Notas. Nenhuma
@@ -207,8 +227,18 @@ def _run_migrations():
         _migrate_tasklists_add_order_and_updated_at(conn)
         _add_column_if_missing(conn, "task_lists", "deleted_at",
                                 "deleted_at DATETIME")
+        _add_column_if_missing(conn, "task_lists", "rank",
+                                "rank INTEGER")
         _add_column_if_missing(conn, "projects", "event_id",
                                 "event_id INTEGER REFERENCES events(id)")
+        _add_column_if_missing(conn, "project_cards", "event_id",
+                                "event_id INTEGER REFERENCES events(id)")
+        _add_column_if_missing(conn, "projects", "is_pinned",
+                                "is_pinned BOOLEAN")
+        _add_column_if_missing(conn, "projects", "deleted_at",
+                                "deleted_at DATETIME")
+        _migrate_columns_drop_width(conn)
+        _migrate_cards_drop_own_visuals(conn)
         _migrate_tasks_drop_links(conn)
     # Recria as tabelas dropadas/renomeadas acima com o schema atual do
     # model (create_all só cria tabelas que não existem, não mexe nas outras).

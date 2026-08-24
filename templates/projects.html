@@ -1,13 +1,234 @@
 {% extends "common/base.html" %}
 
-{% block title %}Página Inicial - Planner App{% endblock %}
+{% block title %}Projetos - Planner App{% endblock %}
+
+{% block head %}
+<style>
+    /* Diferente dos outros módulos (Notes/Tasks), Projects NÃO tem um
+       painel próprio (sidebar + detalhe lado a lado) — cada projeto é uma
+       página cheia própria (/projects/<id>), então esse grid aqui é só
+       uma "capa" com overview, sem edição inline nenhuma. */
+    .project-card {
+        border: 0;
+        border-top: 4px solid var(--project-color, var(--app-accent));
+        box-shadow: 0 .125rem .5rem rgba(0, 0, 0, .1);
+        transition: box-shadow .15s ease, transform .15s ease;
+    }
+    .project-card:hover {
+        box-shadow: 0 .5rem 1.25rem rgba(0, 0, 0, .18);
+        transform: translateY(-2px);
+        cursor: pointer;
+    }
+    .project-icon-badge {
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: .5rem;
+        background: color-mix(in srgb, var(--project-color, var(--app-accent)) 18%, transparent);
+        color: var(--project-color, var(--app-accent));
+        font-size: 1rem;
+    }
+    .project-doc-link, .project-deadline-link {
+        color: var(--bs-secondary-color);
+    }
+    .project-doc-link:hover, .project-deadline-link:hover {
+        color: var(--project-color, var(--app-accent));
+    }
+    /* Cada linha do card tem altura fixa, PREENCHIDA OU NÃO — um card sem
+       nota vinculada ainda reserva a linha 2 vazia, senão as linhas de
+       baixo (contadores/barra) "sobem" e os cards da mesma fileira do
+       grid deixam de bater entre si. Título entra pela altura do próprio
+       badge (2.25rem, já fixo); as outras duas ganham altura explícita. */
+    .project-row-doc, .project-row-stats {
+        height: 1.25rem;
+        overflow: hidden;
+    }
+    /* Barra multi-cor: 1 segmento por coluna do board, na MESMA ordem das
+       colunas (esquerda -> direita), largura proporcional à qtd de cards
+       daquela coluna. min-width garante que uma coluna vazia ainda aparece
+       como uma lasca fina — sem isso ela some (flex-grow:0) e a barra
+       deixa de comunicar "quantas colunas existem", só "quantos cards". */
+    .project-progress-bar > div {
+        min-width: 6px;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 
-    <h1 class="display-6 fw-semibold mb-4">Organização Eisenhower</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="display-6 fw-semibold mb-0">Projetos</h1>
+    <button class="btn btn-sm btn-accent" id="newProjectBtn">
+        <i class="bi bi-plus-lg"></i> Novo projeto
+    </button>
+</div>
+
+<hr>
+
+<!-- Fixados (só aparece se houver algum) -->
+<div class="d-none mb-4" id="projectsPinnedSection">
+    <h2 class="text-muted mb-2" style="font-size: .95rem;"><i class="bi bi-pin-fill"></i> Fixados</h2>
+    <div class="row row-cols-2 row-cols-lg-4 g-3" id="projectsPinnedGrid"></div>
+</div>
+
+<div class="row row-cols-2 row-cols-lg-4 g-3" id="projectsGrid"></div>
+
+<div class="d-none text-center text-muted py-5" id="projectsEmptyState">
+    <i class="bi bi-kanban display-4 d-block mb-2"></i>
+    Nenhum projeto ainda. Crie o primeiro pra organizar um board de verdade.
+</div>
+
+<!-- Lixeira — colunas/cards continuam preservados enquanto o projeto está
+     aqui (ver Settings > Projetos), só a exclusão permanente apaga tudo. -->
+<div class="d-none mt-4" id="trashedProjectsSection">
+    <h2 class="text-muted mb-2" style="font-size: .95rem;"><i class="bi bi-trash"></i> Lixeira</h2>
+    <div class="list-group" id="trashedProjectsList"></div>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
-<!-- Scripts aqui -->
+<script>
+(function () {
+    function escHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        }[c]));
+    }
+    function colorOrAccent(c) { return c || 'accent'; }
+    function colorVar(c) { return c === 'accent' ? 'var(--app-accent)' : `var(--bs-${c})`; }
+    function formatEventDate(isoDate) {
+        const [y, m, d] = isoDate.split('-').map(Number);
+        return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+    }
+
+    const SETTINGS = window.__settings || {};
+    const SHOW_PROGRESS = SETTINGS['projetos.exibir_progresso'] !== 'false';
+
+    let allProjects = [];
+
+    function projectCardHtml(p) {
+        const cv = colorVar(colorOrAccent(p.color));
+        const icon = p.icon || 'bi-kanban';
+
+        const deadlineHtml = p.deadline ? `
+            <a href="/events?open=${p.deadline.event_id}" class="project-deadline-link d-flex align-items-center gap-1 small text-decoration-none flex-shrink-0"
+               onclick="event.stopPropagation()" title="Prazo">
+                <i class="bi bi-calendar"></i> ${formatEventDate(p.deadline.date)}
+            </a>` : '';
+
+        const docHtml = p.notes_id ? `
+            <a href="/notes?open=${p.notes_id}" class="project-doc-link project-row-doc d-flex align-items-center gap-2 small text-decoration-none"
+               onclick="event.stopPropagation()">
+                <i class="bi bi-file-text flex-shrink-0"></i>
+                <span class="text-truncate">${escHtml(p.note_title || 'Nota vinculada')}</span>
+            </a>` : '<div class="project-row-doc"></div>';
+
+        const barHtml = SHOW_PROGRESS ? `
+            <div class="d-flex rounded-pill overflow-hidden project-progress-bar" style="height: .5rem;">
+                ${p.progress_bar.map(seg => `<div style="flex-grow: ${Math.max(seg.card_count, 0)}; background: ${colorVar(colorOrAccent(seg.color))};" title="${seg.card_count} card(s)"></div>`).join('')}
+            </div>` : '';
+
+        return `
+            <div class="col">
+                <div class="card project-card bg-body-secondary h-100" style="--project-color: ${cv};"
+                     role="button" onclick="window.location.href='/projects/${p.id}'">
+                    <div class="card-body d-flex flex-column gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="project-icon-badge d-flex align-items-center justify-content-center flex-shrink-0">
+                                <i class="${escHtml(icon)}"></i>
+                            </span>
+                            <span class="fw-semibold text-truncate flex-grow-1">${escHtml(p.name)}</span>
+                            ${deadlineHtml}
+                        </div>
+                        ${docHtml}
+                        <div class="d-flex gap-3 small text-muted project-row-stats">
+                            <span title="Colunas"><i class="bi bi-layout-three-columns"></i> ${p.column_count}</span>
+                            <span title="Cards"><i class="bi bi-card-text"></i> ${p.card_count}</span>
+                            <span title="Tarefas vinculadas"><i class="bi bi-card-checklist"></i> ${p.tasklist_count}</span>
+                            <span title="Notas associadas"><i class="bi bi-journal-text"></i> ${p.note_ids.length}</span>
+                            <span title="Eventos associados"><i class="bi bi-calendar-event"></i> ${p.event_ids.length}</span>
+                        </div>
+                        ${barHtml}
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    function trashedProjectRowHtml(p) {
+        return `
+            <div class="list-group-item d-flex align-items-center gap-2">
+                <i class="${escHtml(p.icon || 'bi-kanban')} text-muted flex-shrink-0"></i>
+                <span class="flex-grow-1 text-truncate text-muted">
+                    <span class="text-decoration-line-through">${escHtml(p.name)}</span>
+                    <small class="d-block">${p.column_count} coluna(s), ${p.card_count} card(s)</small>
+                </span>
+                <button class="btn btn-sm btn-outline-success flex-shrink-0" data-restore-project="${p.id}" title="Restaurar">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger flex-shrink-0" data-purge-project="${p.id}" title="Excluir permanentemente">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>`;
+    }
+
+    function renderTrashedProjects(trashed) {
+        const section = document.getElementById('trashedProjectsSection');
+        const visibility = SETTINGS['projetos.lixeira_visibilidade'] || 'if-has-items';
+        const show = visibility === 'always' || (visibility === 'if-has-items' && trashed.length > 0);
+        section.classList.toggle('d-none', !show);
+
+        const list = document.getElementById('trashedProjectsList');
+        list.innerHTML = trashed.length
+            ? trashed.map(trashedProjectRowHtml).join('')
+            : '<p class="text-muted small mb-0 p-2">Lixeira vazia</p>';
+
+        list.querySelectorAll('[data-restore-project]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                await fetch('/api/projects/' + btn.dataset.restoreProject + '/restore', { method: 'POST' });
+                loadProjects();
+            });
+        });
+        list.querySelectorAll('[data-purge-project]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const p = trashed.find(t => String(t.id) === btn.dataset.purgeProject);
+                const msg = `Excluir "${p.name}" permanentemente? Isso apaga ${p.column_count} coluna(s) e ${p.card_count} card(s) pra sempre.`
+                    + ` Tasklists vinculadas a esses cards não são apagadas, só perdem o vínculo.`;
+                if (!confirm(msg)) return;
+                fetch('/api/projects/' + btn.dataset.purgeProject, { method: 'DELETE' }).then(loadProjects);
+            });
+        });
+    }
+
+    function renderProjects() {
+        const active = allProjects.filter(p => !p.deleted_at);
+        const pinned = active.filter(p => p.is_pinned);
+        const others = active.filter(p => !p.is_pinned);
+
+        const pinnedSection = document.getElementById('projectsPinnedSection');
+        pinnedSection.classList.toggle('d-none', pinned.length === 0);
+        document.getElementById('projectsPinnedGrid').innerHTML = pinned.map(projectCardHtml).join('');
+
+        document.getElementById('projectsGrid').innerHTML = others.map(projectCardHtml).join('');
+        document.getElementById('projectsEmptyState').classList.toggle('d-none', active.length > 0);
+
+        renderTrashedProjects(allProjects.filter(p => p.deleted_at));
+    }
+
+    async function loadProjects() {
+        allProjects = await fetch('/api/projects').then(r => r.json());
+        renderProjects();
+    }
+
+    document.getElementById('newProjectBtn').addEventListener('click', async () => {
+        const p = await fetch('/api/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'Novo projeto' }),
+        }).then(r => r.json());
+        window.location.href = '/projects/' + p.id;
+    });
+
+    loadProjects();
+})();
+</script>
 {% endblock %}

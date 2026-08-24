@@ -64,6 +64,23 @@
     </div>
 </div>
 
+<!-- Modal: visualizar Lixeira de Projetos — mostra colunas/cards
+     preservados de cada projeto (projeto é a entidade mais "cara" do app,
+     a lixeira precisa deixar isso óbvio, não só o nome). -->
+<div class="modal fade" id="projectTrashViewerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-trash"></i> Lixeira — Projetos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="list-group list-group-flush" id="projectTrashViewerList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="d-flex flex-column flex-lg-row h-100 gap-3">
 
     <!-- SUB-NAV: coluna fixa a partir de lg; abaixo disso vira tira
@@ -73,12 +90,13 @@
         <ul class="nav nav-pills flex-row flex-lg-column flex-nowrap flex-lg-wrap overflow-auto gap-1">
             {% set sections = [
                 ("customizacao", "Customização", "bi-sliders"),
-                ("eventos", "Eventos", "bi-calendar-event"),
-                ("projetos", "Projetos", "bi-kanban"),
-                ("tarefas", "Tarefas", "bi-check2-square"),
                 ("notas", "Notas", "bi-journal-text"),
-                ("foco", "Foco", "bi-clock-history"),
+                ("eventos", "Eventos", "bi-calendar-event"),
+                ("tarefas", "Tarefas", "bi-check2-square"),
+                ("projetos", "Projetos", "bi-kanban"),
                 ("rank", "Ranking", "bi-grid"),
+                ("foco", "Foco", "bi-clock-history"),
+                ("grafos", "Grafos", "bi-diagram-3"),
                 ("info", "Info", "bi-info-circle")
             ] %}
             {% for id, label, icon in sections %}
@@ -125,11 +143,10 @@
                         <option value="focus">Foco</option>
                         <option value="ranks">Rank</option>
                     </select>
-                    <small class="text-muted">Só a tela que abre quando o app inicia — clicar em "Início" na sidebar sempre volta pro Dashboard. Vale a partir da próxima abertura do app.</small>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Proporção de abertura</label>
+                    <label class="form-label">Proporção</label>
                     <div class="btn-group w-100" role="group">
                         <input type="radio" class="btn-check" name="orientacao" id="orient_h" value="horizontal" data-setting="customizacao.orientacao">
                         <label class="btn btn-outline-accent" for="orient_h"><i class="bi bi-aspect-ratio"></i> Horizontal</label>
@@ -140,24 +157,13 @@
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Resolução padrão</label>
+                    <label class="form-label">Resolução</label>
                     <select class="form-select" data-setting="customizacao.resolucao">
                         <option value="1280x720">1280 × 720</option>
                         <option value="1600x900">1600 × 900</option>
                         <option value="1920x1080">1920 × 1080</option>
                         <option value="2560x1440">2560 × 1440</option>
                     </select>
-                    <small class="text-muted">Sempre 16:9 — a orientação acima inverte largura/altura. Vale a partir da próxima abertura do app.</small>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="fw-semibold">Redimensionável</div>
-                            <small class="text-muted">Permite alterar o tamanho da janela. Vale a partir da próxima abertura do app.</small>
-                        </div>
-                        <input type="checkbox" class="form-check-input" data-setting="customizacao.redimensionavel">
-                    </div>
                 </div>
 
                 <div class="col-md-6">
@@ -188,7 +194,6 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <div class="fw-semibold">Exibir animações</div>
-                            <small class="text-muted">Ativa transições e efeitos visuais</small>
                         </div>
                         <input type="checkbox" class="form-check-input" data-setting="customizacao.animacoes">
                     </div>
@@ -205,13 +210,12 @@
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Fonte do app</label>
+                    <label class="form-label">Fonte</label>
                     <select class="form-select" data-setting="customizacao.fonte">
-                        <option value="default">Padrão do sistema</option>
+                        <option value="default">Padrão</option>
                         <option value="serif">Serifada</option>
                         <option value="monospace">Monoespaçada</option>
                     </select>
-                    <small class="text-muted">Vale pro app inteiro — o textarea da nota tem sua própria fonte, em Notas, que sobrescreve essa.</small>
                 </div>
 
             </div>
@@ -234,7 +238,7 @@
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label d-block">Formato de hora</label>
+                    <label class="form-label d-block">Formato de Hora</label>
                     <div class="btn-group" role="group">
                         <input type="radio" class="btn-check" name="formato_hora" id="formato_hora_24h" value="24h" data-setting="eventos.formato_hora">
                         <label class="btn btn-outline-accent" for="formato_hora_24h">24h</label>
@@ -245,7 +249,7 @@
                 </div>
 
                 <div class="col-md-6 d-flex justify-content-between align-items-center">
-                    <span class="fw-semibold">Ano completo</span>
+                    <span class="fw-semibold">Formato de Ano</span>
                     <input type="checkbox" class="form-check-input" data-setting="eventos.ano_completo">
                 </div>
 
@@ -277,7 +281,7 @@
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Painel inicial (mobile)</label>
+                    <label class="form-label">Painel inicial (mobile-only)</label>
                     <select class="form-select" data-setting="eventos.painel_inicial">
                         <option value="calendar">Calendário</option>
                         <option value="agenda">Agenda</option>
@@ -302,7 +306,44 @@
 
                 <div class="col-md-6">
                     <label class="form-label">Máx. colunas</label>
-                    <input type="number" class="form-control" data-setting="projetos.max_colunas">
+                    <input type="number" class="form-control" data-setting="projetos.max_colunas" max="6" min="1">
+                    <small class="text-muted">Colunas dividem a largura do board igualmente com o botão "Nova coluna" — some ao atingir o máximo.</small>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Colunas iniciais</label>
+                    <input type="number" class="form-control" data-setting="projetos.colunas_iniciais" min="0" max="6">
+                    <small class="text-muted">Quantas colunas já nascem criadas num projeto novo (só um ponto de partida — adicione ou remova à vontade depois).</small>
+                </div>
+
+                <div class="col-12"><hr></div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Visibilidade da lixeira</label>
+                    <select class="form-select" data-setting="projetos.lixeira_visibilidade">
+                        <option value="never">Nunca visível</option>
+                        <option value="if-has-items">Visível apenas se houver algum excluído</option>
+                        <option value="always">Sempre visível</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Dias na lixeira</label>
+                    <select class="form-select" data-setting="projetos.lixeira_retencao_dias">
+                        <option value="none">Nenhum — exclui permanentemente</option>
+                        <option value="7">7 dias</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="viewProjectTrashBtn">
+                        <i class="bi bi-trash"></i> Visualizar lixeira
+                    </button>
+                    <small class="text-muted d-block mt-1">
+                        Colunas e cards continuam intactos enquanto o projeto está na lixeira — só a exclusão
+                        permanente (ou o fim do prazo de retenção) apaga tudo de vez. Cards com tasklist
+                        vinculada não levam a lista junto: ela sobrevive sozinha, só perde o vínculo.
+                    </small>
                 </div>
             </div>
         </div>
@@ -735,6 +776,44 @@
     document.getElementById('viewTaskTrashBtn').addEventListener('click', () => {
         _taskTrashModal.show();
         loadTaskTrashViewer();
+    });
+
+    const _projectTrashModal = new bootstrap.Modal(document.getElementById('projectTrashViewerModal'));
+
+    async function loadProjectTrashViewer() {
+        const list = document.getElementById('projectTrashViewerList');
+        list.innerHTML = '<span class="list-group-item text-muted small">Carregando...</span>';
+        const projects = await fetch('/api/projects').then(r => r.json());
+        const trashed = projects.filter(p => p.deleted_at);
+        if (!trashed.length) {
+            list.innerHTML = '<span class="list-group-item text-muted small">Lixeira vazia</span>';
+            return;
+        }
+        // Contagem de colunas/cards no rótulo — projeto é a entidade mais
+        // "cara" do app, a lixeira precisa deixar claro que nada some
+        // enquanto está aqui (ver README/comentário da seção Projetos acima).
+        list.innerHTML = trashed.map(p => `
+            <div class="list-group-item d-flex align-items-center justify-content-between gap-2">
+                <span class="text-truncate">
+                    ${escHtml(p.name)}
+                    <small class="text-muted d-block">${p.column_count} coluna(s), ${p.card_count} card(s)</small>
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-success flex-shrink-0" data-restore-project="${p.id}">
+                    <i class="bi bi-arrow-counterclockwise"></i> Trazer de volta
+                </button>
+            </div>
+        `).join('');
+        list.querySelectorAll('[data-restore-project]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                await fetch('/api/projects/' + btn.dataset.restoreProject + '/restore', { method: 'POST' });
+                loadProjectTrashViewer();
+            });
+        });
+    }
+
+    document.getElementById('viewProjectTrashBtn').addEventListener('click', () => {
+        _projectTrashModal.show();
+        loadProjectTrashViewer();
     });
 
     // ── Init ──────────────────────────────────────────────────────────────

@@ -42,6 +42,11 @@ DEFAULT_SETTINGS = {
     'tarefas.ordenacao_padrao':   'manual-asc',
     'tarefas.lixeira_visibilidade': 'if-has-items',
     'tarefas.lixeira_retencao_dias': '7',
+    'projetos.exibir_progresso':      'true',
+    'projetos.max_colunas':           '6',
+    'projetos.colunas_iniciais':      '3',
+    'projetos.lixeira_visibilidade':  'if-has-items',
+    'projetos.lixeira_retencao_dias': '7',
 }
 
 
